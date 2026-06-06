@@ -1,29 +1,40 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Scene3D } from "@/components/Scene3D";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Your App" },
-      { name: "description", content: "Replace this with a one-sentence description of your app." },
-      { property: "og:title", content: "Your App" },
-      { property: "og:description", content: "Replace this with a one-sentence description of your app." },
+      { title: "Vayer3d Electrical Assembly" },
+      {
+        name: "description",
+        content:
+          "Interactive 3D viewer for electrical infrastructure models and step-by-step assembly instructions.",
+      },
+      { property: "og:title", content: "Vayer3d Electrical Assembly" },
+      {
+        property: "og:description",
+        content:
+          "Interactive 3D viewer for electrical infrastructure models and step-by-step assembly instructions.",
+      },
     ],
   }),
   component: Index,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background">
+      <header className="flex items-center justify-between border-b border-border bg-card px-6 py-3 shadow-sm">
+        <h1 className="text-lg font-semibold tracking-tight text-foreground">
+          Vayer3d electrical assembly
+        </h1>
+        <span className="text-xs uppercase tracking-widest text-muted-foreground">
+          3D Viewer
+        </span>
+      </header>
+      <main className="relative flex-1">
+        <Scene3D />
+      </main>
     </div>
   );
 }
