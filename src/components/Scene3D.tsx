@@ -112,5 +112,3 @@ export function Scene3D() {
     </Canvas>
   );
 }
-
-export { WOOD };
