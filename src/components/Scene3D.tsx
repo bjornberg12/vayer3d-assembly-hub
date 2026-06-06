@@ -1,7 +1,6 @@
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Grid, Text, CatmullRomLine } from "@react-three/drei";
+import { OrbitControls, Grid, Text } from "@react-three/drei";
 import { Suspense, useMemo } from "react";
-import * as THREE from "three";
 import { ElectricalPost } from "./ElectricalPost";
 
 const WOOD = "#b8956a";
