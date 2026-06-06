@@ -3,7 +3,7 @@ import { OrbitControls, Grid, Text } from "@react-three/drei";
 import { Suspense, useMemo } from "react";
 import { ElectricalPost } from "./ElectricalPost";
 
-const WOOD = "#b8956a";
+
 
 function GridLabels() {
   // Label every 5m along X and Z axes from -25 to 25
