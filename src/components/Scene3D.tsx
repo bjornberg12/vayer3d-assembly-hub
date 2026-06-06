@@ -1,7 +1,7 @@
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Grid, Text } from "@react-three/drei";
-import { Suspense, useMemo } from "react";
-import { ElectricalPost } from "./ElectricalPost";
+import { Suspense, useMemo, useState } from "react";
+import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
 
 
 
@@ -82,33 +82,61 @@ function GroundPlane() {
 }
 
 export function Scene3D() {
+  const [step, setStep] = useState(1);
+  const maxStep = ASSEMBLY_STEPS.length;
+
   return (
-    <Canvas
-      shadows
-      camera={{ position: [14, 11, 16], fov: 50 }}
-      style={{ background: "#f6f3ec" }}
-    >
-      <Suspense fallback={null}>
-        <ambientLight intensity={0.7} />
-        <directionalLight
-          position={[15, 25, 10]}
-          intensity={1.1}
-          castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-        />
-        <GroundPlane />
-        <ElectricalPost />
-        <axesHelper args={[3]} />
-        <OrbitControls
-          enableDamping
-          dampingFactor={0.08}
-          maxPolarAngle={Math.PI / 2 - 0.02}
-          minDistance={3}
-          maxDistance={120}
-          target={[0, 5, 0]}
-        />
-      </Suspense>
-    </Canvas>
+    <div className="relative h-full w-full">
+      <Canvas
+        shadows
+        camera={{ position: [14, 11, 16], fov: 50 }}
+        style={{ background: "#f6f3ec" }}
+      >
+        <Suspense fallback={null}>
+          <ambientLight intensity={0.7} />
+          <directionalLight
+            position={[15, 25, 10]}
+            intensity={1.1}
+            castShadow
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+          />
+          <GroundPlane />
+          <ElectricalPost step={step} />
+          <axesHelper args={[3]} />
+          <OrbitControls
+            enableDamping
+            dampingFactor={0.08}
+            maxPolarAngle={Math.PI / 2 - 0.02}
+            minDistance={3}
+            maxDistance={120}
+            target={[0, 5, 0]}
+          />
+        </Suspense>
+      </Canvas>
+
+      {/* Step controls overlay */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
+        <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
+          Step {step} / {maxStep} — {ASSEMBLY_STEPS[step - 1]}
+        </div>
+        <div className="pointer-events-auto flex items-center gap-3">
+          <button
+            onClick={() => setStep((s) => Math.max(1, s - 1))}
+            disabled={step === 1}
+            className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ← Back
+          </button>
+          <button
+            onClick={() => setStep((s) => Math.min(maxStep, s + 1))}
+            disabled={step === maxStep}
+            className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            Forward →
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
