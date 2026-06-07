@@ -3,6 +3,7 @@ import { OrbitControls, Grid, Text } from "@react-three/drei";
 import { Suspense, useMemo, useState } from "react";
 import { Menu } from "lucide-react";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
+import { DistributionPanel } from "./DistributionPanel";
 
 type SceneId = "puitmast" | "jaotuskilp" | "alajaam";
 
@@ -141,11 +142,9 @@ export function Scene3D() {
             shadow-mapSize-height={2048}
           />
           <GroundPlane />
-          {sceneId === "puitmast" ? (
-            <ElectricalPost step={step} />
-          ) : (
-            <PlaceholderScene label={activeScene.name} />
-          )}
+          {sceneId === "puitmast" && <ElectricalPost step={step} />}
+          {sceneId === "jaotuskilp" && <DistributionPanel />}
+          {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
           <axesHelper args={[3]} />
           <OrbitControls
             enableDamping
