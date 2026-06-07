@@ -160,9 +160,6 @@ export function Scene3D() {
             minDistance={3}
             maxDistance={120}
             target={[0, 5, 0]}
-            listenToKeyEvents={typeof window !== "undefined" ? window : undefined}
-            keyPanSpeed={30}
-            keys={{ LEFT: "ArrowLeft", UP: "ArrowUp", RIGHT: "ArrowRight", BOTTOM: "ArrowDown" }}
           />
         </Suspense>
       </Canvas>
