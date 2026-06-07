@@ -3,7 +3,7 @@ import { OrbitControls, Grid, Text } from "@react-three/drei";
 import { Suspense, useMemo, useState } from "react";
 import { Menu } from "lucide-react";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
-import { DistributionPanel } from "./DistributionPanel";
+import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 
 type SceneId = "puitmast" | "jaotuskilp" | "alajaam";
 
@@ -67,7 +67,7 @@ function GroundPlane() {
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial color="#8a8a8a" />
+        <meshStandardMaterial color="#8a8a8a" transparent opacity={0.45} depthWrite={false} />
       </mesh>
       <Grid
         position={[0, 0.005, 0]}
