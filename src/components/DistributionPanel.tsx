@@ -64,8 +64,8 @@ function Body() {
         <meshStandardMaterial color="#c9c6bf" metalness={0.2} roughness={0.75} />
       </mesh>
       {/* lock */}
-      <mesh position={[0, BODY_H - 0.12, BODY_D / 2 + 0.004]}>
-        <cylinderGeometry args={[0.018, 0.018, 0.01, 16]} rotateX={Math.PI / 2} />
+      <mesh position={[0, BODY_H - 0.12, BODY_D / 2 + 0.004]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.018, 0.018, 0.01, 16]} />
         <meshStandardMaterial color="#3a3a3a" metalness={0.7} roughness={0.4} />
       </mesh>
       {/* hazard label (yellow triangle) */}
