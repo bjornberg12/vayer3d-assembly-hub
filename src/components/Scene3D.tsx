@@ -29,15 +29,28 @@ const VIEWS: {
   { id: "side", name: "Side", subtitle: "Looking along +X", position: [22, 6, 0], target: [0, 4, 0] },
 ];
 
-function CameraRig({ view }: { view: (typeof VIEWS)[number] }) {
+function CameraRig({
+  view,
+  controlsRef,
+}: {
+  view: (typeof VIEWS)[number];
+  controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+}) {
   const { camera } = useThree();
   useEffect(() => {
     camera.position.set(...view.position);
-    camera.lookAt(...view.target);
+    const c = controlsRef.current;
+    if (c) {
+      c.target.set(...view.target);
+      c.update();
+    } else {
+      camera.lookAt(...view.target);
+    }
     camera.updateProjectionMatrix();
-  }, [view, camera]);
+  }, [view, camera, controlsRef]);
   return null;
 }
+
 
 
 function GridLabels() {
@@ -143,7 +156,11 @@ export function Scene3D() {
   const [sceneId, setSceneId] = useState<SceneId>("puitmast");
   const [step, setStep] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [viewsOpen, setViewsOpen] = useState(false);
+  const [viewId, setViewId] = useState<ViewId>("iso");
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
+  const activeView = VIEWS.find((v) => v.id === viewId)!;
 
   const stepLabels =
     sceneId === "puitmast"
@@ -157,6 +174,11 @@ export function Scene3D() {
     setSceneId(id);
     setStep(1);
     setMenuOpen(false);
+  };
+
+  const selectView = (id: ViewId) => {
+    setViewId(id);
+    setViewsOpen(false);
   };
 
   return (
@@ -181,15 +203,17 @@ export function Scene3D() {
           {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
           <axesHelper args={[3]} />
           <OrbitControls
+            ref={controlsRef}
             enableDamping
             dampingFactor={0.08}
             maxPolarAngle={Math.PI / 2 - 0.02}
             minDistance={3}
             maxDistance={120}
-            target={[0, 5, 0]}
           />
+          <CameraRig view={activeView} controlsRef={controlsRef} />
         </Suspense>
       </Canvas>
+
 
       {/* Hamburger menu */}
       <div className="absolute left-4 top-4">
