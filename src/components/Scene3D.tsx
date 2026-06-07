@@ -274,45 +274,36 @@ export function Scene3D() {
       </div>
 
       {/* Scene menu dropdown */}
-      <div className="absolute left-4 top-16">
-
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Open scene menu"
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        {menuOpen && (
-          <div className="mt-2 w-64 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
-            <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
-              Scenes
-            </div>
-            <ul className="flex flex-col">
-              {SCENES.map((s) => {
-                const active = s.id === sceneId;
-                return (
-                  <li key={s.id}>
-                    <button
-                      onClick={() => selectScene(s.id)}
-                      className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
-                        active
-                          ? "bg-white/70 font-semibold text-neutral-900"
-                          : "text-neutral-800 hover:bg-white/50"
-                      }`}
-                    >
-                      <span>{s.name}</span>
-                      <span className="text-xs font-normal text-neutral-600">
-                        {s.subtitle}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
+      {menuOpen && (
+        <div className="absolute left-4 top-16 w-64 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
+          <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
+            Scenes
           </div>
-        )}
-      </div>
+          <ul className="flex flex-col">
+            {SCENES.map((s) => {
+              const active = s.id === sceneId;
+              return (
+                <li key={s.id}>
+                  <button
+                    onClick={() => selectScene(s.id)}
+                    className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
+                      active
+                        ? "bg-white/70 font-semibold text-neutral-900"
+                        : "text-neutral-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>{s.name}</span>
+                    <span className="text-xs font-normal text-neutral-600">
+                      {s.subtitle}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
 
       {/* Active scene label */}
       <div className="pointer-events-none absolute right-4 top-4 rounded-xl border border-white/40 bg-white/30 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
