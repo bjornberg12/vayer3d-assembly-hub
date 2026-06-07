@@ -1,7 +1,8 @@
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text } from "@react-three/drei";
-import { Suspense, useMemo, useState } from "react";
-import { Menu } from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Menu, Eye } from "lucide-react";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 
@@ -12,6 +13,32 @@ const SCENES: { id: SceneId; name: string; subtitle: string }[] = [
   { id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
   { id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
 ];
+
+type ViewId = "front" | "top" | "side" | "iso";
+
+const VIEWS: {
+  id: ViewId;
+  name: string;
+  subtitle: string;
+  position: [number, number, number];
+  target: [number, number, number];
+}[] = [
+  { id: "iso", name: "Isometric", subtitle: "Default 3D angle", position: [14, 11, 16], target: [0, 5, 0] },
+  { id: "front", name: "Front", subtitle: "Looking along +Z", position: [0, 6, 22], target: [0, 4, 0] },
+  { id: "top", name: "Top", subtitle: "Bird's eye view", position: [0, 28, 0.01], target: [0, 0, 0] },
+  { id: "side", name: "Side", subtitle: "Looking along +X", position: [22, 6, 0], target: [0, 4, 0] },
+];
+
+function CameraRig({ view }: { view: (typeof VIEWS)[number] }) {
+  const { camera } = useThree();
+  useEffect(() => {
+    camera.position.set(...view.position);
+    camera.lookAt(...view.target);
+    camera.updateProjectionMatrix();
+  }, [view, camera]);
+  return null;
+}
+
 
 function GridLabels() {
   const ticks = useMemo(() => {
