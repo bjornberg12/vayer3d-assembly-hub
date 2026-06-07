@@ -128,14 +128,26 @@ function GroundingConnection() {
   return <Line points={[start, mid, ringPoint]} color={COPPER} lineWidth={2.5} />;
 }
 
-export function DistributionPanel() {
+export const PANEL_STEPS = [
+  "Grounding rod",
+  "Grounding ring",
+  "Mounting bracket",
+  "Distribution panel",
+];
+
+export function DistributionPanel({ step = PANEL_STEPS.length }: { step?: number }) {
   return (
     <group>
-      <Bracket />
-      <Body />
-      <GroundingRing />
-      <GroundingRod />
-      <GroundingConnection />
+      {step >= 1 && <GroundingRod />}
+      {step >= 2 && <GroundingRing />}
+      {step >= 3 && <Bracket />}
+      {step >= 4 && (
+        <>
+          <Body />
+          <GroundingConnection />
+        </>
+      )}
     </group>
   );
 }
+

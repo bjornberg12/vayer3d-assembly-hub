@@ -3,7 +3,7 @@ import { OrbitControls, Grid, Text } from "@react-three/drei";
 import { Suspense, useMemo, useState } from "react";
 import { Menu } from "lucide-react";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
-import { DistributionPanel } from "./DistributionPanel";
+import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 
 type SceneId = "puitmast" | "jaotuskilp" | "alajaam";
 
@@ -67,7 +67,7 @@ function GroundPlane() {
     <>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial color="#8a8a8a" />
+        <meshStandardMaterial color="#8a8a8a" transparent opacity={0.45} depthWrite={false} />
       </mesh>
       <Grid
         position={[0, 0.005, 0]}
@@ -116,8 +116,15 @@ export function Scene3D() {
   const [sceneId, setSceneId] = useState<SceneId>("puitmast");
   const [step, setStep] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
-  const maxStep = ASSEMBLY_STEPS.length;
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
+
+  const stepLabels =
+    sceneId === "puitmast"
+      ? ASSEMBLY_STEPS
+      : sceneId === "jaotuskilp"
+      ? PANEL_STEPS
+      : null;
+  const maxStep = stepLabels?.length ?? 0;
 
   const selectScene = (id: SceneId) => {
     setSceneId(id);
@@ -143,7 +150,7 @@ export function Scene3D() {
           />
           <GroundPlane />
           {sceneId === "puitmast" && <ElectricalPost step={step} />}
-          {sceneId === "jaotuskilp" && <DistributionPanel />}
+          {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
           {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
           <axesHelper args={[3]} />
           <OrbitControls
@@ -202,11 +209,11 @@ export function Scene3D() {
         {activeScene.name}
       </div>
 
-      {/* Step controls overlay — only for assembly scene */}
-      {sceneId === "puitmast" && (
+      {/* Step controls overlay */}
+      {stepLabels && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
           <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
-            Step {step} / {maxStep} — {ASSEMBLY_STEPS[step - 1]}
+            Step {step} / {maxStep} — {stepLabels[step - 1]}
           </div>
           <div className="pointer-events-auto flex items-center gap-3">
             <button
