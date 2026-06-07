@@ -1,7 +1,8 @@
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text } from "@react-three/drei";
-import { Suspense, useMemo, useState } from "react";
-import { Menu } from "lucide-react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Menu, Eye } from "lucide-react";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 
@@ -12,6 +13,45 @@ const SCENES: { id: SceneId; name: string; subtitle: string }[] = [
   { id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
   { id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
 ];
+
+type ViewId = "front" | "top" | "side" | "iso";
+
+const VIEWS: {
+  id: ViewId;
+  name: string;
+  subtitle: string;
+  position: [number, number, number];
+  target: [number, number, number];
+}[] = [
+  { id: "iso", name: "Isometric", subtitle: "Default 3D angle", position: [14, 11, 16], target: [0, 5, 0] },
+  { id: "front", name: "Front", subtitle: "Looking along +Z", position: [0, 6, 22], target: [0, 4, 0] },
+  { id: "top", name: "Top", subtitle: "Bird's eye view", position: [0, 28, 0.01], target: [0, 0, 0] },
+  { id: "side", name: "Side", subtitle: "Looking along +X", position: [22, 6, 0], target: [0, 4, 0] },
+];
+
+function CameraRig({
+  view,
+  controlsRef,
+}: {
+  view: (typeof VIEWS)[number];
+  controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+}) {
+  const { camera } = useThree();
+  useEffect(() => {
+    camera.position.set(...view.position);
+    const c = controlsRef.current;
+    if (c) {
+      c.target.set(...view.target);
+      c.update();
+    } else {
+      camera.lookAt(...view.target);
+    }
+    camera.updateProjectionMatrix();
+  }, [view, camera, controlsRef]);
+  return null;
+}
+
+
 
 function GridLabels() {
   const ticks = useMemo(() => {
@@ -116,7 +156,11 @@ export function Scene3D() {
   const [sceneId, setSceneId] = useState<SceneId>("puitmast");
   const [step, setStep] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [viewsOpen, setViewsOpen] = useState(false);
+  const [viewId, setViewId] = useState<ViewId>("iso");
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
+  const activeView = VIEWS.find((v) => v.id === viewId)!;
 
   const stepLabels =
     sceneId === "puitmast"
@@ -130,6 +174,11 @@ export function Scene3D() {
     setSceneId(id);
     setStep(1);
     setMenuOpen(false);
+  };
+
+  const selectView = (id: ViewId) => {
+    setViewId(id);
+    setViewsOpen(false);
   };
 
   return (
@@ -154,55 +203,107 @@ export function Scene3D() {
           {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
           <axesHelper args={[3]} />
           <OrbitControls
+            ref={controlsRef}
             enableDamping
             dampingFactor={0.08}
             maxPolarAngle={Math.PI / 2 - 0.02}
             minDistance={3}
             maxDistance={120}
-            target={[0, 5, 0]}
           />
+          <CameraRig view={activeView} controlsRef={controlsRef} />
         </Suspense>
       </Canvas>
 
-      {/* Hamburger menu */}
-      <div className="absolute left-4 top-4">
-        <button
-          onClick={() => setMenuOpen((o) => !o)}
-          aria-label="Open scene menu"
-          className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        {menuOpen && (
-          <div className="mt-2 w-64 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
-            <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
-              Scenes
+
+      {/* Hamburger menus */}
+      <div className="absolute left-4 top-4 flex gap-2">
+        <div className="relative">
+          <button
+            onClick={() => {
+              setMenuOpen((o) => !o);
+              setViewsOpen(false);
+            }}
+            aria-label="Open scene menu"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => {
+              setViewsOpen((o) => !o);
+              setMenuOpen(false);
+            }}
+            aria-label="Open views menu"
+            className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+          >
+            <Eye className="h-5 w-5" />
+            <span className="text-sm font-medium">Views</span>
+          </button>
+          {viewsOpen && (
+            <div className="absolute left-0 mt-2 w-64 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
+              <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
+                Views
+              </div>
+              <ul className="flex flex-col">
+                {VIEWS.map((v) => {
+                  const active = v.id === viewId;
+                  return (
+                    <li key={v.id}>
+                      <button
+                        onClick={() => selectView(v.id)}
+                        className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
+                          active
+                            ? "bg-white/70 font-semibold text-neutral-900"
+                            : "text-neutral-800 hover:bg-white/50"
+                        }`}
+                      >
+                        <span>{v.name}</span>
+                        <span className="text-xs font-normal text-neutral-600">
+                          {v.subtitle}
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
-            <ul className="flex flex-col">
-              {SCENES.map((s) => {
-                const active = s.id === sceneId;
-                return (
-                  <li key={s.id}>
-                    <button
-                      onClick={() => selectScene(s.id)}
-                      className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
-                        active
-                          ? "bg-white/70 font-semibold text-neutral-900"
-                          : "text-neutral-800 hover:bg-white/50"
-                      }`}
-                    >
-                      <span>{s.name}</span>
-                      <span className="text-xs font-normal text-neutral-600">
-                        {s.subtitle}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* Scene menu dropdown */}
+      {menuOpen && (
+        <div className="absolute left-4 top-16 w-64 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
+          <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
+            Scenes
+          </div>
+          <ul className="flex flex-col">
+            {SCENES.map((s) => {
+              const active = s.id === sceneId;
+              return (
+                <li key={s.id}>
+                  <button
+                    onClick={() => selectScene(s.id)}
+                    className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
+                      active
+                        ? "bg-white/70 font-semibold text-neutral-900"
+                        : "text-neutral-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>{s.name}</span>
+                    <span className="text-xs font-normal text-neutral-600">
+                      {s.subtitle}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
 
       {/* Active scene label */}
       <div className="pointer-events-none absolute right-4 top-4 rounded-xl border border-white/40 bg-white/30 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
