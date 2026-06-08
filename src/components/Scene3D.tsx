@@ -310,6 +310,7 @@ export function Scene3D() {
             zoomToCursor
           />
           <CameraRig view={activeView} controlsRef={controlsRef} />
+          <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
         </Suspense>
       </Canvas>
 
