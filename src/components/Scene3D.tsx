@@ -206,8 +206,9 @@ export function Scene3D() {
             ref={controlsRef}
             enableDamping
             dampingFactor={0.08}
+            zoomSpeed={0.6}
             maxPolarAngle={Math.PI / 2 - 0.02}
-            minDistance={3}
+            minDistance={0.05}
             maxDistance={120}
             zoomToCursor
           />
