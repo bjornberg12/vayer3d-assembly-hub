@@ -185,7 +185,7 @@ export function Scene3D() {
     <div className="relative h-full w-full">
       <Canvas
         shadows
-        camera={{ position: [14, 11, 16], fov: 50 }}
+        camera={{ position: [14, 11, 16], fov: 50, near: 0.01, far: 2000 }}
         style={{ background: "#f6f3ec" }}
       >
         <Suspense fallback={null}>
