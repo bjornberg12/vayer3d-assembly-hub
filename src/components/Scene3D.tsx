@@ -371,7 +371,46 @@ export function Scene3D() {
             </div>
           )}
         </div>
+        <button
+          onClick={() => {
+            setRulerActive((a) => !a);
+            setMenuOpen(false);
+            setViewsOpen(false);
+          }}
+          aria-label="Toggle ruler"
+          className={`flex h-11 items-center gap-1.5 rounded-xl border px-3 shadow-lg backdrop-blur-md transition ${
+            rulerActive
+              ? "border-red-300/60 bg-red-500/80 text-white hover:bg-red-500/90"
+              : "border-white/40 bg-white/30 text-neutral-900 hover:bg-white/50"
+          }`}
+        >
+          <RulerIcon className="h-5 w-5" />
+          <span className="text-sm font-medium">Ruler</span>
+        </button>
+        {(rulerActive || rulerPoints.length > 0) && (
+          <button
+            onClick={clearRuler}
+            aria-label="Clear ruler"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
+
+      {rulerActive && (
+        <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
+          {rulerPoints.length === 0
+            ? "Ruler: click the first point"
+            : rulerPoints.length === 1
+            ? "Click the second point to measure"
+            : `Distance: ${Math.hypot(
+                rulerPoints[1][0] - rulerPoints[0][0],
+                rulerPoints[1][1] - rulerPoints[0][1],
+                rulerPoints[1][2] - rulerPoints[0][2]
+              ).toFixed(2)} m — click again to restart`}
+        </div>
+      )}
 
       {/* Scene menu dropdown */}
       {menuOpen && (
