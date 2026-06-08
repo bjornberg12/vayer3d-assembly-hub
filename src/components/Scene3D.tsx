@@ -6,6 +6,7 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
+import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 type SceneId = "puitmast" | "jaotuskilp" | "alajaam";
 
@@ -279,6 +280,11 @@ export function Scene3D() {
 
   return (
     <div className="relative h-full w-full">
+      <img
+        src={vayerLogo.url}
+        alt="Vayer 3d"
+        className="pointer-events-none absolute left-1/2 top-3 z-10 h-8 -translate-x-1/2 rounded-md shadow-md"
+      />
       <Canvas
         shadows
         camera={{ position: [14, 11, 16], fov: 50, near: 0.01, far: 2000 }}
