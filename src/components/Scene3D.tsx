@@ -153,6 +153,94 @@ function PlaceholderScene({ label }: { label: string }) {
   );
 }
 
+type Point3 = [number, number, number];
+
+function Ruler({
+  active,
+  points,
+  onAddPoint,
+}: {
+  active: boolean;
+  points: Point3[];
+  onAddPoint: (p: Point3) => void;
+}) {
+  const { camera, scene, gl } = useThree();
+
+  useEffect(() => {
+    if (!active) return;
+    const dom = gl.domElement;
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    let downX = 0;
+    let downY = 0;
+    const onDown = (e: PointerEvent) => {
+      downX = e.clientX;
+      downY = e.clientY;
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 4) return;
+      const rect = dom.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster
+        .intersectObjects(scene.children, true)
+        .filter((h) => !h.object.userData.ruler && h.object.type !== "AxesHelper");
+      if (hits.length) {
+        const p = hits[0].point;
+        onAddPoint([p.x, p.y, p.z]);
+      }
+    };
+    dom.addEventListener("pointerdown", onDown);
+    dom.addEventListener("pointerup", onUp);
+    return () => {
+      dom.removeEventListener("pointerdown", onDown);
+      dom.removeEventListener("pointerup", onUp);
+    };
+  }, [active, camera, scene, gl, onAddPoint]);
+
+  if (points.length === 0) return null;
+
+  const a = points[0];
+  const b = points[1];
+  const mid: Point3 | null = b
+    ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.25, (a[2] + b[2]) / 2]
+    : null;
+  const dist = b
+    ? Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])
+    : 0;
+
+  return (
+    <group userData={{ ruler: true }}>
+      {points.map((p, i) => (
+        <mesh key={i} position={p} userData={{ ruler: true }}>
+          <sphereGeometry args={[0.08, 16, 16]} />
+          <meshStandardMaterial color="#ff3b30" emissive="#ff3b30" emissiveIntensity={0.4} />
+        </mesh>
+      ))}
+      {b && (
+        <>
+          <Line points={[a, b]} color="#ff3b30" lineWidth={3} userData={{ ruler: true }} />
+          {mid && (
+            <Text
+              position={mid}
+              fontSize={0.35}
+              color="#ffffff"
+              outlineColor="#000000"
+              outlineWidth={0.025}
+              anchorX="center"
+              anchorY="middle"
+            >
+              {`${dist.toFixed(2)} m`}
+            </Text>
+          )}
+        </>
+      )}
+    </group>
+  );
+}
+
 export function Scene3D() {
   const [sceneId, setSceneId] = useState<SceneId>("puitmast");
   const [step, setStep] = useState(1);
