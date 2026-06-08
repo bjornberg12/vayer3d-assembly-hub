@@ -209,6 +209,7 @@ export function Scene3D() {
             maxPolarAngle={Math.PI / 2 - 0.02}
             minDistance={3}
             maxDistance={120}
+            zoomToCursor
           />
           <CameraRig view={activeView} controlsRef={controlsRef} />
         </Suspense>
