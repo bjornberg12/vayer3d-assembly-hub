@@ -112,16 +112,15 @@ function GroundPlane() {
       </mesh>
       <Grid
         position={[0, 0.005, 0]}
-        args={[200, 200]}
+        args={[40, 40]}
         cellSize={1}
-        cellThickness={0.6}
-        cellColor="#6e6e6e"
+        cellThickness={0.4}
+        cellColor="#8a8a8a"
         sectionSize={5}
-        sectionThickness={1.4}
-        sectionColor="#2b2b2b"
-        fadeDistance={90}
-        fadeStrength={1.2}
-        infiniteGrid
+        sectionThickness={0.9}
+        sectionColor="#5a5a5a"
+        fadeDistance={40}
+        fadeStrength={1.6}
       />
       <GridLabels />
     </>
