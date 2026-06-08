@@ -1,7 +1,8 @@
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid, Text } from "@react-three/drei";
+import { OrbitControls, Grid, Text, Line } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X } from "lucide-react";
+import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
@@ -152,12 +153,102 @@ function PlaceholderScene({ label }: { label: string }) {
   );
 }
 
+type Point3 = [number, number, number];
+
+function Ruler({
+  active,
+  points,
+  onAddPoint,
+}: {
+  active: boolean;
+  points: Point3[];
+  onAddPoint: (p: Point3) => void;
+}) {
+  const { camera, scene, gl } = useThree();
+
+  useEffect(() => {
+    if (!active) return;
+    const dom = gl.domElement;
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    let downX = 0;
+    let downY = 0;
+    const onDown = (e: PointerEvent) => {
+      downX = e.clientX;
+      downY = e.clientY;
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 4) return;
+      const rect = dom.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster
+        .intersectObjects(scene.children, true)
+        .filter((h) => !h.object.userData.ruler && h.object.type !== "AxesHelper");
+      if (hits.length) {
+        const p = hits[0].point;
+        onAddPoint([p.x, p.y, p.z]);
+      }
+    };
+    dom.addEventListener("pointerdown", onDown);
+    dom.addEventListener("pointerup", onUp);
+    return () => {
+      dom.removeEventListener("pointerdown", onDown);
+      dom.removeEventListener("pointerup", onUp);
+    };
+  }, [active, camera, scene, gl, onAddPoint]);
+
+  if (points.length === 0) return null;
+
+  const a = points[0];
+  const b = points[1];
+  const mid: Point3 | null = b
+    ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.25, (a[2] + b[2]) / 2]
+    : null;
+  const dist = b
+    ? Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])
+    : 0;
+
+  return (
+    <group userData={{ ruler: true }}>
+      {points.map((p, i) => (
+        <mesh key={i} position={p} userData={{ ruler: true }}>
+          <sphereGeometry args={[0.08, 16, 16]} />
+          <meshStandardMaterial color="#ff3b30" emissive="#ff3b30" emissiveIntensity={0.4} />
+        </mesh>
+      ))}
+      {b && (
+        <>
+          <Line points={[a, b]} color="#ff3b30" lineWidth={3} userData={{ ruler: true }} />
+          {mid && (
+            <Text
+              position={mid}
+              fontSize={0.35}
+              color="#ffffff"
+              outlineColor="#000000"
+              outlineWidth={0.025}
+              anchorX="center"
+              anchorY="middle"
+            >
+              {`${dist.toFixed(2)} m`}
+            </Text>
+          )}
+        </>
+      )}
+    </group>
+  );
+}
+
 export function Scene3D() {
   const [sceneId, setSceneId] = useState<SceneId>("puitmast");
   const [step, setStep] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
+  const [rulerActive, setRulerActive] = useState(false);
+  const [rulerPoints, setRulerPoints] = useState<Point3[]>([]);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
@@ -180,6 +271,12 @@ export function Scene3D() {
     setViewId(id);
     setViewsOpen(false);
   };
+
+  const addRulerPoint = (p: Point3) => {
+    setRulerPoints((prev) => (prev.length >= 2 ? [p] : [...prev, p]));
+  };
+
+  const clearRuler = () => setRulerPoints([]);
 
   return (
     <div className="relative h-full w-full">
@@ -213,6 +310,7 @@ export function Scene3D() {
             zoomToCursor
           />
           <CameraRig view={activeView} controlsRef={controlsRef} />
+          <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
         </Suspense>
       </Canvas>
 
@@ -273,7 +371,46 @@ export function Scene3D() {
             </div>
           )}
         </div>
+        <button
+          onClick={() => {
+            setRulerActive((a) => !a);
+            setMenuOpen(false);
+            setViewsOpen(false);
+          }}
+          aria-label="Toggle ruler"
+          className={`flex h-11 items-center gap-1.5 rounded-xl border px-3 shadow-lg backdrop-blur-md transition ${
+            rulerActive
+              ? "border-red-300/60 bg-red-500/80 text-white hover:bg-red-500/90"
+              : "border-white/40 bg-white/30 text-neutral-900 hover:bg-white/50"
+          }`}
+        >
+          <RulerIcon className="h-5 w-5" />
+          <span className="text-sm font-medium">Ruler</span>
+        </button>
+        {(rulerActive || rulerPoints.length > 0) && (
+          <button
+            onClick={clearRuler}
+            aria-label="Clear ruler"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
+
+      {rulerActive && (
+        <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
+          {rulerPoints.length === 0
+            ? "Ruler: click the first point"
+            : rulerPoints.length === 1
+            ? "Click the second point to measure"
+            : `Distance: ${Math.hypot(
+                rulerPoints[1][0] - rulerPoints[0][0],
+                rulerPoints[1][1] - rulerPoints[0][1],
+                rulerPoints[1][2] - rulerPoints[0][2]
+              ).toFixed(2)} m — click again to restart`}
+        </div>
+      )}
 
       {/* Scene menu dropdown */}
       {menuOpen && (
