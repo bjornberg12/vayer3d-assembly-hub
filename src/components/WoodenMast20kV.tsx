@@ -308,16 +308,28 @@ export function WoodenMast20kV({ step = 6 }: { step?: number }) {
   return (
     <group>
       {/* Step 1: dig the hole */}
-      {step >= 1 && step < 2 && <Hole />}
+      {step >= 1 && step < 2 && (
+        <Part name="Foundation hole">
+          <Hole />
+        </Part>
+      )}
 
       {/* Step 2+: mast placed (hole filled) */}
-      {step >= 2 && <Mast />}
+      {step >= 2 && (
+        <Part name="Wooden mast">
+          <Mast />
+        </Part>
+      )}
 
       {/* Step 3: metal crossarm + arrester bracket */}
       {step >= 3 && (
         <>
-          <Crossarm />
-          <ArresterBracket />
+          <Part name="Metal crossarm">
+            <Crossarm />
+          </Part>
+          <Part name="Arrester bracket">
+            <ArresterBracket />
+          </Part>
         </>
       )}
 
@@ -325,55 +337,67 @@ export function WoodenMast20kV({ step = 6 }: { step?: number }) {
       {step >= 4 && (
         <>
           {phaseOffsets.map((p, i) => (
-            <Insulator key={`ins-${i}`} position={p} />
+            <Part key={`ins-${i}`} name="Tension insulator">
+              <Insulator position={p} />
+            </Part>
           ))}
           {arresterOffsets.map((p, i) => (
-            <SurgeArrester key={`arr-${i}`} position={p} />
+            <Part key={`arr-${i}`} name="Surge arrester">
+              <SurgeArrester position={p} />
+            </Part>
           ))}
         </>
       )}
 
-      {/* Step 5: cable connected to the line (down the mast + termination + jumpers) */}
+      {/* Step 5: cable connected to the line */}
       {step >= 5 && (
         <>
-          <CableDown />
-          <CableTermination />
-          {/* Jumper from termination up to middle phase, then to arrester */}
-          <ConnectingJumper
-            from={[MAST_R_TOP + 0.08, MAST_ABOVE - 2.9 + 0.6, 0]}
-            to={wireTops[1]}
-          />
-          <ConnectingJumper
-            from={[MAST_R_TOP + 0.08, MAST_ABOVE - 2.9 + 0.6, 0]}
-            to={[arresterOffsets[1][0], arresterOffsets[1][1] + 0.6, arresterOffsets[1][2]]}
-            sag={0.02}
-          />
+          <Part name="Underground cable">
+            <CableDown />
+          </Part>
+          <Part name="Cable termination">
+            <CableTermination />
+          </Part>
+          <Part name="Jumper wire">
+            <ConnectingJumper
+              from={[MAST_R_TOP + 0.08, MAST_ABOVE - 2.9 + 0.6, 0]}
+              to={wireTops[1]}
+            />
+            <ConnectingJumper
+              from={[MAST_R_TOP + 0.08, MAST_ABOVE - 2.9 + 0.6, 0]}
+              to={[arresterOffsets[1][0], arresterOffsets[1][1] + 0.6, arresterOffsets[1][2]]}
+              sag={0.02}
+            />
+          </Part>
         </>
       )}
 
       {/* Step 6: aerial line spanning to next mast */}
       {step >= 6 && (
         <>
-          {/* Second mast (simplified) */}
           <group position={[NEXT_MAST_X, 0, 0]}>
-            <Mast />
-            <group>
+            <Part name="Wooden mast (next)">
+              <Mast />
+            </Part>
+            <Part name="Metal crossarm">
               <mesh position={[0, CROSSARM_Y, 0]} castShadow>
                 <boxGeometry args={[0.08, 0.08, CROSSARM_LEN]} />
                 <meshStandardMaterial color={METAL} metalness={0.6} roughness={0.5} />
               </mesh>
-              {phaseOffsets.map((p, i) => (
-                <Insulator key={`ins2-${i}`} position={p} />
-              ))}
-            </group>
+            </Part>
+            {phaseOffsets.map((p, i) => (
+              <Part key={`ins2-${i}`} name="Tension insulator">
+                <Insulator position={p} />
+              </Part>
+            ))}
           </group>
-          {/* Three phase conductors */}
           {wireTops.map((p, i) => (
-            <AerialLine
-              key={`line-${i}`}
-              start={p}
-              end={[NEXT_MAST_X + p[0], p[1], p[2]]}
-            />
+            <Part key={`line-${i}`} name="Aerial phase conductor">
+              <AerialLine
+                start={p}
+                end={[NEXT_MAST_X + p[0], p[1], p[2]]}
+              />
+            </Part>
           ))}
         </>
       )}
