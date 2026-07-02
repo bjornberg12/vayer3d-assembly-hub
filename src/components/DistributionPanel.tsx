@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { Line } from "@react-three/drei";
+import { Part } from "./PartLabel";
 
 // Dimensions (meters) inferred from reference drawing
 const BODY_W = 0.5;
