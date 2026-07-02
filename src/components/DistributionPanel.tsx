@@ -139,13 +139,29 @@ export const PANEL_STEPS = [
 export function DistributionPanel({ step = PANEL_STEPS.length }: { step?: number }) {
   return (
     <group>
-      {step >= 1 && <GroundingRod />}
-      {step >= 2 && <GroundingRing />}
-      {step >= 3 && <Bracket />}
+      {step >= 1 && (
+        <Part name="Grounding rod">
+          <GroundingRod />
+        </Part>
+      )}
+      {step >= 2 && (
+        <Part name="Grounding ring">
+          <GroundingRing />
+        </Part>
+      )}
+      {step >= 3 && (
+        <Part name="Mounting bracket">
+          <Bracket />
+        </Part>
+      )}
       {step >= 4 && (
         <>
-          <Body />
-          <GroundingConnection />
+          <Part name="Distribution panel">
+            <Body />
+          </Part>
+          <Part name="Grounding conductor">
+            <GroundingConnection />
+          </Part>
         </>
       )}
     </group>
