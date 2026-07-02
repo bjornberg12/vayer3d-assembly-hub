@@ -7,6 +7,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 import { WoodenMast20kV, MAST_20KV_STEPS } from "./WoodenMast20kV";
+import { PartLabelProvider } from "./PartLabel";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
