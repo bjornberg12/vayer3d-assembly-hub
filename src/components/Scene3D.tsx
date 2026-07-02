@@ -305,6 +305,7 @@ export function Scene3D() {
           />
           <GroundPlane />
           {sceneId === "puitmast" && <ElectricalPost step={step} />}
+          {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
           {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
           {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
           <axesHelper args={[3]} />
