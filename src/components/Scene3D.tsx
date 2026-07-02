@@ -258,6 +258,8 @@ export function Scene3D() {
   const stepLabels =
     sceneId === "puitmast"
       ? ASSEMBLY_STEPS
+      : sceneId === "puitmast20"
+      ? MAST_20KV_STEPS
       : sceneId === "jaotuskilp"
       ? PANEL_STEPS
       : null;
