@@ -7,6 +7,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 import { WoodenMast20kV, MAST_20KV_STEPS } from "./WoodenMast20kV";
+import { PartLabelProvider } from "./PartLabel";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
@@ -251,6 +252,7 @@ export function Scene3D() {
   const [viewId, setViewId] = useState<ViewId>("iso");
   const [rulerActive, setRulerActive] = useState(false);
   const [rulerPoints, setRulerPoints] = useState<Point3[]>([]);
+  const [partLabel, setPartLabel] = useState<string | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
@@ -293,6 +295,7 @@ export function Scene3D() {
         shadows
         camera={{ position: [14, 11, 16], fov: 50, near: 0.01, far: 2000 }}
         style={{ background: "#f6f3ec" }}
+        onPointerMissed={() => setPartLabel(null)}
       >
         <Suspense fallback={null}>
           <ambientLight intensity={0.7} />
@@ -304,10 +307,12 @@ export function Scene3D() {
             shadow-mapSize-height={2048}
           />
           <GroundPlane />
-          {sceneId === "puitmast" && <ElectricalPost step={step} />}
-          {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
-          {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
-          {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
+          <PartLabelProvider setLabel={setPartLabel} enabled={!rulerActive}>
+            {sceneId === "puitmast" && <ElectricalPost step={step} />}
+            {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
+            {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
+            {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
+          </PartLabelProvider>
           <axesHelper args={[3]} />
           <OrbitControls
             ref={controlsRef}
@@ -458,6 +463,21 @@ export function Scene3D() {
       <div className="pointer-events-none absolute right-4 top-4 rounded-xl border border-white/40 bg-white/30 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
         {activeScene.name}
       </div>
+
+      {/* Part label — appears when a component is clicked */}
+      {partLabel && !rulerActive && (
+        <div className="absolute left-1/2 top-16 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/50 bg-white/70 px-4 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-md">
+          <span className="h-2 w-2 rounded-full bg-red-500" />
+          {partLabel}
+          <button
+            onClick={() => setPartLabel(null)}
+            aria-label="Dismiss label"
+            className="ml-1 rounded-full p-0.5 text-neutral-500 transition hover:bg-black/10 hover:text-neutral-800"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* Step controls overlay */}
       {stepLabels && (

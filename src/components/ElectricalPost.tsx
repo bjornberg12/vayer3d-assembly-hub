@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { CatmullRomLine } from "@react-three/drei";
+import { Part } from "./PartLabel";
 
 const WOOD_LIGHT = "#c9a777";
 const WOOD_DARK = "#8a6a3f";
@@ -118,32 +119,42 @@ export function ElectricalPost({ step = 4 }: { step?: number }) {
   return (
     <group>
       {/* Step 1: Main mast */}
-      <Pole from={mainBottom} to={mainTop} color={WOOD_LIGHT} />
+      <Part name="Wooden mast">
+        <Pole from={mainBottom} to={mainTop} color={WOOD_LIGHT} />
+      </Part>
 
       {/* Step 2: Brace / support pole + crossarm */}
       {step >= 2 && (
         <>
-          <Pole from={braceBottom} to={braceTop} radius={0.16} color={WOOD_DARK} />
-          <Pole
-            from={crossarmStart}
-            to={crossarmEnd}
-            radius={0.09}
-            color={WOOD_DARK}
-          />
-          <mesh position={[0, crossarmY, 0]} castShadow>
-            <torusGeometry args={[MAST_RADIUS + 0.03, 0.025, 8, 24]} />
-            <meshStandardMaterial color={METAL} metalness={0.7} roughness={0.4} />
-          </mesh>
-          <mesh position={[0, crossarmY - 0.6, 0]} castShadow>
-            <torusGeometry args={[MAST_RADIUS + 0.03, 0.02, 8, 24]} />
-            <meshStandardMaterial color={METAL} metalness={0.7} roughness={0.4} />
-          </mesh>
+          <Part name="Support pole">
+            <Pole from={braceBottom} to={braceTop} radius={0.16} color={WOOD_DARK} />
+          </Part>
+          <Part name="Crossarm">
+            <Pole
+              from={crossarmStart}
+              to={crossarmEnd}
+              radius={0.09}
+              color={WOOD_DARK}
+            />
+            <mesh position={[0, crossarmY, 0]} castShadow>
+              <torusGeometry args={[MAST_RADIUS + 0.03, 0.025, 8, 24]} />
+              <meshStandardMaterial color={METAL} metalness={0.7} roughness={0.4} />
+            </mesh>
+            <mesh position={[0, crossarmY - 0.6, 0]} castShadow>
+              <torusGeometry args={[MAST_RADIUS + 0.03, 0.02, 8, 24]} />
+              <meshStandardMaterial color={METAL} metalness={0.7} roughness={0.4} />
+            </mesh>
+          </Part>
         </>
       )}
 
       {/* Step 3: Insulators */}
       {step >= 3 &&
-        phasePositions.map((p, i) => <Insulator key={i} position={p} />)}
+        phasePositions.map((p, i) => (
+          <Part key={i} name="Ceramic insulator">
+            <Insulator position={p} />
+          </Part>
+        ))}
 
       {/* Step 4: Phase lines */}
       {step >= 4 &&
@@ -152,10 +163,10 @@ export function ElectricalPost({ step = 4 }: { step?: number }) {
           const left: [number, number, number] = [-18, wireY - 1.5, p[2]];
           const right: [number, number, number] = [18, wireY - 1.2, p[2]];
           return (
-            <group key={`wire-${i}`}>
+            <Part key={`wire-${i}`} name="Phase conductor">
               <PhaseLine start={left} end={wireStart} />
               <PhaseLine start={wireStart} end={right} />
-            </group>
+            </Part>
           );
         })}
     </group>
