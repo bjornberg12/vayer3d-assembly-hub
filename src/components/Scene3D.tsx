@@ -6,12 +6,14 @@ import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
+import { WoodenMast20kV, MAST_20KV_STEPS } from "./WoodenMast20kV";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
-type SceneId = "puitmast" | "jaotuskilp" | "alajaam";
+type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
 
 const SCENES: { id: SceneId; name: string; subtitle: string }[] = [
   { id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole assembly" },
+  { id: "puitmast20", name: "Puitmast -20kV", subtitle: "20 kV overhead line mast" },
   { id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
   { id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
 ];
@@ -256,6 +258,8 @@ export function Scene3D() {
   const stepLabels =
     sceneId === "puitmast"
       ? ASSEMBLY_STEPS
+      : sceneId === "puitmast20"
+      ? MAST_20KV_STEPS
       : sceneId === "jaotuskilp"
       ? PANEL_STEPS
       : null;
@@ -301,6 +305,7 @@ export function Scene3D() {
           />
           <GroundPlane />
           {sceneId === "puitmast" && <ElectricalPost step={step} />}
+          {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
           {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
           {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
           <axesHelper args={[3]} />
