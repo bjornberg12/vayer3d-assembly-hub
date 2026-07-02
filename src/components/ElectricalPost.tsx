@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { CatmullRomLine } from "@react-three/drei";
+import { Part } from "./PartLabel";
 
 const WOOD_LIGHT = "#c9a777";
 const WOOD_DARK = "#8a6a3f";
