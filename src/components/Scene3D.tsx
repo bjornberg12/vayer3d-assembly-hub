@@ -464,6 +464,21 @@ export function Scene3D() {
         {activeScene.name}
       </div>
 
+      {/* Part label — appears when a component is clicked */}
+      {partLabel && !rulerActive && (
+        <div className="absolute left-1/2 top-16 z-10 flex -translate-x-1/2 items-center gap-2 rounded-full border border-white/50 bg-white/70 px-4 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-md">
+          <span className="h-2 w-2 rounded-full bg-red-500" />
+          {partLabel}
+          <button
+            onClick={() => setPartLabel(null)}
+            aria-label="Dismiss label"
+            className="ml-1 rounded-full p-0.5 text-neutral-500 transition hover:bg-black/10 hover:text-neutral-800"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* Step controls overlay */}
       {stepLabels && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
