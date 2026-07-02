@@ -295,6 +295,7 @@ export function Scene3D() {
         shadows
         camera={{ position: [14, 11, 16], fov: 50, near: 0.01, far: 2000 }}
         style={{ background: "#f6f3ec" }}
+        onPointerMissed={() => setPartLabel(null)}
       >
         <Suspense fallback={null}>
           <ambientLight intensity={0.7} />
@@ -306,10 +307,12 @@ export function Scene3D() {
             shadow-mapSize-height={2048}
           />
           <GroundPlane />
-          {sceneId === "puitmast" && <ElectricalPost step={step} />}
-          {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
-          {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
-          {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
+          <PartLabelProvider setLabel={setPartLabel} enabled={!rulerActive}>
+            {sceneId === "puitmast" && <ElectricalPost step={step} />}
+            {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
+            {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
+            {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
+          </PartLabelProvider>
           <axesHelper args={[3]} />
           <OrbitControls
             ref={controlsRef}
