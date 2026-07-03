@@ -42,7 +42,7 @@ export function Part({
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (!enabled) return;
     e.stopPropagation();
-    setLabel(name);
+    setLabel(name, e.point.toArray() as [number, number, number]);
   };
 
   return (
