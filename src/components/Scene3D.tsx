@@ -1,5 +1,5 @@
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid, Text, Line } from "@react-three/drei";
+import { OrbitControls, Grid, Text, Line, Html } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Eye, Ruler as RulerIcon, X } from "lucide-react";
 import * as THREE from "three";
