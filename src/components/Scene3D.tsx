@@ -296,7 +296,10 @@ export function Scene3D() {
         shadows
         camera={{ position: [14, 11, 16], fov: 50, near: 0.01, far: 2000 }}
         style={{ background: "#f6f3ec" }}
-        onPointerMissed={() => setPartLabel(null)}
+        onPointerMissed={() => {
+          setPartLabel(null);
+          setPartLabelPos(null);
+        }}
       >
         <Suspense fallback={null}>
           <ambientLight intensity={0.7} />
