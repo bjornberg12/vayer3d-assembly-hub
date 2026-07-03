@@ -253,6 +253,7 @@ export function Scene3D() {
   const [rulerActive, setRulerActive] = useState(false);
   const [rulerPoints, setRulerPoints] = useState<Point3[]>([]);
   const [partLabel, setPartLabel] = useState<string | null>(null);
+  const [partLabelPos, setPartLabelPos] = useState<[number, number, number] | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
