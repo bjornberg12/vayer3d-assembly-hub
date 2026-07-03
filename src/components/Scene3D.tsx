@@ -370,6 +370,16 @@ export function Scene3D() {
           />
           <CameraRig view={activeView} controlsRef={controlsRef} />
           <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
+          {partLabel && partLabelPos && !rulerActive && (
+            <PartLabel3D
+              name={partLabel}
+              position={partLabelPos}
+              onDismiss={() => {
+                setPartLabel(null);
+                setPartLabelPos(null);
+              }}
+            />
+          )}
         </Suspense>
       </Canvas>
 
