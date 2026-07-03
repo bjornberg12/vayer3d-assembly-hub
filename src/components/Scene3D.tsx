@@ -244,6 +244,40 @@ function Ruler({
   );
 }
 
+function PartLabel3D({
+  name,
+  position,
+  onDismiss,
+}: {
+  name: string;
+  position: [number, number, number];
+  onDismiss: () => void;
+}) {
+  const anchor: [number, number, number] = [
+    position[0],
+    position[1] + 1.2,
+    position[2],
+  ];
+  return (
+    <group>
+      <Line points={[position, anchor]} color="#333333" lineWidth={1} />
+      <Html position={anchor} center style={{ pointerEvents: "auto" }}>
+        <div className="flex items-center gap-2 rounded-full border border-white/50 bg-white/40 px-4 py-2 text-sm font-semibold text-neutral-900 shadow-lg backdrop-blur-md">
+          <span className="h-2 w-2 rounded-full bg-red-500" />
+          {name}
+          <button
+            onClick={onDismiss}
+            aria-label="Dismiss label"
+            className="ml-1 rounded-full p-0.5 text-neutral-500 transition hover:bg-black/10 hover:text-neutral-800"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
 export function Scene3D() {
   const [sceneId, setSceneId] = useState<SceneId>("puitmast");
   const [step, setStep] = useState(1);
