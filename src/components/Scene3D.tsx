@@ -311,7 +311,13 @@ export function Scene3D() {
             shadow-mapSize-height={2048}
           />
           <GroundPlane />
-          <PartLabelProvider setLabel={setPartLabel} enabled={!rulerActive}>
+          <PartLabelProvider
+            setLabel={(name, pos) => {
+              setPartLabel(name);
+              setPartLabelPos(pos ?? null);
+            }}
+            enabled={!rulerActive}
+          >
             {sceneId === "puitmast" && <ElectricalPost step={step} />}
             {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
             {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
