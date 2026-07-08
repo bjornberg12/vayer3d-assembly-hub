@@ -300,6 +300,8 @@ export function Scene3D() {
       ? MAST_20KV_STEPS
       : sceneId === "jaotuskilp"
       ? PANEL_STEPS
+      : sceneId === "alajaam"
+      ? SUBSTATION_STEPS
       : null;
   const maxStep = stepLabels?.length ?? 0;
 
