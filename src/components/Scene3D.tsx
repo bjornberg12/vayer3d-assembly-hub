@@ -358,7 +358,7 @@ export function Scene3D() {
             {sceneId === "puitmast" && <ElectricalPost step={step} />}
             {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
             {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
-            {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
+            {sceneId === "alajaam" && <Substation step={step} />}
           </PartLabelProvider>
           <axesHelper args={[3]} />
           <OrbitControls
