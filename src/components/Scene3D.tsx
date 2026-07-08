@@ -7,6 +7,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 import { WoodenMast20kV, MAST_20KV_STEPS } from "./WoodenMast20kV";
+import { Substation, SUBSTATION_STEPS } from "./Substation";
 import { PartLabelProvider } from "./PartLabel";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
@@ -299,6 +300,8 @@ export function Scene3D() {
       ? MAST_20KV_STEPS
       : sceneId === "jaotuskilp"
       ? PANEL_STEPS
+      : sceneId === "alajaam"
+      ? SUBSTATION_STEPS
       : null;
   const maxStep = stepLabels?.length ?? 0;
 
@@ -355,7 +358,7 @@ export function Scene3D() {
             {sceneId === "puitmast" && <ElectricalPost step={step} />}
             {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
             {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
-            {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
+            {sceneId === "alajaam" && <Substation step={step} />}
           </PartLabelProvider>
           <axesHelper args={[3]} />
           <OrbitControls
