@@ -473,6 +473,110 @@ export function Scene3D() {
             </div>
           )}
         </div>
+        <div className="relative">
+          <button
+            onClick={() => {
+              setGroundOpen((o) => !o);
+              setMenuOpen(false);
+              setViewsOpen(false);
+            }}
+            aria-label="Open ground menu"
+            className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+          >
+            <Layers className="h-5 w-5" />
+            <span className="text-sm font-medium">Ground</span>
+          </button>
+          {groundOpen && (
+            <div className="absolute left-0 mt-2 w-72 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
+              <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
+                Ground image
+              </div>
+              <ul className="flex flex-col">
+                <li>
+                  <button
+                    onClick={() => setGroundMode("off")}
+                    className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
+                      groundMode === "off"
+                        ? "bg-white/70 font-semibold text-neutral-900"
+                        : "text-neutral-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>Off</span>
+                    <span className="text-xs font-normal text-neutral-600">
+                      Hide ground image
+                    </span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setGroundMode("default")}
+                    className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
+                      groundMode === "default"
+                        ? "bg-white/70 font-semibold text-neutral-900"
+                        : "text-neutral-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>Aerial parking (default)</span>
+                    <span className="text-xs font-normal text-neutral-600">
+                      Auto-scales to the active scene
+                    </span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      if (customGroundUrl) setGroundMode("custom");
+                      else fileInputRef.current?.click();
+                    }}
+                    className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
+                      groundMode === "custom"
+                        ? "bg-white/70 font-semibold text-neutral-900"
+                        : "text-neutral-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>
+                      {customGroundUrl ? "Custom image" : "Custom image (none)"}
+                    </span>
+                    <span className="text-xs font-normal text-neutral-600">
+                      {customGroundUrl
+                        ? "Auto-fits to scene footprint"
+                        : "Upload one below"}
+                    </span>
+                  </button>
+                </li>
+              </ul>
+              <div className="flex items-center gap-2 border-t border-white/40 px-3 py-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/50 bg-white/40 px-3 py-2 text-xs font-semibold text-neutral-900 shadow-sm transition hover:bg-white/60"
+                >
+                  <Upload className="h-4 w-4" />
+                  {customGroundUrl ? "Replace image" : "Upload image"}
+                </button>
+                {customGroundUrl && (
+                  <button
+                    onClick={() => {
+                      URL.revokeObjectURL(customGroundUrl);
+                      setCustomGroundUrl(null);
+                      if (groundMode === "custom") setGroundMode("off");
+                    }}
+                    aria-label="Remove custom image"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/50 bg-white/40 text-neutral-800 transition hover:bg-white/60"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleGroundUpload}
+                className="hidden"
+              />
+            </div>
+          )}
+        </div>
         <button
           onClick={() => {
             setRulerActive((a) => !a);
