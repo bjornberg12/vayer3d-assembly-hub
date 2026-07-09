@@ -376,7 +376,7 @@ export function Scene3D() {
           />
           <GroundPlane />
           {showGround && (
-            <AerialGround url={groundUrl || undefined} fitSizeM={fitSize} />
+            <AerialGround url={groundUrl || undefined} realWidthM={realWidth} />
           )}
           <PartLabelProvider
             setLabel={(name, pos) => {
