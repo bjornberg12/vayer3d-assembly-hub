@@ -285,6 +285,7 @@ export function Scene3D() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
+  const [groundVisible, setGroundVisible] = useState(true);
   const [rulerActive, setRulerActive] = useState(false);
   const [rulerPoints, setRulerPoints] = useState<Point3[]>([]);
   const [partLabel, setPartLabel] = useState<string | null>(null);
@@ -314,11 +315,16 @@ export function Scene3D() {
     setViewsOpen(false);
   };
 
+  const toggleGround = () => {
+    setGroundVisible((v) => !v);
+  };
+
   const addRulerPoint = (p: Point3) => {
     setRulerPoints((prev) => (prev.length >= 2 ? [p] : [...prev, p]));
   };
 
   const clearRuler = () => setRulerPoints([]);
+
 
   return (
     <div className="relative h-full w-full">
