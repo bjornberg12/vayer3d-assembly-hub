@@ -285,7 +285,6 @@ export function Scene3D() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
-  const [groundVisible, setGroundVisible] = useState(true);
   const [rulerActive, setRulerActive] = useState(false);
   const [rulerPoints, setRulerPoints] = useState<Point3[]>([]);
   const [partLabel, setPartLabel] = useState<string | null>(null);
@@ -315,16 +314,11 @@ export function Scene3D() {
     setViewsOpen(false);
   };
 
-  const toggleGround = () => {
-    setGroundVisible((v) => !v);
-  };
-
   const addRulerPoint = (p: Point3) => {
     setRulerPoints((prev) => (prev.length >= 2 ? [p] : [...prev, p]));
   };
 
   const clearRuler = () => setRulerPoints([]);
-
 
   return (
     <div className="relative h-full w-full">
@@ -352,8 +346,7 @@ export function Scene3D() {
             shadow-mapSize-height={2048}
           />
           <GroundPlane />
-          {sceneId === "puitmast20" && groundVisible && <AerialGround />}
-
+          {sceneId === "puitmast20" && <AerialGround />}
           <PartLabelProvider
             setLabel={(name, pos) => {
               setPartLabel(name);
@@ -446,29 +439,8 @@ export function Scene3D() {
                   );
                 })}
               </ul>
-              <div className="border-t border-white/40 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
-                Ground
-              </div>
-              <ul className="flex flex-col">
-                <li>
-                  <button
-                    onClick={toggleGround}
-                    className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm text-neutral-800 transition hover:bg-white/50"
-                  >
-                    <span>Background image</span>
-                    <span
-                      className={`h-4 w-4 rounded-full border-2 ${
-                        groundVisible
-                          ? "border-emerald-500 bg-emerald-500"
-                          : "border-neutral-400 bg-transparent"
-                      }`}
-                    />
-                  </button>
-                </li>
-              </ul>
             </div>
           )}
-
         </div>
         <button
           onClick={() => {
