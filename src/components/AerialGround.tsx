@@ -3,22 +3,20 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import defaultAerial from "@/assets/aerial-parking.png.asset.json";
 
-// The bundled aerial photo has a known real-world footprint (~95 m wide).
-// For custom uploads we don't know the ground scale, so we fit the image to
-// the active scene's footprint while preserving its natural aspect ratio.
-const DEFAULT_URL = defaultAerial.url;
-const DEFAULT_REAL_WIDTH_M = 95;
-const DEFAULT_REAL_HEIGHT_M = DEFAULT_REAL_WIDTH_M * (548 / 771);
+// The bundled aerial photo has a known real-world footprint (~95 m wide),
+// calibrated so cars in the picture read at true scale next to the models.
+export const DEFAULT_AERIAL_URL = defaultAerial.url;
+export const DEFAULT_AERIAL_REAL_WIDTH_M = 95;
 
 export function AerialGround({
-  url = DEFAULT_URL,
-  fitSizeM,
+  url = DEFAULT_AERIAL_URL,
+  realWidthM,
 }: {
   url?: string;
-  /** Scene footprint (meters). If provided, image is scaled to fit while
-   *  preserving aspect ratio. If omitted and using the default image, uses
-   *  its known real-world size. */
-  fitSizeM?: number;
+  /** Real-world width the image should cover, in meters. Height is derived
+   *  from the image's natural aspect ratio. Defaults to the known real width
+   *  when using the bundled aerial, otherwise 30 m. */
+  realWidthM?: number;
 }) {
   const tex = useLoader(THREE.TextureLoader, url);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -29,19 +27,11 @@ export function AerialGround({
     const iw = img?.width ?? 1;
     const ih = img?.height ?? 1;
     const aspect = iw / ih;
-
-    if (fitSizeM) {
-      // Fit image inside a fitSizeM x fitSizeM square, preserve aspect.
-      if (aspect >= 1) return [fitSizeM, fitSizeM / aspect];
-      return [fitSizeM * aspect, fitSizeM];
-    }
-    if (url === DEFAULT_URL) {
-      return [DEFAULT_REAL_WIDTH_M, DEFAULT_REAL_HEIGHT_M];
-    }
-    // Fallback: 20 m longest side.
-    if (aspect >= 1) return [20, 20 / aspect];
-    return [20 * aspect, 20];
-  }, [tex, fitSizeM, url]);
+    const width =
+      realWidthM ??
+      (url === DEFAULT_AERIAL_URL ? DEFAULT_AERIAL_REAL_WIDTH_M : 30);
+    return [width, width / aspect];
+  }, [tex, realWidthM, url]);
 
   return (
     <mesh
