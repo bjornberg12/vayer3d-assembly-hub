@@ -13,11 +13,11 @@ import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
 
-const SCENES: { id: SceneId; name: string; subtitle: string }[] = [
-  { id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole assembly" },
-  { id: "puitmast20", name: "Puitmast -20kV", subtitle: "20 kV overhead line mast" },
-  { id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
-  { id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
+const SCENES: { id: SceneId; name: string; subtitle: string; footprintM: number }[] = [
+  { id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole assembly", footprintM: 20 },
+  { id: "puitmast20", name: "Puitmast -20kV", subtitle: "20 kV overhead line mast", footprintM: 95 },
+  { id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel", footprintM: 10 },
+  { id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation", footprintM: 20 },
 ];
 
 type ViewId = "front" | "top" | "side" | "iso";
