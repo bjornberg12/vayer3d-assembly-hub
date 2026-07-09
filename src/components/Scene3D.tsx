@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload } from "lucide-react";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
@@ -13,11 +13,11 @@ import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
 
-const SCENES: { id: SceneId; name: string; subtitle: string }[] = [
-  { id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole assembly" },
-  { id: "puitmast20", name: "Puitmast -20kV", subtitle: "20 kV overhead line mast" },
-  { id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
-  { id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
+const SCENES: { id: SceneId; name: string; subtitle: string; footprintM: number }[] = [
+  { id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole assembly", footprintM: 20 },
+  { id: "puitmast20", name: "Puitmast -20kV", subtitle: "20 kV overhead line mast", footprintM: 95 },
+  { id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel", footprintM: 10 },
+  { id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation", footprintM: 20 },
 ];
 
 type ViewId = "front" | "top" | "side" | "iso";
@@ -289,6 +289,10 @@ export function Scene3D() {
   const [rulerPoints, setRulerPoints] = useState<Point3[]>([]);
   const [partLabel, setPartLabel] = useState<string | null>(null);
   const [partLabelPos, setPartLabelPos] = useState<[number, number, number] | null>(null);
+  const [groundOpen, setGroundOpen] = useState(false);
+  const [groundMode, setGroundMode] = useState<"off" | "default" | "custom">("default");
+  const [customGroundUrl, setCustomGroundUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
@@ -320,6 +324,31 @@ export function Scene3D() {
 
   const clearRuler = () => setRulerPoints([]);
 
+  const handleGroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setCustomGroundUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+    setGroundMode("custom");
+    e.target.value = "";
+  };
+
+  const groundUrl =
+    groundMode === "default"
+      ? undefined // AerialGround default
+      : groundMode === "custom" && customGroundUrl
+      ? customGroundUrl
+      : null;
+  const showGround = groundUrl !== null;
+  // For default image on its native scene, keep true real-world size; otherwise fit to scene.
+  const fitSize =
+    groundMode === "default" && sceneId === "puitmast20"
+      ? undefined
+      : activeScene.footprintM;
+
   return (
     <div className="relative h-full w-full">
       <img
@@ -346,7 +375,9 @@ export function Scene3D() {
             shadow-mapSize-height={2048}
           />
           <GroundPlane />
-          {sceneId === "puitmast20" && <AerialGround />}
+          {showGround && (
+            <AerialGround url={groundUrl || undefined} fitSizeM={fitSize} />
+          )}
           <PartLabelProvider
             setLabel={(name, pos) => {
               setPartLabel(name);
@@ -439,6 +470,110 @@ export function Scene3D() {
                   );
                 })}
               </ul>
+            </div>
+          )}
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => {
+              setGroundOpen((o) => !o);
+              setMenuOpen(false);
+              setViewsOpen(false);
+            }}
+            aria-label="Open ground menu"
+            className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+          >
+            <Layers className="h-5 w-5" />
+            <span className="text-sm font-medium">Ground</span>
+          </button>
+          {groundOpen && (
+            <div className="absolute left-0 mt-2 w-72 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
+              <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
+                Ground image
+              </div>
+              <ul className="flex flex-col">
+                <li>
+                  <button
+                    onClick={() => setGroundMode("off")}
+                    className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
+                      groundMode === "off"
+                        ? "bg-white/70 font-semibold text-neutral-900"
+                        : "text-neutral-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>Off</span>
+                    <span className="text-xs font-normal text-neutral-600">
+                      Hide ground image
+                    </span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => setGroundMode("default")}
+                    className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
+                      groundMode === "default"
+                        ? "bg-white/70 font-semibold text-neutral-900"
+                        : "text-neutral-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>Aerial parking (default)</span>
+                    <span className="text-xs font-normal text-neutral-600">
+                      Auto-scales to the active scene
+                    </span>
+                  </button>
+                </li>
+                <li>
+                  <button
+                    onClick={() => {
+                      if (customGroundUrl) setGroundMode("custom");
+                      else fileInputRef.current?.click();
+                    }}
+                    className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
+                      groundMode === "custom"
+                        ? "bg-white/70 font-semibold text-neutral-900"
+                        : "text-neutral-800 hover:bg-white/50"
+                    }`}
+                  >
+                    <span>
+                      {customGroundUrl ? "Custom image" : "Custom image (none)"}
+                    </span>
+                    <span className="text-xs font-normal text-neutral-600">
+                      {customGroundUrl
+                        ? "Auto-fits to scene footprint"
+                        : "Upload one below"}
+                    </span>
+                  </button>
+                </li>
+              </ul>
+              <div className="flex items-center gap-2 border-t border-white/40 px-3 py-2">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/50 bg-white/40 px-3 py-2 text-xs font-semibold text-neutral-900 shadow-sm transition hover:bg-white/60"
+                >
+                  <Upload className="h-4 w-4" />
+                  {customGroundUrl ? "Replace image" : "Upload image"}
+                </button>
+                {customGroundUrl && (
+                  <button
+                    onClick={() => {
+                      URL.revokeObjectURL(customGroundUrl);
+                      setCustomGroundUrl(null);
+                      if (groundMode === "custom") setGroundMode("off");
+                    }}
+                    aria-label="Remove custom image"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/50 bg-white/40 text-neutral-800 transition hover:bg-white/60"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleGroundUpload}
+                className="hidden"
+              />
             </div>
           )}
         </div>
