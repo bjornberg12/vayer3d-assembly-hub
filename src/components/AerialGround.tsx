@@ -1,25 +1,55 @@
 import { useLoader } from "@react-three/fiber";
+import { useMemo } from "react";
 import * as THREE from "three";
-import aerial from "@/assets/aerial-parking.png.asset.json";
+import defaultAerial from "@/assets/aerial-parking.png.asset.json";
 
-// Image is 771 x 548 px. Cars in the parking row measure roughly 35 px long
-// against a real car length of ~4.5 m, giving ~0.13 m/px, i.e. the photo
-// covers roughly 100 m x 71 m of ground. We use 95 m x 67.5 m so a real
-// car in the picture reads at true scale against the 11 m tall mast.
-const WIDTH_M = 95;
-const HEIGHT_M = WIDTH_M * (548 / 771);
+// The bundled aerial photo has a known real-world footprint (~95 m wide).
+// For custom uploads we don't know the ground scale, so we fit the image to
+// the active scene's footprint while preserving its natural aspect ratio.
+const DEFAULT_URL = defaultAerial.url;
+const DEFAULT_REAL_WIDTH_M = 95;
+const DEFAULT_REAL_HEIGHT_M = DEFAULT_REAL_WIDTH_M * (548 / 771);
 
-export function AerialGround() {
-  const tex = useLoader(THREE.TextureLoader, aerial.url);
+export function AerialGround({
+  url = DEFAULT_URL,
+  fitSizeM,
+}: {
+  url?: string;
+  /** Scene footprint (meters). If provided, image is scaled to fit while
+   *  preserving aspect ratio. If omitted and using the default image, uses
+   *  its known real-world size. */
+  fitSizeM?: number;
+}) {
+  const tex = useLoader(THREE.TextureLoader, url);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 8;
+
+  const [w, h] = useMemo(() => {
+    const img = tex.image as { width?: number; height?: number } | undefined;
+    const iw = img?.width ?? 1;
+    const ih = img?.height ?? 1;
+    const aspect = iw / ih;
+
+    if (fitSizeM) {
+      // Fit image inside a fitSizeM x fitSizeM square, preserve aspect.
+      if (aspect >= 1) return [fitSizeM, fitSizeM / aspect];
+      return [fitSizeM * aspect, fitSizeM];
+    }
+    if (url === DEFAULT_URL) {
+      return [DEFAULT_REAL_WIDTH_M, DEFAULT_REAL_HEIGHT_M];
+    }
+    // Fallback: 20 m longest side.
+    if (aspect >= 1) return [20, 20 / aspect];
+    return [20 * aspect, 20];
+  }, [tex, fitSizeM, url]);
+
   return (
     <mesh
       rotation={[-Math.PI / 2, 0, 0]}
       position={[0, 0.01, 0]}
       receiveShadow
     >
-      <planeGeometry args={[WIDTH_M, HEIGHT_M]} />
+      <planeGeometry args={[w, h]} />
       <meshStandardMaterial
         map={tex}
         roughness={1}
