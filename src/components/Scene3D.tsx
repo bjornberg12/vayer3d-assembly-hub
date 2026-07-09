@@ -375,7 +375,9 @@ export function Scene3D() {
             shadow-mapSize-height={2048}
           />
           <GroundPlane />
-          {sceneId === "puitmast20" && <AerialGround />}
+          {showGround && (
+            <AerialGround url={groundUrl || undefined} fitSizeM={fitSize} />
+          )}
           <PartLabelProvider
             setLabel={(name, pos) => {
               setPartLabel(name);
