@@ -292,6 +292,7 @@ export function Scene3D() {
   const [groundOpen, setGroundOpen] = useState(false);
   const [groundMode, setGroundMode] = useState<"off" | "default" | "custom">("default");
   const [customGroundUrl, setCustomGroundUrl] = useState<string | null>(null);
+  const [customGroundWidthM, setCustomGroundWidthM] = useState<number>(30);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
@@ -338,16 +339,15 @@ export function Scene3D() {
 
   const groundUrl =
     groundMode === "default"
-      ? undefined // AerialGround default
+      ? undefined // AerialGround default (bundled aerial, known 95 m width)
       : groundMode === "custom" && customGroundUrl
       ? customGroundUrl
       : null;
   const showGround = groundUrl !== null;
-  // For default image on its native scene, keep true real-world size; otherwise fit to scene.
-  const fitSize =
-    groundMode === "default" && sceneId === "puitmast20"
-      ? undefined
-      : activeScene.footprintM;
+  // Default aerial has a known real-world size (~95 m wide). For custom uploads
+  // the scale is unknown, so the user picks the real width via the slider.
+  const realWidth =
+    groundMode === "custom" ? customGroundWidthM : undefined;
 
   return (
     <div className="relative h-full w-full">
@@ -376,7 +376,7 @@ export function Scene3D() {
           />
           <GroundPlane />
           {showGround && (
-            <AerialGround url={groundUrl || undefined} fitSizeM={fitSize} />
+            <AerialGround url={groundUrl || undefined} realWidthM={realWidth} />
           )}
           <PartLabelProvider
             setLabel={(name, pos) => {
@@ -567,6 +567,28 @@ export function Scene3D() {
                   </button>
                 )}
               </div>
+              {groundMode === "custom" && customGroundUrl && (
+                <div className="border-t border-white/40 px-4 py-3">
+                  <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-neutral-800">
+                    <span>Real width</span>
+                    <span className="tabular-nums">{customGroundWidthM} m</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={2}
+                    max={200}
+                    step={1}
+                    value={customGroundWidthM}
+                    onChange={(e) =>
+                      setCustomGroundWidthM(Number(e.target.value))
+                    }
+                    className="w-full accent-neutral-800"
+                  />
+                  <p className="mt-1 text-[10px] leading-tight text-neutral-600">
+                    Match a known distance in your image (e.g. a car ≈ 4.5 m).
+                  </p>
+                </div>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
