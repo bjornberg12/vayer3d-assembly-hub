@@ -292,6 +292,7 @@ export function Scene3D() {
   const [groundOpen, setGroundOpen] = useState(false);
   const [groundMode, setGroundMode] = useState<"off" | "default" | "custom">("default");
   const [customGroundUrl, setCustomGroundUrl] = useState<string | null>(null);
+  const [customGroundWidthM, setCustomGroundWidthM] = useState<number>(30);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
