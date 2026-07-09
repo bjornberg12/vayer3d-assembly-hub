@@ -567,6 +567,28 @@ export function Scene3D() {
                   </button>
                 )}
               </div>
+              {groundMode === "custom" && customGroundUrl && (
+                <div className="border-t border-white/40 px-4 py-3">
+                  <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-neutral-800">
+                    <span>Real width</span>
+                    <span className="tabular-nums">{customGroundWidthM} m</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={2}
+                    max={200}
+                    step={1}
+                    value={customGroundWidthM}
+                    onChange={(e) =>
+                      setCustomGroundWidthM(Number(e.target.value))
+                    }
+                    className="w-full accent-neutral-800"
+                  />
+                  <p className="mt-1 text-[10px] leading-tight text-neutral-600">
+                    Match a known distance in your image (e.g. a car ≈ 4.5 m).
+                  </p>
+                </div>
+              )}
               <input
                 ref={fileInputRef}
                 type="file"
