@@ -338,16 +338,15 @@ export function Scene3D() {
 
   const groundUrl =
     groundMode === "default"
-      ? undefined // AerialGround default
+      ? undefined // AerialGround default (bundled aerial, known 95 m width)
       : groundMode === "custom" && customGroundUrl
       ? customGroundUrl
       : null;
   const showGround = groundUrl !== null;
-  // For default image on its native scene, keep true real-world size; otherwise fit to scene.
-  const fitSize =
-    groundMode === "default" && sceneId === "puitmast20"
-      ? undefined
-      : activeScene.footprintM;
+  // Default aerial has a known real-world size (~95 m wide). For custom uploads
+  // the scale is unknown, so the user picks the real width via the slider.
+  const realWidth =
+    groundMode === "custom" ? customGroundWidthM : undefined;
 
   return (
     <div className="relative h-full w-full">
