@@ -324,6 +324,31 @@ export function Scene3D() {
 
   const clearRuler = () => setRulerPoints([]);
 
+  const handleGroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    setCustomGroundUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+    setGroundMode("custom");
+    e.target.value = "";
+  };
+
+  const groundUrl =
+    groundMode === "default"
+      ? undefined // AerialGround default
+      : groundMode === "custom" && customGroundUrl
+      ? customGroundUrl
+      : null;
+  const showGround = groundUrl !== null;
+  // For default image on its native scene, keep true real-world size; otherwise fit to scene.
+  const fitSize =
+    groundMode === "default" && sceneId === "puitmast20"
+      ? undefined
+      : activeScene.footprintM;
+
   return (
     <div className="relative h-full w-full">
       <img
