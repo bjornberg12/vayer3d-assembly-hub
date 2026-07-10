@@ -305,20 +305,21 @@ export function Scene3D() {
   const [addedItems, setAddedItems] = useState<
     { id: string; type: AddableType; position: [number, number, number] }[]
   >([]);
-  const addItem = (type: AddableType) => {
-    // Place added items in a ring around the origin, 6 m spacing.
-    const idx = addedItems.length;
-    const angle = (idx * Math.PI) / 3 + Math.PI / 6;
-    const radius = 6 + Math.floor(idx / 6) * 4;
-    const pos: [number, number, number] = [
-      Math.round(Math.cos(angle) * radius * 10) / 10,
-      0,
-      Math.round(Math.sin(angle) * radius * 10) / 10,
-    ];
+  const [pendingAdd, setPendingAdd] = useState<AddableType | null>(null);
+  const placeItem = (type: AddableType, position: [number, number, number]) => {
     setAddedItems((prev) => [
       ...prev,
-      { id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, type, position: pos },
+      {
+        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type,
+        position,
+      },
     ]);
+  };
+  const startPlacing = (type: AddableType) => {
+    setPendingAdd(type);
+    setAddOpen(false);
+    setRulerActive(false);
   };
   const removeItem = (id: string) =>
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
