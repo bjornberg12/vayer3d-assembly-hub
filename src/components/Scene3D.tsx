@@ -667,7 +667,7 @@ export function Scene3D() {
                 {ADDABLES.map((a) => (
                   <li key={a.type}>
                     <button
-                      onClick={() => addItem(a.type)}
+                      onClick={() => startPlacing(a.type)}
                       className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm text-neutral-800 transition hover:bg-white/50"
                     >
                       <span className="flex flex-col">
