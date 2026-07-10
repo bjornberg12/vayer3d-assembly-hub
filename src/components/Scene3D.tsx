@@ -400,6 +400,12 @@ export function Scene3D() {
             minDistance={0.05}
             maxDistance={120}
             zoomToCursor
+            enablePan
+            mouseButtons={{
+              LEFT: THREE.MOUSE.ROTATE,
+              MIDDLE: THREE.MOUSE.PAN,
+              RIGHT: THREE.MOUSE.DOLLY,
+            }}
           />
           <CameraRig view={activeView} controlsRef={controlsRef} />
           <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
