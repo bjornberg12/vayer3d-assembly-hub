@@ -497,6 +497,15 @@ export function Scene3D() {
           />
           <CameraRig view={activeView} controlsRef={controlsRef} />
           <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
+          <Placer
+            active={pendingAdd !== null}
+            onPlace={(p) => {
+              if (pendingAdd) {
+                placeItem(pendingAdd, p);
+                setPendingAdd(null);
+              }
+            }}
+          />
           {partLabel && partLabelPos && !rulerActive && (
             <PartLabel3D
               name={partLabel}
