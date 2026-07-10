@@ -245,6 +245,55 @@ function Ruler({
   );
 }
 
+function Placer({
+  active,
+  onPlace,
+}: {
+  active: boolean;
+  onPlace: (p: Point3) => void;
+}) {
+  const { camera, gl } = useThree();
+  useEffect(() => {
+    if (!active) return;
+    const dom = gl.domElement;
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const hit = new THREE.Vector3();
+    let downX = 0;
+    let downY = 0;
+    const onDown = (e: PointerEvent) => {
+      downX = e.clientX;
+      downY = e.clientY;
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 4) return;
+      const rect = dom.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      if (raycaster.ray.intersectPlane(plane, hit)) {
+        onPlace([
+          Math.round(hit.x * 100) / 100,
+          0,
+          Math.round(hit.z * 100) / 100,
+        ]);
+      }
+    };
+    dom.addEventListener("pointerdown", onDown);
+    dom.addEventListener("pointerup", onUp);
+    dom.style.cursor = "crosshair";
+    return () => {
+      dom.removeEventListener("pointerdown", onDown);
+      dom.removeEventListener("pointerup", onUp);
+      dom.style.cursor = "";
+    };
+  }, [active, camera, gl, onPlace]);
+  return null;
+}
+
+
 function PartLabel3D({
   name,
   position,
