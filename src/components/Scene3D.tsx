@@ -295,6 +295,33 @@ export function Scene3D() {
   const [customGroundWidthM, setCustomGroundWidthM] = useState<number>(30);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp";
+  const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
+    { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
+    { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
+    { type: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
+  ];
+  const [addedItems, setAddedItems] = useState<
+    { id: string; type: AddableType; position: [number, number, number] }[]
+  >([]);
+  const addItem = (type: AddableType) => {
+    // Place added items in a ring around the origin, 6 m spacing.
+    const idx = addedItems.length;
+    const angle = (idx * Math.PI) / 3 + Math.PI / 6;
+    const radius = 6 + Math.floor(idx / 6) * 4;
+    const pos: [number, number, number] = [
+      Math.round(Math.cos(angle) * radius * 10) / 10,
+      0,
+      Math.round(Math.sin(angle) * radius * 10) / 10,
+    ];
+    setAddedItems((prev) => [
+      ...prev,
+      { id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, type, position: pos },
+    ]);
+  };
+  const removeItem = (id: string) =>
+    setAddedItems((prev) => prev.filter((i) => i.id !== id));
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
 
