@@ -809,6 +809,25 @@ export function Scene3D() {
         )}
       </div>
 
+      {pendingAdd && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
+          <span>
+            Click on the ground to place{" "}
+            <strong>
+              {ADDABLES.find((a) => a.type === pendingAdd)?.name}
+            </strong>
+          </span>
+          <button
+            onClick={() => setPendingAdd(null)}
+            aria-label="Cancel placement"
+            className="rounded-md p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-neutral-900"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+
       {rulerActive && (
         <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
           {rulerPoints.length === 0
