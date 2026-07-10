@@ -416,6 +416,19 @@ export function Scene3D() {
             {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
             {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
             {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
+            {addedItems.map((item) => (
+              <group key={item.id} position={item.position}>
+                {item.type === "puitmast" && (
+                  <ElectricalPost step={ASSEMBLY_STEPS.length} />
+                )}
+                {item.type === "puitmast20" && (
+                  <WoodenMast20kV step={MAST_20KV_STEPS.length} />
+                )}
+                {item.type === "jaotuskilp" && (
+                  <DistributionPanel step={PANEL_STEPS.length} />
+                )}
+              </group>
+            ))}
           </PartLabelProvider>
           <axesHelper args={[3]} />
           <OrbitControls
