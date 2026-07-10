@@ -245,6 +245,55 @@ function Ruler({
   );
 }
 
+function Placer({
+  active,
+  onPlace,
+}: {
+  active: boolean;
+  onPlace: (p: Point3) => void;
+}) {
+  const { camera, gl } = useThree();
+  useEffect(() => {
+    if (!active) return;
+    const dom = gl.domElement;
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const hit = new THREE.Vector3();
+    let downX = 0;
+    let downY = 0;
+    const onDown = (e: PointerEvent) => {
+      downX = e.clientX;
+      downY = e.clientY;
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.button !== 0) return;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 4) return;
+      const rect = dom.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      if (raycaster.ray.intersectPlane(plane, hit)) {
+        onPlace([
+          Math.round(hit.x * 100) / 100,
+          0,
+          Math.round(hit.z * 100) / 100,
+        ]);
+      }
+    };
+    dom.addEventListener("pointerdown", onDown);
+    dom.addEventListener("pointerup", onUp);
+    dom.style.cursor = "crosshair";
+    return () => {
+      dom.removeEventListener("pointerdown", onDown);
+      dom.removeEventListener("pointerup", onUp);
+      dom.style.cursor = "";
+    };
+  }, [active, camera, gl, onPlace]);
+  return null;
+}
+
+
 function PartLabel3D({
   name,
   position,
@@ -305,20 +354,21 @@ export function Scene3D() {
   const [addedItems, setAddedItems] = useState<
     { id: string; type: AddableType; position: [number, number, number] }[]
   >([]);
-  const addItem = (type: AddableType) => {
-    // Place added items in a ring around the origin, 6 m spacing.
-    const idx = addedItems.length;
-    const angle = (idx * Math.PI) / 3 + Math.PI / 6;
-    const radius = 6 + Math.floor(idx / 6) * 4;
-    const pos: [number, number, number] = [
-      Math.round(Math.cos(angle) * radius * 10) / 10,
-      0,
-      Math.round(Math.sin(angle) * radius * 10) / 10,
-    ];
+  const [pendingAdd, setPendingAdd] = useState<AddableType | null>(null);
+  const placeItem = (type: AddableType, position: [number, number, number]) => {
     setAddedItems((prev) => [
       ...prev,
-      { id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, type, position: pos },
+      {
+        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type,
+        position,
+      },
     ]);
+  };
+  const startPlacing = (type: AddableType) => {
+    setPendingAdd(type);
+    setAddOpen(false);
+    setRulerActive(false);
   };
   const removeItem = (id: string) =>
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
@@ -447,6 +497,15 @@ export function Scene3D() {
           />
           <CameraRig view={activeView} controlsRef={controlsRef} />
           <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
+          <Placer
+            active={pendingAdd !== null}
+            onPlace={(p) => {
+              if (pendingAdd) {
+                placeItem(pendingAdd, p);
+                setPendingAdd(null);
+              }
+            }}
+          />
           {partLabel && partLabelPos && !rulerActive && (
             <PartLabel3D
               name={partLabel}
@@ -666,7 +725,7 @@ export function Scene3D() {
                 {ADDABLES.map((a) => (
                   <li key={a.type}>
                     <button
-                      onClick={() => addItem(a.type)}
+                      onClick={() => startPlacing(a.type)}
                       className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm text-neutral-800 transition hover:bg-white/50"
                     >
                       <span className="flex flex-col">
@@ -749,6 +808,25 @@ export function Scene3D() {
           </button>
         )}
       </div>
+
+      {pendingAdd && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
+          <span>
+            Click on the ground to place{" "}
+            <strong>
+              {ADDABLES.find((a) => a.type === pendingAdd)?.name}
+            </strong>
+          </span>
+          <button
+            onClick={() => setPendingAdd(null)}
+            aria-label="Cancel placement"
+            className="rounded-md p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-neutral-900"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
 
       {rulerActive && (
         <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
