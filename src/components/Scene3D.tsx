@@ -875,37 +875,88 @@ export function Scene3D() {
               </ul>
               {addedItems.length > 0 && (
                 <>
+                  <div className="flex items-center justify-between border-t border-white/40 px-3 py-2">
+                    <button
+                      onClick={() => {
+                        setConnectMode((m) => !m);
+                        setConnectFirst(null);
+                        setPendingAdd(null);
+                      }}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                        connectMode
+                          ? "border-blue-300/60 bg-blue-500/80 text-white hover:bg-blue-500/90"
+                          : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
+                      }`}
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      {connectMode ? "Connecting…" : "Connect posts"}
+                    </button>
+                  </div>
                   <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
                     Added ({addedItems.length})
+                    {connections.length > 0 && (
+                      <span className="ml-2 font-normal normal-case text-neutral-500">
+                        · {connections.length} link{connections.length === 1 ? "" : "s"}
+                      </span>
+                    )}
                   </div>
-                  <ul className="flex max-h-48 flex-col overflow-y-auto">
+                  <ul className="flex max-h-64 flex-col overflow-y-auto">
                     {addedItems.map((item, i) => {
                       const meta = ADDABLES.find((a) => a.type === item.type)!;
+                      const deg = Math.round(
+                        ((item.rotationY * 180) / Math.PI) % 360
+                      );
                       return (
                         <li
                           key={item.id}
-                          className="flex items-center justify-between gap-2 px-4 py-1.5 text-xs text-neutral-800 hover:bg-white/40"
+                          className="flex flex-col gap-1 px-4 py-1.5 text-xs text-neutral-800 hover:bg-white/40"
                         >
-                          <span className="truncate">
-                            {i + 1}. {meta.name}
-                            <span className="ml-1 text-neutral-500">
-                              ({item.position[0].toFixed(1)}, {item.position[2].toFixed(1)})
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate">
+                              {i + 1}. {meta.name}
+                              <span className="ml-1 text-neutral-500">
+                                ({item.position[0].toFixed(1)}, {item.position[2].toFixed(1)})
+                              </span>
                             </span>
-                          </span>
-                          <button
-                            onClick={() => removeItem(item.id)}
-                            aria-label={`Remove ${meta.name}`}
-                            className="rounded-md p-1 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              aria-label={`Remove ${meta.name}`}
+                              className="rounded-md p-1 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <RotateCw className="h-3 w-3 text-neutral-500" />
+                            <input
+                              type="range"
+                              min={0}
+                              max={360}
+                              step={5}
+                              value={((deg % 360) + 360) % 360}
+                              onChange={(e) =>
+                                setItemRotation(
+                                  item.id,
+                                  (Number(e.target.value) * Math.PI) / 180
+                                )
+                              }
+                              className="flex-1 accent-neutral-800"
+                            />
+                            <span className="w-8 text-right tabular-nums text-[10px] text-neutral-600">
+                              {((deg % 360) + 360) % 360}°
+                            </span>
+                          </div>
                         </li>
                       );
                     })}
                   </ul>
                   <div className="border-t border-white/40 px-3 py-2">
                     <button
-                      onClick={() => setAddedItems([])}
+                      onClick={() => {
+                        setAddedItems([]);
+                        setConnections([]);
+                        setConnectFirst(null);
+                      }}
                       className="w-full rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm transition hover:bg-white/60"
                     >
                       Clear all added
