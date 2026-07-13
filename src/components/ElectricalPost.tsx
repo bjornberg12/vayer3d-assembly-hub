@@ -169,7 +169,7 @@ export function ElectricalPost({
         ))}
 
       {/* Step 4: Phase lines */}
-      {step >= 4 &&
+      {step >= 4 && showAutoLines &&
         phasePositions.map((p, i) => {
           const wireStart: [number, number, number] = [p[0], wireY, p[2]];
           const left: [number, number, number] = [-18, wireY - 1.5, p[2]];
