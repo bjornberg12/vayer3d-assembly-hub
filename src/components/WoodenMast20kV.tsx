@@ -304,7 +304,17 @@ const arresterOffsets: [number, number, number][] = [
   [0, MAST_ABOVE - 2.2 + 0.03, 0.4],
 ];
 
-export function WoodenMast20kV({ step = 6 }: { step?: number }) {
+export const PUITMAST20_PHASE_LOCAL: [number, number, number][] = wireTops.map(
+  (p) => [p[0], p[1], p[2]]
+);
+
+export function WoodenMast20kV({
+  step = 6,
+  showNextSpan = true,
+}: {
+  step?: number;
+  showNextSpan?: boolean;
+}) {
   return (
     <group>
       {/* Step 1: dig the hole */}
