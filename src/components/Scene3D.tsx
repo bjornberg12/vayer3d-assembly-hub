@@ -352,27 +352,97 @@ export function Scene3D() {
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
     { type: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
   ];
-  const [addedItems, setAddedItems] = useState<
-    { id: string; type: AddableType; position: [number, number, number] }[]
-  >([]);
+  type AddedItem = {
+    id: string;
+    type: AddableType;
+    position: [number, number, number];
+    rotationY: number; // radians
+  };
+  const [addedItems, setAddedItems] = useState<AddedItem[]>([]);
   const [pendingAdd, setPendingAdd] = useState<AddableType | null>(null);
+  const [placementRotation, setPlacementRotation] = useState(0); // radians
+  const [connectMode, setConnectMode] = useState(false);
+  const [connectFirst, setConnectFirst] = useState<string | null>(null);
+  const [connections, setConnections] = useState<{ id: string; a: string; b: string }[]>([]);
+
+  // R key rotates during placement, mouse wheel rotates during placement.
+  useEffect(() => {
+    if (!pendingAdd) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "r" || e.key === "R") {
+        setPlacementRotation((r) => r + Math.PI / 12); // 15°
+      } else if (e.key === "Escape") {
+        setPendingAdd(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pendingAdd]);
+
   const placeItem = (type: AddableType, position: [number, number, number]) => {
+    const id = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setAddedItems((prev) => [
       ...prev,
-      {
-        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        type,
-        position,
-      },
+      { id, type, position, rotationY: placementRotation },
     ]);
   };
   const startPlacing = (type: AddableType) => {
     setPendingAdd(type);
+    setPlacementRotation(0);
     setAddOpen(false);
     setRulerActive(false);
+    setConnectMode(false);
   };
-  const removeItem = (id: string) =>
+  const removeItem = (id: string) => {
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
+    setConnections((prev) => prev.filter((c) => c.a !== id && c.b !== id));
+  };
+  const setItemRotation = (id: string, rotationY: number) =>
+    setAddedItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, rotationY } : i))
+    );
+  const handleItemClickForConnect = (id: string) => {
+    if (!connectMode) return;
+    if (!connectFirst) {
+      setConnectFirst(id);
+      return;
+    }
+    if (connectFirst === id) {
+      setConnectFirst(null);
+      return;
+    }
+    const a = connectFirst;
+    const b = id;
+    setConnections((prev) => {
+      if (
+        prev.some(
+          (c) => (c.a === a && c.b === b) || (c.a === b && c.b === a)
+        )
+      )
+        return prev;
+      return [
+        ...prev,
+        { id: `${a}::${b}::${Date.now()}`, a, b },
+      ];
+    });
+    setConnectFirst(null);
+  };
+  const phaseLocalsFor = (type: AddableType): [number, number, number][] | null => {
+    if (type === "puitmast") return PUITMAST_PHASE_LOCAL;
+    if (type === "puitmast20") return PUITMAST20_PHASE_LOCAL;
+    return null;
+  };
+  const worldPhasePoints = (item: AddedItem): [number, number, number][] => {
+    const locals = phaseLocalsFor(item.type);
+    if (!locals) return [];
+    const cos = Math.cos(item.rotationY);
+    const sin = Math.sin(item.rotationY);
+    return locals.map(([x, y, z]) => [
+      item.position[0] + x * cos + z * sin,
+      item.position[1] + y,
+      item.position[2] + -x * sin + z * cos,
+    ]);
+  };
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
 
