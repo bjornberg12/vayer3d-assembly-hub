@@ -1,12 +1,12 @@
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid, Text, Line, Html } from "@react-three/drei";
+import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2 } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw } from "lucide-react";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
+import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
-import { WoodenMast20kV, MAST_20KV_STEPS } from "./WoodenMast20kV";
+import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "./WoodenMast20kV";
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
@@ -352,27 +352,97 @@ export function Scene3D() {
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
     { type: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
   ];
-  const [addedItems, setAddedItems] = useState<
-    { id: string; type: AddableType; position: [number, number, number] }[]
-  >([]);
+  type AddedItem = {
+    id: string;
+    type: AddableType;
+    position: [number, number, number];
+    rotationY: number; // radians
+  };
+  const [addedItems, setAddedItems] = useState<AddedItem[]>([]);
   const [pendingAdd, setPendingAdd] = useState<AddableType | null>(null);
+  const [placementRotation, setPlacementRotation] = useState(0); // radians
+  const [connectMode, setConnectMode] = useState(false);
+  const [connectFirst, setConnectFirst] = useState<string | null>(null);
+  const [connections, setConnections] = useState<{ id: string; a: string; b: string }[]>([]);
+
+  // R key rotates during placement, mouse wheel rotates during placement.
+  useEffect(() => {
+    if (!pendingAdd) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "r" || e.key === "R") {
+        setPlacementRotation((r) => r + Math.PI / 12); // 15°
+      } else if (e.key === "Escape") {
+        setPendingAdd(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pendingAdd]);
+
   const placeItem = (type: AddableType, position: [number, number, number]) => {
+    const id = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     setAddedItems((prev) => [
       ...prev,
-      {
-        id: `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        type,
-        position,
-      },
+      { id, type, position, rotationY: placementRotation },
     ]);
   };
   const startPlacing = (type: AddableType) => {
     setPendingAdd(type);
+    setPlacementRotation(0);
     setAddOpen(false);
     setRulerActive(false);
+    setConnectMode(false);
   };
-  const removeItem = (id: string) =>
+  const removeItem = (id: string) => {
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
+    setConnections((prev) => prev.filter((c) => c.a !== id && c.b !== id));
+  };
+  const setItemRotation = (id: string, rotationY: number) =>
+    setAddedItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, rotationY } : i))
+    );
+  const handleItemClickForConnect = (id: string) => {
+    if (!connectMode) return;
+    if (!connectFirst) {
+      setConnectFirst(id);
+      return;
+    }
+    if (connectFirst === id) {
+      setConnectFirst(null);
+      return;
+    }
+    const a = connectFirst;
+    const b = id;
+    setConnections((prev) => {
+      if (
+        prev.some(
+          (c) => (c.a === a && c.b === b) || (c.a === b && c.b === a)
+        )
+      )
+        return prev;
+      return [
+        ...prev,
+        { id: `${a}::${b}::${Date.now()}`, a, b },
+      ];
+    });
+    setConnectFirst(null);
+  };
+  const phaseLocalsFor = (type: AddableType): [number, number, number][] | null => {
+    if (type === "puitmast") return PUITMAST_PHASE_LOCAL;
+    if (type === "puitmast20") return PUITMAST20_PHASE_LOCAL;
+    return null;
+  };
+  const worldPhasePoints = (item: AddedItem): [number, number, number][] => {
+    const locals = phaseLocalsFor(item.type);
+    if (!locals) return [];
+    const cos = Math.cos(item.rotationY);
+    const sin = Math.sin(item.rotationY);
+    return locals.map(([x, y, z]) => [
+      item.position[0] + x * cos + z * sin,
+      item.position[1] + y,
+      item.position[2] + -x * sin + z * cos,
+    ]);
+  };
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
 
@@ -467,19 +537,91 @@ export function Scene3D() {
             {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
             {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
             {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
-            {addedItems.map((item) => (
-              <group key={item.id} position={item.position}>
-                {item.type === "puitmast" && (
-                  <ElectricalPost step={ASSEMBLY_STEPS.length} />
-                )}
-                {item.type === "puitmast20" && (
-                  <WoodenMast20kV step={MAST_20KV_STEPS.length} />
-                )}
-                {item.type === "jaotuskilp" && (
-                  <DistributionPanel step={PANEL_STEPS.length} />
-                )}
-              </group>
-            ))}
+            {addedItems.map((item) => {
+              const isSelected = connectMode && connectFirst === item.id;
+              return (
+                <group
+                  key={item.id}
+                  position={item.position}
+                  rotation={[0, item.rotationY, 0]}
+                >
+                  {item.type === "puitmast" && (
+                    <ElectricalPost
+                      step={ASSEMBLY_STEPS.length}
+                      showAutoLines={false}
+                    />
+                  )}
+                  {item.type === "puitmast20" && (
+                    <WoodenMast20kV
+                      step={MAST_20KV_STEPS.length}
+                      showNextSpan={false}
+                    />
+                  )}
+                  {item.type === "jaotuskilp" && (
+                    <DistributionPanel step={PANEL_STEPS.length} />
+                  )}
+                  {/* Invisible click proxy for connect mode */}
+                  {connectMode && (
+                    <mesh
+                      position={[0, 5, 0]}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleItemClickForConnect(item.id);
+                      }}
+                    >
+                      <cylinderGeometry args={[0.6, 0.6, 12, 12]} />
+                      <meshBasicMaterial
+                        color={isSelected ? "#22c55e" : "#3b82f6"}
+                        transparent
+                        opacity={isSelected ? 0.35 : 0.15}
+                      />
+                    </mesh>
+                  )}
+                </group>
+              );
+            })}
+            {/* Aerial line connections between placed posts */}
+            {connections.map((c) => {
+              const a = addedItems.find((i) => i.id === c.a);
+              const b = addedItems.find((i) => i.id === c.b);
+              if (!a || !b) return null;
+              const pa = worldPhasePoints(a);
+              const pb = worldPhasePoints(b);
+              const n = Math.min(pa.length, pb.length);
+              if (n === 0) return null;
+              return (
+                <group key={c.id}>
+                  {Array.from({ length: n }).map((_, i) => {
+                    const s = pa[i];
+                    const e = pb[i];
+                    const segs = 24;
+                    const span = Math.hypot(
+                      e[0] - s[0],
+                      e[1] - s[1],
+                      e[2] - s[2]
+                    );
+                    const sag = Math.min(1.2, span * 0.03);
+                    const pts: [number, number, number][] = [];
+                    for (let k = 0; k <= segs; k++) {
+                      const t = k / segs;
+                      const x = s[0] + (e[0] - s[0]) * t;
+                      const y = s[1] + (e[1] - s[1]) * t - sag * 4 * t * (1 - t);
+                      const z = s[2] + (e[2] - s[2]) * t;
+                      pts.push([x, y, z]);
+                    }
+                    return (
+                      <CatmullRomLine
+                        key={i}
+                        points={pts}
+                        color="#1a1a1a"
+                        lineWidth={2}
+                        segments={40}
+                      />
+                    );
+                  })}
+                </group>
+              );
+            })}
           </PartLabelProvider>
           <axesHelper args={[3]} />
           <OrbitControls
@@ -733,37 +875,88 @@ export function Scene3D() {
               </ul>
               {addedItems.length > 0 && (
                 <>
+                  <div className="flex items-center justify-between border-t border-white/40 px-3 py-2">
+                    <button
+                      onClick={() => {
+                        setConnectMode((m) => !m);
+                        setConnectFirst(null);
+                        setPendingAdd(null);
+                      }}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                        connectMode
+                          ? "border-blue-300/60 bg-blue-500/80 text-white hover:bg-blue-500/90"
+                          : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
+                      }`}
+                    >
+                      <Link2 className="h-3.5 w-3.5" />
+                      {connectMode ? "Connecting…" : "Connect posts"}
+                    </button>
+                  </div>
                   <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
                     Added ({addedItems.length})
+                    {connections.length > 0 && (
+                      <span className="ml-2 font-normal normal-case text-neutral-500">
+                        · {connections.length} link{connections.length === 1 ? "" : "s"}
+                      </span>
+                    )}
                   </div>
-                  <ul className="flex max-h-48 flex-col overflow-y-auto">
+                  <ul className="flex max-h-64 flex-col overflow-y-auto">
                     {addedItems.map((item, i) => {
                       const meta = ADDABLES.find((a) => a.type === item.type)!;
+                      const deg = Math.round(
+                        ((item.rotationY * 180) / Math.PI) % 360
+                      );
                       return (
                         <li
                           key={item.id}
-                          className="flex items-center justify-between gap-2 px-4 py-1.5 text-xs text-neutral-800 hover:bg-white/40"
+                          className="flex flex-col gap-1 px-4 py-1.5 text-xs text-neutral-800 hover:bg-white/40"
                         >
-                          <span className="truncate">
-                            {i + 1}. {meta.name}
-                            <span className="ml-1 text-neutral-500">
-                              ({item.position[0].toFixed(1)}, {item.position[2].toFixed(1)})
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate">
+                              {i + 1}. {meta.name}
+                              <span className="ml-1 text-neutral-500">
+                                ({item.position[0].toFixed(1)}, {item.position[2].toFixed(1)})
+                              </span>
                             </span>
-                          </span>
-                          <button
-                            onClick={() => removeItem(item.id)}
-                            aria-label={`Remove ${meta.name}`}
-                            className="rounded-md p-1 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
+                            <button
+                              onClick={() => removeItem(item.id)}
+                              aria-label={`Remove ${meta.name}`}
+                              className="rounded-md p-1 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <RotateCw className="h-3 w-3 text-neutral-500" />
+                            <input
+                              type="range"
+                              min={0}
+                              max={360}
+                              step={5}
+                              value={((deg % 360) + 360) % 360}
+                              onChange={(e) =>
+                                setItemRotation(
+                                  item.id,
+                                  (Number(e.target.value) * Math.PI) / 180
+                                )
+                              }
+                              className="flex-1 accent-neutral-800"
+                            />
+                            <span className="w-8 text-right tabular-nums text-[10px] text-neutral-600">
+                              {((deg % 360) + 360) % 360}°
+                            </span>
+                          </div>
                         </li>
                       );
                     })}
                   </ul>
                   <div className="border-t border-white/40 px-3 py-2">
                     <button
-                      onClick={() => setAddedItems([])}
+                      onClick={() => {
+                        setAddedItems([]);
+                        setConnections([]);
+                        setConnectFirst(null);
+                      }}
                       className="w-full rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm transition hover:bg-white/60"
                     >
                       Clear all added
@@ -802,17 +995,46 @@ export function Scene3D() {
       </div>
 
       {pendingAdd && (
-        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
           <span>
-            Click on the ground to place{" "}
+            Click ground to place{" "}
             <strong>
               {ADDABLES.find((a) => a.type === pendingAdd)?.name}
             </strong>
+          </span>
+          <span className="flex items-center gap-1 rounded-md bg-white/50 px-2 py-0.5 text-[11px] text-neutral-700">
+            <RotateCw className="h-3 w-3" />
+            {Math.round(((placementRotation * 180) / Math.PI) % 360)}° · press{" "}
+            <kbd className="rounded border border-neutral-400/60 bg-white/70 px-1 font-mono text-[10px]">
+              R
+            </kbd>{" "}
+            to rotate
           </span>
           <button
             onClick={() => setPendingAdd(null)}
             aria-label="Cancel placement"
             className="rounded-md p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-neutral-900"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {connectMode && !pendingAdd && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-blue-300/60 bg-blue-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <Link2 className="h-3.5 w-3.5" />
+          <span>
+            {connectFirst
+              ? "Click a second post to connect"
+              : "Click the first post to connect"}
+          </span>
+          <button
+            onClick={() => {
+              setConnectMode(false);
+              setConnectFirst(null);
+            }}
+            aria-label="Exit connect mode"
+            className="rounded-md p-0.5 transition hover:bg-white/20"
           >
             <X className="h-3.5 w-3.5" />
           </button>
