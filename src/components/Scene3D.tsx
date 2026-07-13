@@ -836,10 +836,7 @@ export function Scene3D() {
 
       {/* Scene menu dropdown */}
       {menuOpen && (
-        <div className="absolute left-4 top-16 w-64 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
-          <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
-            Scenes
-          </div>
+        <DraggablePanel initialX={16} initialY={64} title="Scenes" width={256}>
           <ul className="flex flex-col">
             {SCENES.map((s) => {
               const active = s.id === sceneId;
@@ -862,7 +859,7 @@ export function Scene3D() {
               );
             })}
           </ul>
-        </div>
+        </DraggablePanel>
       )}
 
 
