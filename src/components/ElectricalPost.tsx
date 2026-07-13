@@ -98,7 +98,19 @@ function PhaseLine({
   );
 }
 
-export function ElectricalPost({ step = 4 }: { step?: number }) {
+export const PUITMAST_PHASE_LOCAL: [number, number, number][] = [
+  [0, 9.6 + 0.7, -3.2 / 2 + 0.2],
+  [0, 9.6 + 0.7, 0],
+  [0, 9.6 + 0.7, 3.2 / 2 - 0.2],
+];
+
+export function ElectricalPost({
+  step = 4,
+  showAutoLines = true,
+}: {
+  step?: number;
+  showAutoLines?: boolean;
+}) {
   const mainTop: [number, number, number] = [0, MAST_HEIGHT, 0];
   const mainBottom: [number, number, number] = [0, 0, 0];
   const braceBottom: [number, number, number] = [-1.8, 0, 0];
