@@ -9,6 +9,7 @@ import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 import { WoodenMast20kV, MAST_20KV_STEPS } from "./WoodenMast20kV";
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
+import { DraggablePanel } from "./DraggablePanel";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
