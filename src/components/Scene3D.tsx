@@ -995,17 +995,46 @@ export function Scene3D() {
       </div>
 
       {pendingAdd && (
-        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
           <span>
-            Click on the ground to place{" "}
+            Click ground to place{" "}
             <strong>
               {ADDABLES.find((a) => a.type === pendingAdd)?.name}
             </strong>
+          </span>
+          <span className="flex items-center gap-1 rounded-md bg-white/50 px-2 py-0.5 text-[11px] text-neutral-700">
+            <RotateCw className="h-3 w-3" />
+            {Math.round(((placementRotation * 180) / Math.PI) % 360)}° · press{" "}
+            <kbd className="rounded border border-neutral-400/60 bg-white/70 px-1 font-mono text-[10px]">
+              R
+            </kbd>{" "}
+            to rotate
           </span>
           <button
             onClick={() => setPendingAdd(null)}
             aria-label="Cancel placement"
             className="rounded-md p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-neutral-900"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {connectMode && !pendingAdd && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-blue-300/60 bg-blue-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <Link2 className="h-3.5 w-3.5" />
+          <span>
+            {connectFirst
+              ? "Click a second post to connect"
+              : "Click the first post to connect"}
+          </span>
+          <button
+            onClick={() => {
+              setConnectMode(false);
+              setConnectFirst(null);
+            }}
+            aria-label="Exit connect mode"
+            className="rounded-md p-0.5 transition hover:bg-white/20"
           >
             <X className="h-3.5 w-3.5" />
           </button>
