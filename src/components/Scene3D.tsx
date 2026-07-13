@@ -548,10 +548,7 @@ export function Scene3D() {
             <span className="text-sm font-medium">Views</span>
           </button>
           {viewsOpen && (
-            <div className="absolute left-0 mt-2 w-64 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
-              <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
-                Views
-              </div>
+            <DraggablePanel initialX={70} initialY={64} title="Views" width={256}>
               <ul className="flex flex-col">
                 {VIEWS.map((v) => {
                   const active = v.id === viewId;
@@ -574,7 +571,7 @@ export function Scene3D() {
                   );
                 })}
               </ul>
-            </div>
+            </DraggablePanel>
           )}
         </div>
         <div className="relative">
