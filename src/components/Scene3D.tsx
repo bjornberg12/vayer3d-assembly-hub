@@ -9,6 +9,7 @@ import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 import { WoodenMast20kV, MAST_20KV_STEPS } from "./WoodenMast20kV";
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
+import { DraggablePanel } from "./DraggablePanel";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
@@ -547,10 +548,7 @@ export function Scene3D() {
             <span className="text-sm font-medium">Views</span>
           </button>
           {viewsOpen && (
-            <div className="absolute left-0 mt-2 w-64 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
-              <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
-                Views
-              </div>
+            <DraggablePanel initialX={70} initialY={64} title="Views" width={256}>
               <ul className="flex flex-col">
                 {VIEWS.map((v) => {
                   const active = v.id === viewId;
@@ -573,7 +571,7 @@ export function Scene3D() {
                   );
                 })}
               </ul>
-            </div>
+            </DraggablePanel>
           )}
         </div>
         <div className="relative">
@@ -590,10 +588,7 @@ export function Scene3D() {
             <span className="text-sm font-medium">Ground</span>
           </button>
           {groundOpen && (
-            <div className="absolute left-0 mt-2 w-72 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
-              <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
-                Ground image
-              </div>
+            <DraggablePanel initialX={170} initialY={64} title="Ground image" width={288}>
               <ul className="flex flex-col">
                 <li>
                   <button
@@ -699,7 +694,7 @@ export function Scene3D() {
                 onChange={handleGroundUpload}
                 className="hidden"
               />
-            </div>
+            </DraggablePanel>
           )}
         </div>
         <div className="relative">
@@ -717,10 +712,7 @@ export function Scene3D() {
             <span className="text-sm font-medium">Add</span>
           </button>
           {addOpen && (
-            <div className="absolute left-0 mt-2 w-72 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
-              <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
-                Add component
-              </div>
+            <DraggablePanel initialX={290} initialY={64} title="Add component" width={288}>
               <ul className="flex flex-col">
                 {ADDABLES.map((a) => (
                   <li key={a.type}>
@@ -779,7 +771,7 @@ export function Scene3D() {
                   </div>
                 </>
               )}
-            </div>
+            </DraggablePanel>
           )}
         </div>
         <button
@@ -844,10 +836,7 @@ export function Scene3D() {
 
       {/* Scene menu dropdown */}
       {menuOpen && (
-        <div className="absolute left-4 top-16 w-64 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md">
-          <div className="px-4 py-2 text-xs font-semibold uppercase tracking-widest text-neutral-700">
-            Scenes
-          </div>
+        <DraggablePanel initialX={16} initialY={64} title="Scenes" width={256}>
           <ul className="flex flex-col">
             {SCENES.map((s) => {
               const active = s.id === sceneId;
@@ -870,7 +859,7 @@ export function Scene3D() {
               );
             })}
           </ul>
-        </div>
+        </DraggablePanel>
       )}
 
 
