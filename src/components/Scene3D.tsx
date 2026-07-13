@@ -1,12 +1,12 @@
 import { Canvas, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid, Text, Line, Html } from "@react-three/drei";
+import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2 } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw } from "lucide-react";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { ElectricalPost, ASSEMBLY_STEPS } from "./ElectricalPost";
+import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
-import { WoodenMast20kV, MAST_20KV_STEPS } from "./WoodenMast20kV";
+import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "./WoodenMast20kV";
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
