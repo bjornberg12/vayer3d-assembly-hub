@@ -537,19 +537,91 @@ export function Scene3D() {
             {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
             {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
             {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
-            {addedItems.map((item) => (
-              <group key={item.id} position={item.position}>
-                {item.type === "puitmast" && (
-                  <ElectricalPost step={ASSEMBLY_STEPS.length} />
-                )}
-                {item.type === "puitmast20" && (
-                  <WoodenMast20kV step={MAST_20KV_STEPS.length} />
-                )}
-                {item.type === "jaotuskilp" && (
-                  <DistributionPanel step={PANEL_STEPS.length} />
-                )}
-              </group>
-            ))}
+            {addedItems.map((item) => {
+              const isSelected = connectMode && connectFirst === item.id;
+              return (
+                <group
+                  key={item.id}
+                  position={item.position}
+                  rotation={[0, item.rotationY, 0]}
+                >
+                  {item.type === "puitmast" && (
+                    <ElectricalPost
+                      step={ASSEMBLY_STEPS.length}
+                      showAutoLines={false}
+                    />
+                  )}
+                  {item.type === "puitmast20" && (
+                    <WoodenMast20kV
+                      step={MAST_20KV_STEPS.length}
+                      showNextSpan={false}
+                    />
+                  )}
+                  {item.type === "jaotuskilp" && (
+                    <DistributionPanel step={PANEL_STEPS.length} />
+                  )}
+                  {/* Invisible click proxy for connect mode */}
+                  {connectMode && (
+                    <mesh
+                      position={[0, 5, 0]}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleItemClickForConnect(item.id);
+                      }}
+                    >
+                      <cylinderGeometry args={[0.6, 0.6, 12, 12]} />
+                      <meshBasicMaterial
+                        color={isSelected ? "#22c55e" : "#3b82f6"}
+                        transparent
+                        opacity={isSelected ? 0.35 : 0.15}
+                      />
+                    </mesh>
+                  )}
+                </group>
+              );
+            })}
+            {/* Aerial line connections between placed posts */}
+            {connections.map((c) => {
+              const a = addedItems.find((i) => i.id === c.a);
+              const b = addedItems.find((i) => i.id === c.b);
+              if (!a || !b) return null;
+              const pa = worldPhasePoints(a);
+              const pb = worldPhasePoints(b);
+              const n = Math.min(pa.length, pb.length);
+              if (n === 0) return null;
+              return (
+                <group key={c.id}>
+                  {Array.from({ length: n }).map((_, i) => {
+                    const s = pa[i];
+                    const e = pb[i];
+                    const segs = 24;
+                    const span = Math.hypot(
+                      e[0] - s[0],
+                      e[1] - s[1],
+                      e[2] - s[2]
+                    );
+                    const sag = Math.min(1.2, span * 0.03);
+                    const pts: [number, number, number][] = [];
+                    for (let k = 0; k <= segs; k++) {
+                      const t = k / segs;
+                      const x = s[0] + (e[0] - s[0]) * t;
+                      const y = s[1] + (e[1] - s[1]) * t - sag * 4 * t * (1 - t);
+                      const z = s[2] + (e[2] - s[2]) * t;
+                      pts.push([x, y, z]);
+                    }
+                    return (
+                      <CatmullRomLine
+                        key={i}
+                        points={pts}
+                        color="#1a1a1a"
+                        lineWidth={2}
+                        segments={40}
+                      />
+                    );
+                  })}
+                </group>
+              );
+            })}
           </PartLabelProvider>
           <axesHelper args={[3]} />
           <OrbitControls
