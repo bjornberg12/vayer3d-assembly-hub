@@ -383,7 +383,7 @@ export function WoodenMast20kV({
       )}
 
       {/* Step 6: aerial line spanning to next mast */}
-      {step >= 6 && (
+      {step >= 6 && showNextSpan && (
         <>
           <group position={[NEXT_MAST_X, 0, 0]}>
             <Part name="Wooden mast (next)">
