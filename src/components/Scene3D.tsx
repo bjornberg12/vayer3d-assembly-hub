@@ -672,9 +672,9 @@ export function Scene3D() {
               setViewsOpen(false);
             }}
             aria-label="Open scene menu"
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-1.5 w-1.5" />
           </button>
         </div>
         <div className="relative">
@@ -684,9 +684,9 @@ export function Scene3D() {
               setMenuOpen(false);
             }}
             aria-label="Open views menu"
-            className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+            className="flex h-8 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-2 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
           >
-            <Eye className="h-5 w-5" />
+            <Eye className="h-1.5 w-1.5" />
             <span className="text-sm font-medium">Views</span>
           </button>
           {viewsOpen && (
@@ -724,9 +724,9 @@ export function Scene3D() {
               setViewsOpen(false);
             }}
             aria-label="Open ground menu"
-            className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+            className="flex h-8 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-2 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
           >
-            <Layers className="h-5 w-5" />
+            <Layers className="h-1.5 w-1.5" />
             <span className="text-sm font-medium">Ground</span>
           </button>
           {groundOpen && (
@@ -786,26 +786,26 @@ export function Scene3D() {
                 </li>
               </ul>
               <div className="flex items-center gap-2 border-t border-white/40 px-3 py-2">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/50 bg-white/40 px-3 py-2 text-xs font-semibold text-neutral-900 shadow-sm transition hover:bg-white/60"
-                >
-                  <Upload className="h-4 w-4" />
-                  {customGroundUrl ? "Replace image" : "Upload image"}
-                </button>
-                {customGroundUrl && (
                   <button
-                    onClick={() => {
-                      URL.revokeObjectURL(customGroundUrl);
-                      setCustomGroundUrl(null);
-                      if (groundMode === "custom") setGroundMode("off");
-                    }}
-                    aria-label="Remove custom image"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/50 bg-white/40 text-neutral-800 transition hover:bg-white/60"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/50 bg-white/40 px-3 py-2 text-xs font-semibold text-neutral-900 shadow-sm transition hover:bg-white/60"
                   >
-                    <X className="h-4 w-4" />
+                    <Upload className="h-1.5 w-1.5" />
+                    {customGroundUrl ? "Replace image" : "Upload image"}
                   </button>
-                )}
+                  {customGroundUrl && (
+                    <button
+                      onClick={() => {
+                        URL.revokeObjectURL(customGroundUrl);
+                        setCustomGroundUrl(null);
+                        if (groundMode === "custom") setGroundMode("off");
+                      }}
+                      aria-label="Remove custom image"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/50 bg-white/40 text-neutral-800 transition hover:bg-white/60"
+                    >
+                      <X className="h-1.5 w-1.5" />
+                    </button>
+                  )}
               </div>
               {groundMode === "custom" && customGroundUrl && (
                 <div className="border-t border-white/40 px-4 py-3">
@@ -848,9 +848,9 @@ export function Scene3D() {
               setGroundOpen(false);
             }}
             aria-label="Open add menu"
-            className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+            className="flex h-8 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-2 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
           >
-            <Plus className="h-5 w-5" />
+            <Plus className="h-1.5 w-1.5" />
             <span className="text-sm font-medium">Add</span>
           </button>
           {addOpen && (
@@ -868,7 +868,7 @@ export function Scene3D() {
                           {a.subtitle}
                         </span>
                       </span>
-                      <Plus className="h-4 w-4 text-neutral-600" />
+                      <Plus className="h-1.5 w-1.5 text-neutral-600" />
                     </button>
                   </li>
                 ))}
@@ -888,7 +888,7 @@ export function Scene3D() {
                           : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
                       }`}
                     >
-                      <Link2 className="h-3.5 w-3.5" />
+                      <Link2 className="h-1 w-1" />
                       {connectMode ? "Connecting…" : "Connect posts"}
                     </button>
                   </div>
@@ -923,11 +923,11 @@ export function Scene3D() {
                               aria-label={`Remove ${meta.name}`}
                               className="rounded-md p-1 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-1 w-1" />
                             </button>
                           </div>
                           <div className="flex items-center gap-2">
-                            <RotateCw className="h-3 w-3 text-neutral-500" />
+                            <RotateCw className="h-1 w-1 text-neutral-500" />
                             <input
                               type="range"
                               min={0}
@@ -974,22 +974,22 @@ export function Scene3D() {
             setViewsOpen(false);
           }}
           aria-label="Toggle ruler"
-          className={`flex h-11 items-center gap-1.5 rounded-xl border px-3 shadow-lg backdrop-blur-md transition ${
+          className={`flex h-8 items-center gap-1.5 rounded-xl border px-2 shadow-lg backdrop-blur-md transition ${
             rulerActive
               ? "border-red-300/60 bg-red-500/80 text-white hover:bg-red-500/90"
               : "border-white/40 bg-white/30 text-neutral-900 hover:bg-white/50"
           }`}
         >
-          <RulerIcon className="h-5 w-5" />
+          <RulerIcon className="h-1.5 w-1.5" />
           <span className="text-sm font-medium">Ruler</span>
         </button>
         {(rulerActive || rulerPoints.length > 0) && (
           <button
             onClick={clearRuler}
             aria-label="Clear ruler"
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
           >
-            <X className="h-5 w-5" />
+            <X className="h-1.5 w-1.5" />
           </button>
         )}
       </div>
@@ -1003,7 +1003,7 @@ export function Scene3D() {
             </strong>
           </span>
           <span className="flex items-center gap-1 rounded-md bg-white/50 px-2 py-0.5 text-[11px] text-neutral-700">
-            <RotateCw className="h-3 w-3" />
+            <RotateCw className="h-1 w-1" />
             {Math.round(((placementRotation * 180) / Math.PI) % 360)}° · press{" "}
             <kbd className="rounded border border-neutral-400/60 bg-white/70 px-1 font-mono text-[10px]">
               R
@@ -1015,14 +1015,14 @@ export function Scene3D() {
             aria-label="Cancel placement"
             className="rounded-md p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-neutral-900"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-1 w-1" />
           </button>
         </div>
       )}
 
       {connectMode && !pendingAdd && (
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-blue-300/60 bg-blue-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
-          <Link2 className="h-3.5 w-3.5" />
+          <Link2 className="h-1 w-1" />
           <span>
             {connectFirst
               ? "Click a second post to connect"
@@ -1036,7 +1036,7 @@ export function Scene3D() {
             aria-label="Exit connect mode"
             className="rounded-md p-0.5 transition hover:bg-white/20"
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-1 w-1" />
           </button>
         </div>
       )}
