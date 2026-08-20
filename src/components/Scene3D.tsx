@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw } from "lucide-react";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "./ElectricalPost";
@@ -39,9 +39,11 @@ const VIEWS: {
 function CameraRig({
   view,
   controlsRef,
+  resetNonce,
 }: {
   view: (typeof VIEWS)[number];
   controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+  resetNonce?: number;
 }) {
   const { camera } = useThree();
   useEffect(() => {
@@ -54,7 +56,7 @@ function CameraRig({
       camera.lookAt(...view.target);
     }
     camera.updateProjectionMatrix();
-  }, [view, camera, controlsRef]);
+  }, [view, camera, controlsRef, resetNonce]);
   return null;
 }
 
