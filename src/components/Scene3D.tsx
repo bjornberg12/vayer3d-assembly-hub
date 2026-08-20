@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw } from "lucide-react";
 import * as THREE from "three";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "./ElectricalPost";
@@ -39,9 +39,11 @@ const VIEWS: {
 function CameraRig({
   view,
   controlsRef,
+  resetNonce,
 }: {
   view: (typeof VIEWS)[number];
   controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+  resetNonce?: number;
 }) {
   const { camera } = useThree();
   useEffect(() => {
@@ -54,7 +56,7 @@ function CameraRig({
       camera.lookAt(...view.target);
     }
     camera.updateProjectionMatrix();
-  }, [view, camera, controlsRef]);
+  }, [view, camera, controlsRef, resetNonce]);
   return null;
 }
 
@@ -364,6 +366,8 @@ export function Scene3D() {
   const [connectMode, setConnectMode] = useState(false);
   const [connectFirst, setConnectFirst] = useState<string | null>(null);
   const [connections, setConnections] = useState<{ id: string; a: string; b: string }[]>([]);
+  const [cameraReset, setCameraReset] = useState(0);
+
 
   // R key rotates during placement, mouse wheel rotates during placement.
   useEffect(() => {
@@ -472,6 +476,31 @@ export function Scene3D() {
   };
 
   const clearRuler = () => setRulerPoints([]);
+
+  const resetAll = () => {
+    setSceneId("puitmast");
+    setStep(0);
+    setAddedItems([]);
+    setConnections([]);
+    setConnectMode(false);
+    setConnectFirst(null);
+    setPendingAdd(null);
+    setRulerActive(false);
+    setRulerPoints([]);
+    setPartLabel(null);
+    setPartLabelPos(null);
+    setViewId("iso");
+    setCameraReset((n) => n + 1);
+    setMenuOpen(false);
+    setViewsOpen(false);
+    setGroundOpen(false);
+    setAddOpen(false);
+    if (customGroundUrl) {
+      URL.revokeObjectURL(customGroundUrl);
+      setCustomGroundUrl(null);
+    }
+    setGroundMode("off");
+  };
 
   const handleGroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -638,7 +667,7 @@ export function Scene3D() {
               RIGHT: THREE.MOUSE.DOLLY,
             }}
           />
-          <CameraRig view={activeView} controlsRef={controlsRef} />
+          <CameraRig view={activeView} controlsRef={controlsRef} resetNonce={cameraReset} />
           <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
           <Placer
             active={pendingAdd !== null}
@@ -968,6 +997,14 @@ export function Scene3D() {
           )}
         </div>
         <button
+          onClick={resetAll}
+          aria-label="Reset scene"
+          className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+        >
+          <RefreshCcw className="h-5 w-5" />
+          <span className="text-sm font-medium">Reset</span>
+        </button>
+        <button
           onClick={() => {
             setRulerActive((a) => !a);
             setMenuOpen(false);
@@ -1095,12 +1132,14 @@ export function Scene3D() {
       {stepLabels && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
           <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
-            Step {step} / {maxStep} — {stepLabels[step - 1]}
+            {step === 0
+              ? "Empty scene — press Forward to start assembly"
+              : `Step ${step} / ${maxStep} — ${stepLabels[step - 1]}`}
           </div>
           <div className="pointer-events-auto flex items-center gap-3">
             <button
-              onClick={() => setStep((s) => Math.max(1, s - 1))}
-              disabled={step === 1}
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              disabled={step === 0}
               className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
             >
               ← Back
