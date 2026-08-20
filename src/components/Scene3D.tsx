@@ -1005,6 +1005,7 @@ export function Scene3D() {
           <span className="text-sm font-medium">Reset</span>
         </button>
         <button
+          onClick={() => {
             setRulerActive((a) => !a);
             setMenuOpen(false);
             setViewsOpen(false);
