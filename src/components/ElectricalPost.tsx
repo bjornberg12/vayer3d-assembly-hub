@@ -131,9 +131,11 @@ export function ElectricalPost({
   return (
     <group>
       {/* Step 1: Main mast */}
-      <Part name="Wooden mast">
-        <Pole from={mainBottom} to={mainTop} color={WOOD_LIGHT} />
-      </Part>
+      {step >= 1 && (
+        <Part name="Wooden mast">
+          <Pole from={mainBottom} to={mainTop} color={WOOD_LIGHT} />
+        </Part>
+      )}
 
       {/* Step 2: Brace / support pole + crossarm */}
       {step >= 2 && (
