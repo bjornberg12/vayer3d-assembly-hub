@@ -477,6 +477,31 @@ export function Scene3D() {
 
   const clearRuler = () => setRulerPoints([]);
 
+  const resetAll = () => {
+    setSceneId("puitmast");
+    setStep(0);
+    setAddedItems([]);
+    setConnections([]);
+    setConnectMode(false);
+    setConnectFirst(null);
+    setPendingAdd(null);
+    setRulerActive(false);
+    setRulerPoints([]);
+    setPartLabel(null);
+    setPartLabelPos(null);
+    setViewId("iso");
+    setCameraReset((n) => n + 1);
+    setMenuOpen(false);
+    setViewsOpen(false);
+    setGroundOpen(false);
+    setAddOpen(false);
+    if (customGroundUrl) {
+      URL.revokeObjectURL(customGroundUrl);
+      setCustomGroundUrl(null);
+    }
+    setGroundMode("off");
+  };
+
   const handleGroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
