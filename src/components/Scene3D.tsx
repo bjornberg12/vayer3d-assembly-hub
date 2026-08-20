@@ -997,6 +997,13 @@ export function Scene3D() {
           )}
         </div>
         <button
+          onClick={resetAll}
+          aria-label="Reset scene"
+          className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+        >
+          <RefreshCcw className="h-5 w-5" />
+          <span className="text-sm font-medium">Reset</span>
+        </button>
           onClick={() => {
             setRulerActive((a) => !a);
             setMenuOpen(false);
