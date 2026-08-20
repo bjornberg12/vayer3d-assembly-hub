@@ -667,7 +667,7 @@ export function Scene3D() {
               RIGHT: THREE.MOUSE.DOLLY,
             }}
           />
-          <CameraRig view={activeView} controlsRef={controlsRef} />
+          <CameraRig view={activeView} controlsRef={controlsRef} resetNonce={cameraReset} />
           <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
           <Placer
             active={pendingAdd !== null}
