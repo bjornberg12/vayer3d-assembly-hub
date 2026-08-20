@@ -1004,7 +1004,7 @@ export function Scene3D() {
           <RefreshCcw className="h-5 w-5" />
           <span className="text-sm font-medium">Reset</span>
         </button>
-          onClick={() => {
+        <button
             setRulerActive((a) => !a);
             setMenuOpen(false);
             setViewsOpen(false);
