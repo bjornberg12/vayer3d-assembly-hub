@@ -1132,12 +1132,14 @@ export function Scene3D() {
       {stepLabels && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
           <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
-            Step {step} / {maxStep} — {stepLabels[step - 1]}
+            {step === 0
+              ? "Empty scene — press Forward to start assembly"
+              : `Step ${step} / ${maxStep} — ${stepLabels[step - 1]}`}
           </div>
           <div className="pointer-events-auto flex items-center gap-3">
             <button
-              onClick={() => setStep((s) => Math.max(1, s - 1))}
-              disabled={step === 1}
+              onClick={() => setStep((s) => Math.max(0, s - 1))}
+              disabled={step === 0}
               className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
             >
               ← Back
