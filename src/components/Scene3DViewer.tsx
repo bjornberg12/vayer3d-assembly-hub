@@ -331,7 +331,7 @@ function PartLabel3D({
   );
 }
 
-export function Scene3D() {
+export default function Scene3DViewer() {
   const [sceneId, setSceneId] = useState<SceneId>("puitmast");
   const [step, setStep] = useState(1);
   const [menuOpen, setMenuOpen] = useState(false);
