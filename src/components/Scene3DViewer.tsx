@@ -3,6 +3,7 @@ import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-th
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw } from "lucide-react";
 import * as THREE from "three";
+import { configureTextBuilder } from "troika-three-text";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
@@ -11,6 +12,12 @@ import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
+
+// Troika's default worker serializes functions into a generated blob. The
+// production minifier can rename closed-over identifiers in those functions,
+// leaving the blob with references that do not exist. Keep 3D text on the main
+// thread so labels behave identically in development and production builds.
+configureTextBuilder({ useWorker: false });
 
 type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
 
