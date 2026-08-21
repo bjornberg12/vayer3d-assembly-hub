@@ -16,6 +16,8 @@ export const Route = createFileRoute("/")({
         content:
           "Interactive 3D viewer for electrical infrastructure models and step-by-step assembly instructions.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Index,
