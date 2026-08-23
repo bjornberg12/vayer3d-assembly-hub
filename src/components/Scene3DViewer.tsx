@@ -426,6 +426,9 @@ export default function Scene3DViewer() {
   const [connectMode, setConnectMode] = useState(false);
   const [connectFirst, setConnectFirst] = useState<string | null>(null);
   const [connections, setConnections] = useState<{ id: string; a: string; b: string }[]>([]);
+  const [moveMode, setMoveMode] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
   const [cameraReset, setCameraReset] = useState(0);
 
 
