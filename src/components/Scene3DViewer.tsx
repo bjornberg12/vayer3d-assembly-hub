@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move } from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -255,7 +255,60 @@ function Ruler({
   );
 }
 
+function DragProxy({
+  onMove,
+  onDone,
+  controlsRef,
+  dragging,
+  setDragging,
+}: {
+  onMove: (p: [number, number, number]) => void;
+  onDone: () => void;
+  controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+  dragging: boolean;
+  setDragging: (v: boolean) => void;
+}) {
+  const { camera, gl } = useThree();
+  useEffect(() => {
+    if (!dragging) return;
+    if (controlsRef.current) controlsRef.current.enabled = false;
+    const dom = gl.domElement;
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const hit = new THREE.Vector3();
+    const move = (e: PointerEvent) => {
+      const rect = dom.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      if (raycaster.ray.intersectPlane(plane, hit)) {
+        onMove([
+          Math.round(hit.x * 100) / 100,
+          0,
+          Math.round(hit.z * 100) / 100,
+        ]);
+      }
+    };
+    const up = () => {
+      setDragging(false);
+      onDone();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    dom.style.cursor = "grabbing";
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      dom.style.cursor = "";
+      if (controlsRef.current) controlsRef.current.enabled = true;
+    };
+  }, [dragging, camera, gl, controlsRef, onMove, onDone, setDragging]);
+  return null;
+}
+
 function Placer({
+
   active,
   onPlace,
 }: {
@@ -373,6 +426,9 @@ export default function Scene3DViewer() {
   const [connectMode, setConnectMode] = useState(false);
   const [connectFirst, setConnectFirst] = useState<string | null>(null);
   const [connections, setConnections] = useState<{ id: string; a: string; b: string }[]>([]);
+  const [moveMode, setMoveMode] = useState(false);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+
   const [cameraReset, setCameraReset] = useState(0);
 
 
@@ -412,6 +468,11 @@ export default function Scene3DViewer() {
     setAddedItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, rotationY } : i))
     );
+  const setItemPosition = (id: string, position: [number, number, number]) =>
+    setAddedItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, position } : i))
+    );
+
   const handleItemClickForConnect = (id: string) => {
     if (!connectMode) return;
     if (!connectFirst) {
@@ -490,6 +551,9 @@ export default function Scene3DViewer() {
     setAddedItems([]);
     setConnections([]);
     setConnectMode(false);
+    setMoveMode(false);
+    setDraggingId(null);
+
     setConnectFirst(null);
     setPendingAdd(null);
     setRulerActive(false);
@@ -596,23 +660,40 @@ export default function Scene3DViewer() {
                   {item.type === "jaotuskilp" && (
                     <DistributionPanel step={PANEL_STEPS.length} />
                   )}
-                  {/* Invisible click proxy for connect mode */}
-                  {connectMode && (
+                  {/* Invisible proxy for connect / move mode */}
+                  {(connectMode || moveMode) && (
                     <mesh
                       position={[0, 5, 0]}
                       onClick={(e) => {
+                        if (!connectMode) return;
                         e.stopPropagation();
                         handleItemClickForConnect(item.id);
+                      }}
+                      onPointerDown={(e) => {
+                        if (!moveMode || e.button !== 0) return;
+                        e.stopPropagation();
+                        setDraggingId(item.id);
                       }}
                     >
                       <cylinderGeometry args={[0.6, 0.6, 12, 12]} />
                       <meshBasicMaterial
-                        color={isSelected ? "#22c55e" : "#3b82f6"}
+                        color={
+                          draggingId === item.id
+                            ? "#f59e0b"
+                            : isSelected
+                            ? "#22c55e"
+                            : moveMode
+                            ? "#a855f7"
+                            : "#3b82f6"
+                        }
                         transparent
-                        opacity={isSelected ? 0.35 : 0.15}
+                        opacity={
+                          draggingId === item.id || isSelected ? 0.35 : 0.15
+                        }
                       />
                     </mesh>
                   )}
+
                 </group>
               );
             })}
@@ -685,6 +766,18 @@ export default function Scene3DViewer() {
               }
             }}
           />
+          <DragProxy
+            dragging={draggingId !== null}
+            setDragging={(v) => {
+              if (!v) setDraggingId(null);
+            }}
+            controlsRef={controlsRef}
+            onMove={(p) => {
+              if (draggingId) setItemPosition(draggingId, p);
+            }}
+            onDone={() => setDraggingId(null)}
+          />
+
           {partLabel && partLabelPos && !rulerActive && (
             <PartLabel3D
               name={partLabel}
@@ -911,12 +1004,13 @@ export default function Scene3DViewer() {
               </ul>
               {addedItems.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between border-t border-white/40 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2 border-t border-white/40 px-3 py-2">
                     <button
                       onClick={() => {
                         setConnectMode((m) => !m);
                         setConnectFirst(null);
                         setPendingAdd(null);
+                        setMoveMode(false);
                       }}
                       className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
                         connectMode
@@ -927,7 +1021,24 @@ export default function Scene3DViewer() {
                       <Link2 className="h-3.5 w-3.5" />
                       {connectMode ? "Connecting…" : "Connect posts"}
                     </button>
+                    <button
+                      onClick={() => {
+                        setMoveMode((m) => !m);
+                        setConnectMode(false);
+                        setConnectFirst(null);
+                        setPendingAdd(null);
+                      }}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                        moveMode
+                          ? "border-purple-300/60 bg-purple-500/80 text-white hover:bg-purple-500/90"
+                          : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
+                      }`}
+                    >
+                      <Move className="h-3.5 w-3.5" />
+                      {moveMode ? "Moving…" : "Move parts"}
+                    </button>
                   </div>
+
                   <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
                     Added ({addedItems.length})
                     {connections.length > 0 && (
@@ -1064,7 +1175,22 @@ export default function Scene3DViewer() {
         </div>
       )}
 
+      {moveMode && !pendingAdd && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-purple-300/60 bg-purple-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <Move className="h-3.5 w-3.5" />
+          <span>Drag a highlighted component to move it on the plane</span>
+          <button
+            onClick={() => setMoveMode(false)}
+            aria-label="Exit move mode"
+            className="rounded-md p-0.5 transition hover:bg-white/20"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {connectMode && !pendingAdd && (
+
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-blue-300/60 bg-blue-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
           <Link2 className="h-3.5 w-3.5" />
           <span>
