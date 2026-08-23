@@ -551,6 +551,9 @@ export default function Scene3DViewer() {
     setAddedItems([]);
     setConnections([]);
     setConnectMode(false);
+    setMoveMode(false);
+    setDraggingId(null);
+
     setConnectFirst(null);
     setPendingAdd(null);
     setRulerActive(false);
