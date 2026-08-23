@@ -255,7 +255,60 @@ function Ruler({
   );
 }
 
+function DragProxy({
+  onMove,
+  onDone,
+  controlsRef,
+  dragging,
+  setDragging,
+}: {
+  onMove: (p: [number, number, number]) => void;
+  onDone: () => void;
+  controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+  dragging: boolean;
+  setDragging: (v: boolean) => void;
+}) {
+  const { camera, gl } = useThree();
+  useEffect(() => {
+    if (!dragging) return;
+    if (controlsRef.current) controlsRef.current.enabled = false;
+    const dom = gl.domElement;
+    const raycaster = new THREE.Raycaster();
+    const ndc = new THREE.Vector2();
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const hit = new THREE.Vector3();
+    const move = (e: PointerEvent) => {
+      const rect = dom.getBoundingClientRect();
+      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      if (raycaster.ray.intersectPlane(plane, hit)) {
+        onMove([
+          Math.round(hit.x * 100) / 100,
+          0,
+          Math.round(hit.z * 100) / 100,
+        ]);
+      }
+    };
+    const up = () => {
+      setDragging(false);
+      onDone();
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    dom.style.cursor = "grabbing";
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      dom.style.cursor = "";
+      if (controlsRef.current) controlsRef.current.enabled = true;
+    };
+  }, [dragging, camera, gl, controlsRef, onMove, onDone, setDragging]);
+  return null;
+}
+
 function Placer({
+
   active,
   onPlace,
 }: {
