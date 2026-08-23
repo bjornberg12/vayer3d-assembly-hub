@@ -657,23 +657,40 @@ export default function Scene3DViewer() {
                   {item.type === "jaotuskilp" && (
                     <DistributionPanel step={PANEL_STEPS.length} />
                   )}
-                  {/* Invisible click proxy for connect mode */}
-                  {connectMode && (
+                  {/* Invisible proxy for connect / move mode */}
+                  {(connectMode || moveMode) && (
                     <mesh
                       position={[0, 5, 0]}
                       onClick={(e) => {
+                        if (!connectMode) return;
                         e.stopPropagation();
                         handleItemClickForConnect(item.id);
+                      }}
+                      onPointerDown={(e) => {
+                        if (!moveMode || e.button !== 0) return;
+                        e.stopPropagation();
+                        setDraggingId(item.id);
                       }}
                     >
                       <cylinderGeometry args={[0.6, 0.6, 12, 12]} />
                       <meshBasicMaterial
-                        color={isSelected ? "#22c55e" : "#3b82f6"}
+                        color={
+                          draggingId === item.id
+                            ? "#f59e0b"
+                            : isSelected
+                            ? "#22c55e"
+                            : moveMode
+                            ? "#a855f7"
+                            : "#3b82f6"
+                        }
                         transparent
-                        opacity={isSelected ? 0.35 : 0.15}
+                        opacity={
+                          draggingId === item.id || isSelected ? 0.35 : 0.15
+                        }
                       />
                     </mesh>
                   )}
+
                 </group>
               );
             })}
