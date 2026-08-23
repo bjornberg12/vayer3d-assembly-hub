@@ -468,6 +468,11 @@ export default function Scene3DViewer() {
     setAddedItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, rotationY } : i))
     );
+  const setItemPosition = (id: string, position: [number, number, number]) =>
+    setAddedItems((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, position } : i))
+    );
+
   const handleItemClickForConnect = (id: string) => {
     if (!connectMode) return;
     if (!connectFirst) {
