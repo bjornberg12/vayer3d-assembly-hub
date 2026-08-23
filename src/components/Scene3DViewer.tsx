@@ -763,6 +763,18 @@ export default function Scene3DViewer() {
               }
             }}
           />
+          <DragProxy
+            dragging={draggingId !== null}
+            setDragging={(v) => {
+              if (!v) setDraggingId(null);
+            }}
+            controlsRef={controlsRef}
+            onMove={(p) => {
+              if (draggingId) setItemPosition(draggingId, p);
+            }}
+            onDone={() => setDraggingId(null)}
+          />
+
           {partLabel && partLabelPos && !rulerActive && (
             <PartLabel3D
               name={partLabel}
