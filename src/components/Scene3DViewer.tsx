@@ -1172,7 +1172,22 @@ export default function Scene3DViewer() {
         </div>
       )}
 
+      {moveMode && !pendingAdd && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-purple-300/60 bg-purple-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <Move className="h-3.5 w-3.5" />
+          <span>Drag a highlighted component to move it on the plane</span>
+          <button
+            onClick={() => setMoveMode(false)}
+            aria-label="Exit move mode"
+            className="rounded-md p-0.5 transition hover:bg-white/20"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {connectMode && !pendingAdd && (
+
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-blue-300/60 bg-blue-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
           <Link2 className="h-3.5 w-3.5" />
           <span>
