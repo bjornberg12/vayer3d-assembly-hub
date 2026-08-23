@@ -1001,12 +1001,13 @@ export default function Scene3DViewer() {
               </ul>
               {addedItems.length > 0 && (
                 <>
-                  <div className="flex items-center justify-between border-t border-white/40 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2 border-t border-white/40 px-3 py-2">
                     <button
                       onClick={() => {
                         setConnectMode((m) => !m);
                         setConnectFirst(null);
                         setPendingAdd(null);
+                        setMoveMode(false);
                       }}
                       className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
                         connectMode
@@ -1017,7 +1018,24 @@ export default function Scene3DViewer() {
                       <Link2 className="h-3.5 w-3.5" />
                       {connectMode ? "Connecting…" : "Connect posts"}
                     </button>
+                    <button
+                      onClick={() => {
+                        setMoveMode((m) => !m);
+                        setConnectMode(false);
+                        setConnectFirst(null);
+                        setPendingAdd(null);
+                      }}
+                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                        moveMode
+                          ? "border-purple-300/60 bg-purple-500/80 text-white hover:bg-purple-500/90"
+                          : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
+                      }`}
+                    >
+                      <Move className="h-3.5 w-3.5" />
+                      {moveMode ? "Moving…" : "Move parts"}
+                    </button>
                   </div>
+
                   <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
                     Added ({addedItems.length})
                     {connections.length > 0 && (
