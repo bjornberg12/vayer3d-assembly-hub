@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer } from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -11,6 +11,12 @@ import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "./Woode
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
+import {
+  WeatherEffects,
+  DEFAULT_WEATHER,
+  feelsLike,
+  type WeatherState,
+} from "./Weather";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 // Troika's default worker serializes functions into a generated blob. The
@@ -405,6 +411,15 @@ export default function Scene3DViewer() {
   const [groundMode, setGroundMode] = useState<"off" | "default" | "custom">("default");
   const [customGroundUrl, setCustomGroundUrl] = useState<string | null>(null);
   const [customGroundWidthM, setCustomGroundWidthM] = useState<number>(30);
+  const [weatherOpen, setWeatherOpen] = useState(false);
+  const [weather, setWeather] = useState<WeatherState>(DEFAULT_WEATHER);
+  const updateWeather = (patch: Partial<WeatherState>) =>
+    setWeather((w) => ({ ...w, ...patch }));
+  const night = weather.active && weather.night;
+  const felt = feelsLike(
+    weather.temperature,
+    weather.wind ? weather.windSpeed : 0,
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -571,6 +586,8 @@ export default function Scene3DViewer() {
       setCustomGroundUrl(null);
     }
     setGroundMode("off");
+    setWeather(DEFAULT_WEATHER);
+    setWeatherOpen(false);
   };
 
   const handleGroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -607,17 +624,28 @@ export default function Scene3DViewer() {
       <Canvas
         shadows
         camera={{ position: [14, 11, 16], fov: 50, near: 0.01, far: 2000 }}
-        style={{ background: "#f6f3ec" }}
+        style={{
+          background: night
+            ? "#0b1020"
+            : weather.active && weather.rain
+            ? "#c9ccd1"
+            : "#f6f3ec",
+          transition: "background 400ms ease",
+        }}
         onPointerMissed={() => {
           setPartLabel(null);
           setPartLabelPos(null);
         }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={0.7} />
+          <ambientLight
+            intensity={night ? 0.18 : weather.active && weather.rain ? 0.55 : 0.7}
+            color={night ? "#8ea8d0" : "#ffffff"}
+          />
           <directionalLight
-            position={[15, 25, 10]}
-            intensity={1.1}
+            position={night ? [-12, 18, -8] : [15, 25, 10]}
+            intensity={night ? 0.35 : weather.active && weather.rain ? 0.7 : 1.1}
+            color={night ? "#b9cdf0" : "#ffffff"}
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
@@ -626,6 +654,7 @@ export default function Scene3DViewer() {
           {showGround && (
             <AerialGround url={groundUrl || undefined} realWidthM={realWidth} />
           )}
+          <WeatherEffects weather={weather} />
           <PartLabelProvider
             setLabel={(name, pos) => {
               setPartLabel(name);
@@ -965,6 +994,131 @@ export default function Scene3DViewer() {
                 onChange={handleGroundUpload}
                 className="hidden"
               />
+              <div className="border-t border-white/40 px-3 py-2">
+                <button
+                  onClick={() => setWeatherOpen((o) => !o)}
+                  className={`flex w-full items-center justify-between rounded-lg border border-white/50 px-3 py-2 text-xs font-semibold text-neutral-900 shadow-sm transition ${
+                    weatherOpen ? "bg-white/70" : "bg-white/40 hover:bg-white/60"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <CloudRain className="h-4 w-4" />
+                    Weather
+                  </span>
+                  <span className="text-[10px] font-normal text-neutral-600">
+                    {weather.active
+                      ? `${Math.round(felt)}°C${weather.wind ? ` · ${weather.windSpeed} m/s` : ""}`
+                      : "Off"}
+                  </span>
+                </button>
+              </div>
+            </DraggablePanel>
+          )}
+          {weatherOpen && (
+            <DraggablePanel initialX={170} initialY={330} title="Weather" width={288}>
+              <div className="flex flex-col gap-3 px-4 py-3">
+                <label className="flex items-center justify-between text-sm font-medium text-neutral-900">
+                  <span>Weather active</span>
+                  <input
+                    type="checkbox"
+                    checked={weather.active}
+                    onChange={(e) => updateWeather({ active: e.target.checked })}
+                    className="h-4 w-4 accent-neutral-800"
+                  />
+                </label>
+
+                <div
+                  className={`flex flex-col gap-3 ${
+                    weather.active ? "" : "pointer-events-none opacity-40"
+                  }`}
+                >
+                  <label className="flex items-center justify-between text-sm text-neutral-800">
+                    <span className="flex items-center gap-1.5">
+                      <CloudRain className="h-4 w-4" /> Rain
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={weather.rain}
+                      onChange={(e) => updateWeather({ rain: e.target.checked })}
+                      className="h-4 w-4 accent-neutral-800"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between text-sm text-neutral-800">
+                    <span className="flex items-center gap-1.5">
+                      <Wind className="h-4 w-4" /> Wind particles
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={weather.wind}
+                      onChange={(e) => updateWeather({ wind: e.target.checked })}
+                      className="h-4 w-4 accent-neutral-800"
+                    />
+                  </label>
+
+                  <div className={weather.wind ? "" : "opacity-50"}>
+                    <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-neutral-800">
+                      <span>Wind speed</span>
+                      <span className="tabular-nums">{weather.windSpeed} m/s</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={35}
+                      step={1}
+                      value={weather.windSpeed}
+                      onChange={(e) =>
+                        updateWeather({ windSpeed: Number(e.target.value) })
+                      }
+                      className="w-full accent-neutral-800"
+                    />
+                  </div>
+
+                  <label className="flex items-center justify-between text-sm text-neutral-800">
+                    <span className="flex items-center gap-1.5">
+                      <Moon className="h-4 w-4" /> Night time
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={weather.night}
+                      onChange={(e) => updateWeather({ night: e.target.checked })}
+                      className="h-4 w-4 accent-neutral-800"
+                    />
+                  </label>
+
+                  <div className="border-t border-white/40 pt-3">
+                    <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-neutral-800">
+                      <span className="flex items-center gap-1.5">
+                        <Thermometer className="h-4 w-4" /> Temperature
+                      </span>
+                      <span className="tabular-nums">{weather.temperature} °C</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-40}
+                      max={45}
+                      step={1}
+                      value={weather.temperature}
+                      onChange={(e) =>
+                        updateWeather({ temperature: Number(e.target.value) })
+                      }
+                      className="w-full accent-neutral-800"
+                    />
+                    <p className="mt-1.5 text-xs text-neutral-700">
+                      Feels like{" "}
+                      <span className="font-semibold tabular-nums">
+                        {felt.toFixed(1)} °C
+                      </span>
+                      {weather.wind && Math.abs(felt - weather.temperature) > 0.05 && (
+                        <span className="text-neutral-600">
+                          {" "}
+                          (wind chill {(felt - weather.temperature).toFixed(1)} °C)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </DraggablePanel>
           )}
         </div>
