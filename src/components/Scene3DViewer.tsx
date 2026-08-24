@@ -586,6 +586,8 @@ export default function Scene3DViewer() {
       setCustomGroundUrl(null);
     }
     setGroundMode("off");
+    setWeather(DEFAULT_WEATHER);
+    setWeatherOpen(false);
   };
 
   const handleGroundUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
