@@ -994,6 +994,131 @@ export default function Scene3DViewer() {
                 onChange={handleGroundUpload}
                 className="hidden"
               />
+              <div className="border-t border-white/40 px-3 py-2">
+                <button
+                  onClick={() => setWeatherOpen((o) => !o)}
+                  className={`flex w-full items-center justify-between rounded-lg border border-white/50 px-3 py-2 text-xs font-semibold text-neutral-900 shadow-sm transition ${
+                    weatherOpen ? "bg-white/70" : "bg-white/40 hover:bg-white/60"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <CloudRain className="h-4 w-4" />
+                    Weather
+                  </span>
+                  <span className="text-[10px] font-normal text-neutral-600">
+                    {weather.active
+                      ? `${Math.round(felt)}°C${weather.wind ? ` · ${weather.windSpeed} m/s` : ""}`
+                      : "Off"}
+                  </span>
+                </button>
+              </div>
+            </DraggablePanel>
+          )}
+          {weatherOpen && (
+            <DraggablePanel initialX={170} initialY={330} title="Weather" width={288}>
+              <div className="flex flex-col gap-3 px-4 py-3">
+                <label className="flex items-center justify-between text-sm font-medium text-neutral-900">
+                  <span>Weather active</span>
+                  <input
+                    type="checkbox"
+                    checked={weather.active}
+                    onChange={(e) => updateWeather({ active: e.target.checked })}
+                    className="h-4 w-4 accent-neutral-800"
+                  />
+                </label>
+
+                <div
+                  className={`flex flex-col gap-3 ${
+                    weather.active ? "" : "pointer-events-none opacity-40"
+                  }`}
+                >
+                  <label className="flex items-center justify-between text-sm text-neutral-800">
+                    <span className="flex items-center gap-1.5">
+                      <CloudRain className="h-4 w-4" /> Rain
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={weather.rain}
+                      onChange={(e) => updateWeather({ rain: e.target.checked })}
+                      className="h-4 w-4 accent-neutral-800"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between text-sm text-neutral-800">
+                    <span className="flex items-center gap-1.5">
+                      <Wind className="h-4 w-4" /> Wind particles
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={weather.wind}
+                      onChange={(e) => updateWeather({ wind: e.target.checked })}
+                      className="h-4 w-4 accent-neutral-800"
+                    />
+                  </label>
+
+                  <div className={weather.wind ? "" : "opacity-50"}>
+                    <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-neutral-800">
+                      <span>Wind speed</span>
+                      <span className="tabular-nums">{weather.windSpeed} m/s</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={35}
+                      step={1}
+                      value={weather.windSpeed}
+                      onChange={(e) =>
+                        updateWeather({ windSpeed: Number(e.target.value) })
+                      }
+                      className="w-full accent-neutral-800"
+                    />
+                  </div>
+
+                  <label className="flex items-center justify-between text-sm text-neutral-800">
+                    <span className="flex items-center gap-1.5">
+                      <Moon className="h-4 w-4" /> Night time
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={weather.night}
+                      onChange={(e) => updateWeather({ night: e.target.checked })}
+                      className="h-4 w-4 accent-neutral-800"
+                    />
+                  </label>
+
+                  <div className="border-t border-white/40 pt-3">
+                    <div className="mb-1.5 flex items-center justify-between text-xs font-medium text-neutral-800">
+                      <span className="flex items-center gap-1.5">
+                        <Thermometer className="h-4 w-4" /> Temperature
+                      </span>
+                      <span className="tabular-nums">{weather.temperature} °C</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={-40}
+                      max={45}
+                      step={1}
+                      value={weather.temperature}
+                      onChange={(e) =>
+                        updateWeather({ temperature: Number(e.target.value) })
+                      }
+                      className="w-full accent-neutral-800"
+                    />
+                    <p className="mt-1.5 text-xs text-neutral-700">
+                      Feels like{" "}
+                      <span className="font-semibold tabular-nums">
+                        {felt.toFixed(1)} °C
+                      </span>
+                      {weather.wind && Math.abs(felt - weather.temperature) > 0.05 && (
+                        <span className="text-neutral-600">
+                          {" "}
+                          (wind chill {(felt - weather.temperature).toFixed(1)} °C)
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
             </DraggablePanel>
           )}
         </div>
