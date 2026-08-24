@@ -622,17 +622,28 @@ export default function Scene3DViewer() {
       <Canvas
         shadows
         camera={{ position: [14, 11, 16], fov: 50, near: 0.01, far: 2000 }}
-        style={{ background: "#f6f3ec" }}
+        style={{
+          background: night
+            ? "#0b1020"
+            : weather.active && weather.rain
+            ? "#c9ccd1"
+            : "#f6f3ec",
+          transition: "background 400ms ease",
+        }}
         onPointerMissed={() => {
           setPartLabel(null);
           setPartLabelPos(null);
         }}
       >
         <Suspense fallback={null}>
-          <ambientLight intensity={0.7} />
+          <ambientLight
+            intensity={night ? 0.18 : weather.active && weather.rain ? 0.55 : 0.7}
+            color={night ? "#8ea8d0" : "#ffffff"}
+          />
           <directionalLight
-            position={[15, 25, 10]}
-            intensity={1.1}
+            position={night ? [-12, 18, -8] : [15, 25, 10]}
+            intensity={night ? 0.35 : weather.active && weather.rain ? 0.7 : 1.1}
+            color={night ? "#b9cdf0" : "#ffffff"}
             castShadow
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
@@ -641,6 +652,7 @@ export default function Scene3DViewer() {
           {showGround && (
             <AerialGround url={groundUrl || undefined} realWidthM={realWidth} />
           )}
+          <WeatherEffects weather={weather} />
           <PartLabelProvider
             setLabel={(name, pos) => {
               setPartLabel(name);
