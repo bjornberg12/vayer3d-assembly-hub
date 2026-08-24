@@ -11,6 +11,12 @@ import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "./Woode
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
+import {
+  WeatherEffects,
+  DEFAULT_WEATHER,
+  feelsLike,
+  type WeatherState,
+} from "./Weather";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 // Troika's default worker serializes functions into a generated blob. The
