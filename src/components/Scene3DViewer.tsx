@@ -411,6 +411,15 @@ export default function Scene3DViewer() {
   const [groundMode, setGroundMode] = useState<"off" | "default" | "custom">("default");
   const [customGroundUrl, setCustomGroundUrl] = useState<string | null>(null);
   const [customGroundWidthM, setCustomGroundWidthM] = useState<number>(30);
+  const [weatherOpen, setWeatherOpen] = useState(false);
+  const [weather, setWeather] = useState<WeatherState>(DEFAULT_WEATHER);
+  const updateWeather = (patch: Partial<WeatherState>) =>
+    setWeather((w) => ({ ...w, ...patch }));
+  const night = weather.active && weather.night;
+  const felt = feelsLike(
+    weather.temperature,
+    weather.wind ? weather.windSpeed : 0,
+  );
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
