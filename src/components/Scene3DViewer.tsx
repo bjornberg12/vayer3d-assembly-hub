@@ -149,31 +149,6 @@ function GroundPlane() {
   );
 }
 
-function PlaceholderScene({ label }: { label: string }) {
-  return (
-    <group>
-      <Text
-        position={[0, 3, 0]}
-        fontSize={0.8}
-        color="#1a1a1a"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {label}
-      </Text>
-      <Text
-        position={[0, 2, 0]}
-        fontSize={0.35}
-        color="#555"
-        anchorX="center"
-        anchorY="middle"
-      >
-        Scene coming soon
-      </Text>
-    </group>
-  );
-}
-
 type Point3 = [number, number, number];
 
 function Ruler({
