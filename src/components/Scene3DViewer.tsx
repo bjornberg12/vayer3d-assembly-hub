@@ -830,7 +830,7 @@ export default function Scene3DViewer() {
             <span className="text-sm font-medium">Views</span>
           </button>
           {viewsOpen && (
-            <DraggablePanel initialX={70} initialY={64} title="Views" width={256}>
+            <DraggablePanel initialX={70} initialY={64} title="Views" width={256} onClose={() => setViewsOpen(false)}>
               <ul className="flex flex-col">
                 {VIEWS.map((v) => {
                   const active = v.id === viewId;
@@ -870,7 +870,7 @@ export default function Scene3DViewer() {
             <span className="text-sm font-medium">Ground</span>
           </button>
           {groundOpen && (
-            <DraggablePanel initialX={170} initialY={64} title="Ground image" width={288}>
+            <DraggablePanel initialX={170} initialY={64} title="Ground image" width={288} onClose={() => setGroundOpen(false)}>
               <ul className="flex flex-col">
                 <li>
                   <button
@@ -997,7 +997,7 @@ export default function Scene3DViewer() {
             </DraggablePanel>
           )}
           {weatherOpen && (
-            <DraggablePanel initialX={170} initialY={330} title="Weather" width={288}>
+            <DraggablePanel initialX={170} initialY={330} title="Weather" width={288} onClose={() => setWeatherOpen(false)}>
               <div className="flex flex-col gap-3 px-4 py-3">
                 <label className="flex items-center justify-between text-sm font-medium text-neutral-900">
                   <span>Weather active</span>
@@ -1119,7 +1119,7 @@ export default function Scene3DViewer() {
             <span className="text-sm font-medium">Add</span>
           </button>
           {addOpen && (
-            <DraggablePanel initialX={290} initialY={64} title="Add component" width={288}>
+            <DraggablePanel initialX={290} initialY={64} title="Add component" width={288} onClose={() => setAddOpen(false)}>
               <ul className="flex flex-col">
                 {ADDABLES.map((a) => (
                   <li key={a.type}>
@@ -1364,7 +1364,7 @@ export default function Scene3DViewer() {
 
       {/* Scene menu dropdown */}
       {menuOpen && (
-        <DraggablePanel initialX={16} initialY={64} title="Scenes" width={256}>
+        <DraggablePanel initialX={16} initialY={64} title="Scenes" width={256} onClose={() => setMenuOpen(false)}>
           <ul className="flex flex-col">
             {SCENES.map((s) => {
               const active = s.id === sceneId;
