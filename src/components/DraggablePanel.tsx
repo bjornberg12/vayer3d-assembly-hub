@@ -46,10 +46,37 @@ export function DraggablePanel({
     };
   }, []);
 
+  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (leaveTimer.current) clearTimeout(leaveTimer.current);
+    },
+    [],
+  );
+
+  const cancelClose = () => {
+    if (leaveTimer.current) {
+      clearTimeout(leaveTimer.current);
+      leaveTimer.current = null;
+    }
+  };
+
+  const scheduleClose = () => {
+    if (!onClose || dragging.current) return;
+    cancelClose();
+    leaveTimer.current = setTimeout(() => {
+      leaveTimer.current = null;
+      if (!dragging.current) onClose();
+    }, 260);
+  };
+
   return (
     <div
       className="fixed z-20 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md"
       style={{ left: pos.x, top: pos.y, width }}
+      onPointerEnter={cancelClose}
+      onPointerLeave={scheduleClose}
     >
       <div
         onPointerDown={(e) => {
