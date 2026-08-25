@@ -5,6 +5,8 @@ interface DraggablePanelProps {
   initialY: number;
   title: string;
   width?: number;
+  /** Called when the cursor leaves the panel boundaries. */
+  onClose?: () => void;
   children: ReactNode;
 }
 
@@ -13,6 +15,7 @@ export function DraggablePanel({
   initialY,
   title,
   width = 288,
+  onClose,
   children,
 }: DraggablePanelProps) {
   const [pos, setPos] = useState({ x: initialX, y: initialY });
