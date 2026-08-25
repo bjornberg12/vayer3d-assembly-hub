@@ -8,6 +8,7 @@ import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "./ElectricalPost";
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "./WoodenMast20kV";
+import { Substation, SUBSTATION_STEPS } from "./Substation";
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
@@ -145,31 +146,6 @@ function GroundPlane() {
       />
       <GridLabels />
     </>
-  );
-}
-
-function PlaceholderScene({ label }: { label: string }) {
-  return (
-    <group>
-      <Text
-        position={[0, 3, 0]}
-        fontSize={0.8}
-        color="#1a1a1a"
-        anchorX="center"
-        anchorY="middle"
-      >
-        {label}
-      </Text>
-      <Text
-        position={[0, 2, 0]}
-        fontSize={0.35}
-        color="#555"
-        anchorX="center"
-        anchorY="middle"
-      >
-        Scene coming soon
-      </Text>
-    </group>
   );
 }
 
@@ -423,11 +399,12 @@ export default function Scene3DViewer() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
-  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp";
+  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
     { type: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
+    { type: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
   ];
   type AddedItem = {
     id: string;
@@ -540,6 +517,8 @@ export default function Scene3DViewer() {
       ? MAST_20KV_STEPS
       : sceneId === "jaotuskilp"
       ? PANEL_STEPS
+      : sceneId === "alajaam"
+      ? SUBSTATION_STEPS
       : null;
   const maxStep = stepLabels?.length ?? 0;
 
@@ -665,7 +644,7 @@ export default function Scene3DViewer() {
             {sceneId === "puitmast" && <ElectricalPost step={step} />}
             {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
             {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
-            {sceneId === "alajaam" && <PlaceholderScene label={activeScene.name} />}
+            {sceneId === "alajaam" && <Substation step={step} />}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
               return (
@@ -688,6 +667,9 @@ export default function Scene3DViewer() {
                   )}
                   {item.type === "jaotuskilp" && (
                     <DistributionPanel step={PANEL_STEPS.length} />
+                  )}
+                  {item.type === "alajaam" && (
+                    <Substation step={SUBSTATION_STEPS.length} />
                   )}
                   {/* Invisible proxy for connect / move mode */}
                   {(connectMode || moveMode) && (
