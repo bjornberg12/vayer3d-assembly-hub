@@ -851,7 +851,39 @@ export default function Scene3DViewer() {
                 </group>
               );
             })}
+            {/* Underground LV cables */}
+            {cables.map((c) => {
+              const a = cableEndpoints.find((e) => e.id === c.a);
+              const b = cableEndpoints.find((e) => e.id === c.b);
+              if (!a || !b) return null;
+              return (
+                <UndergroundCable
+                  key={c.id}
+                  from={a.point}
+                  to={b.point}
+                  spec={{ size: c.size, conduit: c.conduit }}
+                />
+              );
+            })}
+            {/* Cable proxy for the fixed scene model at the origin */}
+            {cableMode && (sceneId === "jaotuskilp" || sceneId === "alajaam") && (
+              <mesh
+                position={[0, 1.4, 0]}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCableClick("scene");
+                }}
+              >
+                <cylinderGeometry args={[1, 1, 3, 14]} />
+                <meshBasicMaterial
+                  color={cableFirst === "scene" ? "#f59e0b" : "#eab308"}
+                  transparent
+                  opacity={cableFirst === "scene" ? 0.4 : 0.18}
+                />
+              </mesh>
+            )}
           </PartLabelProvider>
+
           <axesHelper args={[3]} />
           <OrbitControls
             ref={controlsRef}
