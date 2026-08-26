@@ -9,6 +9,14 @@ import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "./Electric
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "./WoodenMast20kV";
 import { Substation, SUBSTATION_STEPS } from "./Substation";
+import {
+  UndergroundCable,
+  CABLE_SIZES,
+  CONDUITS,
+  type CableSizeId,
+  type ConduitId,
+} from "./UndergroundCable";
+
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
@@ -420,6 +428,14 @@ export default function Scene3DViewer() {
   const [connections, setConnections] = useState<{ id: string; a: string; b: string }[]>([]);
   const [moveMode, setMoveMode] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [cableMode, setCableMode] = useState(false);
+  const [cableFirst, setCableFirst] = useState<string | null>(null);
+  const [cableSize, setCableSize] = useState<CableSizeId>("95");
+  const [cableConduit, setCableConduit] = useState<ConduitId>("none");
+  const [cables, setCables] = useState<
+    { id: string; a: string; b: string; size: CableSizeId; conduit: ConduitId }[]
+  >([]);
+
 
   const [cameraReset, setCameraReset] = useState(0);
 
@@ -451,10 +467,12 @@ export default function Scene3DViewer() {
     setAddOpen(false);
     setRulerActive(false);
     setConnectMode(false);
+    setCableMode(false);
   };
   const removeItem = (id: string) => {
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
     setConnections((prev) => prev.filter((c) => c.a !== id && c.b !== id));
+    setCables((prev) => prev.filter((c) => c.a !== id && c.b !== id));
   };
   const setItemRotation = (id: string, rotationY: number) =>
     setAddedItems((prev) =>
@@ -507,6 +525,71 @@ export default function Scene3DViewer() {
       item.position[2] + -x * sin + z * cos,
     ]);
   };
+
+  // --- Underground LV cables -------------------------------------------------
+  const CABLE_ENDPOINT_TYPES: AddableType[] = ["jaotuskilp", "alajaam"];
+  const cableExitLocal = (type: AddableType): [number, number, number] =>
+    type === "alajaam" ? [0.6, 0.05, 1.05] : [0.18, 0.03, 0.1];
+  const rotateLocal = (
+    local: [number, number, number],
+    origin: [number, number, number],
+    rotY: number
+  ): [number, number, number] => {
+    const cos = Math.cos(rotY);
+    const sin = Math.sin(rotY);
+    return [
+      origin[0] + local[0] * cos + local[2] * sin,
+      origin[1] + local[1],
+      origin[2] + -local[0] * sin + local[2] * cos,
+    ];
+  };
+  type CableEnd = { id: string; name: string; point: [number, number, number] };
+  const cableEndpoints: CableEnd[] = useMemo(() => {
+    const list: CableEnd[] = [];
+    if (sceneId === "jaotuskilp" || sceneId === "alajaam") {
+      const t: AddableType = sceneId;
+      list.push({
+        id: "scene",
+        name: sceneId === "alajaam" ? "Alajaam (scene)" : "Jaotuskilp (scene)",
+        point: rotateLocal(cableExitLocal(t), [0, 0, 0], 0),
+      });
+    }
+    addedItems.forEach((i, idx) => {
+      if (!CABLE_ENDPOINT_TYPES.includes(i.type)) return;
+      list.push({
+        id: i.id,
+        name: `${i.type === "alajaam" ? "Alajaam" : "Jaotuskilp"} #${idx + 1}`,
+        point: rotateLocal(cableExitLocal(i.type), i.position, i.rotationY),
+      });
+    });
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addedItems, sceneId]);
+
+  const handleCableClick = (endId: string) => {
+    if (!cableMode) return;
+    if (!cableFirst) {
+      setCableFirst(endId);
+      return;
+    }
+    if (cableFirst === endId) {
+      setCableFirst(null);
+      return;
+    }
+    const a = cableFirst;
+    setCables((prev) => [
+      ...prev,
+      {
+        id: `cable-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        a,
+        b: endId,
+        size: cableSize,
+        conduit: cableConduit,
+      },
+    ]);
+    setCableFirst(null);
+  };
+
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
 
@@ -545,6 +628,9 @@ export default function Scene3DViewer() {
     setAddedItems([]);
     setConnections([]);
     setConnectMode(false);
+    setCables([]);
+    setCableMode(false);
+    setCableFirst(null);
     setMoveMode(false);
     setDraggingId(null);
 
@@ -704,6 +790,26 @@ export default function Scene3DViewer() {
                       />
                     </mesh>
                   )}
+                  {/* Cable connection proxy (panels & substations only) */}
+                  {cableMode &&
+                    (item.type === "jaotuskilp" || item.type === "alajaam") && (
+                      <mesh
+                        position={[0, 1.4, 0]}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCableClick(item.id);
+                        }}
+                      >
+                        <cylinderGeometry args={[1, 1, 3, 14]} />
+                        <meshBasicMaterial
+                          color={cableFirst === item.id ? "#f59e0b" : "#eab308"}
+                          transparent
+                          opacity={cableFirst === item.id ? 0.4 : 0.18}
+                        />
+                      </mesh>
+                    )}
+
+
 
                 </group>
               );
@@ -750,7 +856,39 @@ export default function Scene3DViewer() {
                 </group>
               );
             })}
+            {/* Underground LV cables */}
+            {cables.map((c) => {
+              const a = cableEndpoints.find((e) => e.id === c.a);
+              const b = cableEndpoints.find((e) => e.id === c.b);
+              if (!a || !b) return null;
+              return (
+                <UndergroundCable
+                  key={c.id}
+                  from={a.point}
+                  to={b.point}
+                  spec={{ size: c.size, conduit: c.conduit }}
+                />
+              );
+            })}
+            {/* Cable proxy for the fixed scene model at the origin */}
+            {cableMode && (sceneId === "jaotuskilp" || sceneId === "alajaam") && (
+              <mesh
+                position={[0, 1.4, 0]}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCableClick("scene");
+                }}
+              >
+                <cylinderGeometry args={[1, 1, 3, 14]} />
+                <meshBasicMaterial
+                  color={cableFirst === "scene" ? "#f59e0b" : "#eab308"}
+                  transparent
+                  opacity={cableFirst === "scene" ? 0.4 : 0.18}
+                />
+              </mesh>
+            )}
           </PartLabelProvider>
+
           <axesHelper args={[3]} />
           <OrbitControls
             ref={controlsRef}
@@ -1138,6 +1276,104 @@ export default function Scene3DViewer() {
                   </li>
                 ))}
               </ul>
+
+              {/* --- Underground LV cable --- */}
+              <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
+                Underground LV cable
+              </div>
+              <div className="px-4 pb-2">
+                <div className="mb-1 text-[11px] text-neutral-600">
+                  Conductor size (L1, L2, L3, PEN)
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                  {CABLE_SIZES.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setCableSize(s.id)}
+                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                        cableSize === s.id
+                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                      }`}
+                    >
+                      {s.area}
+                    </button>
+                  ))}
+                </div>
+                <div className="mb-1 mt-2 text-[11px] text-neutral-600">
+                  Protective conduit pipe
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {CONDUITS.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setCableConduit(c.id)}
+                      title={c.subtitle}
+                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                        cableConduit === c.id
+                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                      }`}
+                    >
+                      {c.id === "none" ? "None" : c.id}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    setCableMode((m) => !m);
+                    setCableFirst(null);
+                    setConnectMode(false);
+                    setMoveMode(false);
+                    setPendingAdd(null);
+                  }}
+                  className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                    cableMode
+                      ? "border-amber-300/70 bg-amber-500/85 text-white hover:bg-amber-500"
+                      : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
+                  }`}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  {cableMode ? "Laying cable…" : "Lay cable"}
+                </button>
+                <p className="mt-1 text-[10px] leading-snug text-neutral-600">
+                  Click a substation, then a distribution panel. Buried 0,7 m deep.
+                  {cableEndpoints.length < 2 &&
+                    " Add at least two panels/substations."}
+                </p>
+                {cables.length > 0 && (
+                  <ul className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
+                    {cables.map((c) => {
+                      const a = cableEndpoints.find((e) => e.id === c.a);
+                      const b = cableEndpoints.find((e) => e.id === c.b);
+                      return (
+                        <li
+                          key={c.id}
+                          className="flex items-center justify-between gap-2 rounded-md bg-white/40 px-2 py-1 text-[11px] text-neutral-800"
+                        >
+                          <span className="truncate">
+                            4×{c.size} mm²
+                            {c.conduit !== "none" ? ` · ${c.conduit}` : ""}
+                            <span className="ml-1 text-neutral-500">
+                              {a?.name ?? "?"} → {b?.name ?? "?"}
+                            </span>
+                          </span>
+                          <button
+                            onClick={() =>
+                              setCables((prev) => prev.filter((x) => x.id !== c.id))
+                            }
+                            aria-label="Remove cable"
+                            className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+
               {addedItems.length > 0 && (
                 <>
                   <div className="flex items-center justify-between gap-2 border-t border-white/40 px-3 py-2">
@@ -1147,6 +1383,7 @@ export default function Scene3DViewer() {
                         setConnectFirst(null);
                         setPendingAdd(null);
                         setMoveMode(false);
+                        setCableMode(false);
                       }}
                       className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
                         connectMode
@@ -1160,6 +1397,7 @@ export default function Scene3DViewer() {
                     <button
                       onClick={() => {
                         setMoveMode((m) => !m);
+                        setCableMode(false);
                         setConnectMode(false);
                         setConnectFirst(null);
                         setPendingAdd(null);
@@ -1325,7 +1563,30 @@ export default function Scene3DViewer() {
         </div>
       )}
 
+      {cableMode && !pendingAdd && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <Link2 className="h-3.5 w-3.5" />
+          <span>
+            {cableFirst
+              ? `Click the second unit — 4×${cableSize} mm²${
+                  cableConduit !== "none" ? ` in ${cableConduit} conduit` : ""
+                }`
+              : "Click the first unit (substation / panel)"}
+          </span>
+          <button
+            onClick={() => {
+              setCableMode(false);
+              setCableFirst(null);
+            }}
+            aria-label="Exit cable mode"
+            className="rounded-md p-0.5 transition hover:bg-white/25"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
       {connectMode && !pendingAdd && (
+
 
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-blue-300/60 bg-blue-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
           <Link2 className="h-3.5 w-3.5" />
