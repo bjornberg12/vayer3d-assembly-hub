@@ -420,6 +420,14 @@ export default function Scene3DViewer() {
   const [connections, setConnections] = useState<{ id: string; a: string; b: string }[]>([]);
   const [moveMode, setMoveMode] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [cableMode, setCableMode] = useState(false);
+  const [cableFirst, setCableFirst] = useState<string | null>(null);
+  const [cableSize, setCableSize] = useState<CableSizeId>("95");
+  const [cableConduit, setCableConduit] = useState<ConduitId>("none");
+  const [cables, setCables] = useState<
+    { id: string; a: string; b: string; size: CableSizeId; conduit: ConduitId }[]
+  >([]);
+
 
   const [cameraReset, setCameraReset] = useState(0);
 
