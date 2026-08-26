@@ -9,6 +9,14 @@ import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "./Electric
 import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "./WoodenMast20kV";
 import { Substation, SUBSTATION_STEPS } from "./Substation";
+import {
+  UndergroundCable,
+  CABLE_SIZES,
+  CONDUITS,
+  type CableSizeId,
+  type ConduitId,
+} from "./UndergroundCable";
+
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
