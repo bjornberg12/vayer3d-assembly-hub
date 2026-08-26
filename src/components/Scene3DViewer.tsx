@@ -1563,7 +1563,30 @@ export default function Scene3DViewer() {
         </div>
       )}
 
+      {cableMode && !pendingAdd && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <Link2 className="h-3.5 w-3.5" />
+          <span>
+            {cableFirst
+              ? `Click the second unit — 4×${cableSize} mm²${
+                  cableConduit !== "none" ? ` in ${cableConduit} conduit` : ""
+                }`
+              : "Click the first unit (substation / panel)"}
+          </span>
+          <button
+            onClick={() => {
+              setCableMode(false);
+              setCableFirst(null);
+            }}
+            aria-label="Exit cable mode"
+            className="rounded-md p-0.5 transition hover:bg-white/25"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
       {connectMode && !pendingAdd && (
+
 
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-blue-300/60 bg-blue-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
           <Link2 className="h-3.5 w-3.5" />
