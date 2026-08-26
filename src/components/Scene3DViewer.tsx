@@ -785,6 +785,26 @@ export default function Scene3DViewer() {
                       />
                     </mesh>
                   )}
+                  {/* Cable connection proxy (panels & substations only) */}
+                  {cableMode &&
+                    (item.type === "jaotuskilp" || item.type === "alajaam") && (
+                      <mesh
+                        position={[0, 1.4, 0]}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCableClick(item.id);
+                        }}
+                      >
+                        <cylinderGeometry args={[1, 1, 3, 14]} />
+                        <meshBasicMaterial
+                          color={cableFirst === item.id ? "#f59e0b" : "#eab308"}
+                          transparent
+                          opacity={cableFirst === item.id ? 0.4 : 0.18}
+                        />
+                      </mesh>
+                    )}
+
+
 
                 </group>
               );
