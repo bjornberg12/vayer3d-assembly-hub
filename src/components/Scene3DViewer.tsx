@@ -467,10 +467,12 @@ export default function Scene3DViewer() {
     setAddOpen(false);
     setRulerActive(false);
     setConnectMode(false);
+    setCableMode(false);
   };
   const removeItem = (id: string) => {
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
     setConnections((prev) => prev.filter((c) => c.a !== id && c.b !== id));
+    setCables((prev) => prev.filter((c) => c.a !== id && c.b !== id));
   };
   const setItemRotation = (id: string, rotationY: number) =>
     setAddedItems((prev) =>
@@ -626,6 +628,9 @@ export default function Scene3DViewer() {
     setAddedItems([]);
     setConnections([]);
     setConnectMode(false);
+    setCables([]);
+    setCableMode(false);
+    setCableFirst(null);
     setMoveMode(false);
     setDraggingId(null);
 
@@ -1378,6 +1383,7 @@ export default function Scene3DViewer() {
                         setConnectFirst(null);
                         setPendingAdd(null);
                         setMoveMode(false);
+                        setCableMode(false);
                       }}
                       className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
                         connectMode
@@ -1391,6 +1397,7 @@ export default function Scene3DViewer() {
                     <button
                       onClick={() => {
                         setMoveMode((m) => !m);
+                        setCableMode(false);
                         setConnectMode(false);
                         setConnectFirst(null);
                         setPendingAdd(null);
