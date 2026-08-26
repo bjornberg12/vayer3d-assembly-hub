@@ -507,6 +507,71 @@ export default function Scene3DViewer() {
       item.position[2] + -x * sin + z * cos,
     ]);
   };
+
+  // --- Underground LV cables -------------------------------------------------
+  const CABLE_ENDPOINT_TYPES: AddableType[] = ["jaotuskilp", "alajaam"];
+  const cableExitLocal = (type: AddableType): [number, number, number] =>
+    type === "alajaam" ? [0.6, 0.05, 1.05] : [0.18, 0.03, 0.1];
+  const rotateLocal = (
+    local: [number, number, number],
+    origin: [number, number, number],
+    rotY: number
+  ): [number, number, number] => {
+    const cos = Math.cos(rotY);
+    const sin = Math.sin(rotY);
+    return [
+      origin[0] + local[0] * cos + local[2] * sin,
+      origin[1] + local[1],
+      origin[2] + -local[0] * sin + local[2] * cos,
+    ];
+  };
+  type CableEnd = { id: string; name: string; point: [number, number, number] };
+  const cableEndpoints: CableEnd[] = useMemo(() => {
+    const list: CableEnd[] = [];
+    if (sceneId === "jaotuskilp" || sceneId === "alajaam") {
+      const t: AddableType = sceneId;
+      list.push({
+        id: "scene",
+        name: sceneId === "alajaam" ? "Alajaam (scene)" : "Jaotuskilp (scene)",
+        point: rotateLocal(cableExitLocal(t), [0, 0, 0], 0),
+      });
+    }
+    addedItems.forEach((i, idx) => {
+      if (!CABLE_ENDPOINT_TYPES.includes(i.type)) return;
+      list.push({
+        id: i.id,
+        name: `${i.type === "alajaam" ? "Alajaam" : "Jaotuskilp"} #${idx + 1}`,
+        point: rotateLocal(cableExitLocal(i.type), i.position, i.rotationY),
+      });
+    });
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addedItems, sceneId]);
+
+  const handleCableClick = (endId: string) => {
+    if (!cableMode) return;
+    if (!cableFirst) {
+      setCableFirst(endId);
+      return;
+    }
+    if (cableFirst === endId) {
+      setCableFirst(null);
+      return;
+    }
+    const a = cableFirst;
+    setCables((prev) => [
+      ...prev,
+      {
+        id: `cable-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        a,
+        b: endId,
+        size: cableSize,
+        conduit: cableConduit,
+      },
+    ]);
+    setCableFirst(null);
+  };
+
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
 
