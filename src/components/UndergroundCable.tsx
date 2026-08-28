@@ -54,21 +54,39 @@ function routePoints(
   const b = new THREE.Vector3(...to);
   const aDown = new THREE.Vector3(a.x, -depth, a.z);
   const bDown = new THREE.Vector3(b.x, -depth, b.z);
-  // Slight bend radii by inserting intermediate points near the elbows.
   const dir = new THREE.Vector3().subVectors(bDown, aDown);
   const len = dir.length() || 1;
   dir.normalize();
-  const inset = Math.min(0.35, len * 0.15);
-  return [
-    a,
-    new THREE.Vector3(a.x, (a.y - depth) / 2, a.z),
-    aDown.clone(),
-    aDown.clone().addScaledVector(dir, inset),
-    bDown.clone().addScaledVector(dir, -inset),
-    bDown.clone(),
-    new THREE.Vector3(b.x, (b.y - depth) / 2, b.z),
-    b,
-  ];
+
+  // Gradual bends: descend/ascend diagonally (like a real trench sweep,
+  // roughly 30-40°) instead of dropping vertically at 90°.
+  const pts: THREE.Vector3[] = [a.clone()];
+  const steps = 5;
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    // ease the vertical drop while drifting along the run direction
+    const drop = depth * t * t * (3 - 2 * t); // smoothstep
+    const drift = Math.min(len * 0.12, depth * 0.9) * t * t * (3 - 2 * t);
+    pts.push(
+      new THREE.Vector3(a.x, a.y, a.z)
+        .addScaledVector(dir, drift)
+        .setY(a.y - drop)
+    );
+  }
+  // Flat run along the trench bottom
+  pts.push(aDown.clone().addScaledVector(dir, Math.min(len * 0.15, depth)));
+  pts.push(bDown.clone().addScaledVector(dir, -Math.min(len * 0.15, depth)));
+  for (let i = steps - 1; i >= 0; i--) {
+    const t = i / steps;
+    const drop = depth * t * t * (3 - 2 * t);
+    const drift = Math.min(len * 0.12, depth * 0.9) * t * t * (3 - 2 * t);
+    pts.push(
+      new THREE.Vector3(b.x, b.y, b.z)
+        .addScaledVector(dir, -drift)
+        .setY(b.y - drop)
+    );
+  }
+  return pts;
 }
 
 function TubeAlong({
