@@ -1453,19 +1453,26 @@ export default function Scene3DViewer() {
                       return (
                         <li
                           key={c.id}
-                          className="flex items-center justify-between gap-2 rounded-md bg-white/40 px-2 py-1 text-[11px] text-neutral-800"
+                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] text-neutral-800 ${
+                            selectedCableId === c.id
+                              ? "bg-amber-300/60"
+                              : "bg-white/40"
+                          }`}
                         >
-                          <span className="truncate">
+                          <button
+                            onClick={() => setSelectedCableId(c.id)}
+                            className="min-w-0 flex-1 truncate text-left"
+                          >
                             4×{c.size} mm²
                             {c.conduit !== "none" ? ` · ${c.conduit}` : ""}
+                            {" · "}
+                            {cableLengthOf(c).toFixed(1)} m
                             <span className="ml-1 text-neutral-500">
                               {a?.name ?? "?"} → {b?.name ?? "?"}
                             </span>
-                          </span>
+                          </button>
                           <button
-                            onClick={() =>
-                              setCables((prev) => prev.filter((x) => x.id !== c.id))
-                            }
+                            onClick={() => removeCable(c.id)}
                             aria-label="Remove cable"
                             className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
                           >
@@ -1473,6 +1480,7 @@ export default function Scene3DViewer() {
                           </button>
                         </li>
                       );
+
                     })}
                   </ul>
                 )}
