@@ -620,6 +620,47 @@ export default function Scene3DViewer() {
 
   };
 
+  /** Remove a cable and any cables branched off its joint. */
+  const removeCable = (id: string) => {
+    setCables((prev) => {
+      const doomed = new Set([id]);
+      let grew = true;
+      while (grew) {
+        grew = false;
+        prev.forEach((c) => {
+          const parentA = c.a.startsWith("joint:") ? c.a.slice(6) : null;
+          const parentB = c.b.startsWith("joint:") ? c.b.slice(6) : null;
+          if (
+            !doomed.has(c.id) &&
+            ((parentA && doomed.has(parentA)) || (parentB && doomed.has(parentB)))
+          ) {
+            doomed.add(c.id);
+            grew = true;
+          }
+        });
+      }
+      return prev.filter((c) => !doomed.has(c.id));
+    });
+    setSelectedCableId((cur) => (cur === id ? null : cur));
+  };
+
+  const PF = 0.95; // assumed power factor
+  const cableLengthOf = (c: CableRecord) => {
+    const a = cableEndpoints.find((e) => e.id === c.a);
+    const b = cableEndpoints.find((e) => e.id === c.b);
+    if (!a || !b) return 0;
+    return cableRouteLength(a.point, b.point, 0.7);
+  };
+  const cableCurrentOf = (c: CableRecord) =>
+    c.voltage === 400
+      ? (c.powerKw * 1000) / (Math.sqrt(3) * 400 * PF)
+      : (c.powerKw * 1000) / (230 * PF);
+  const selectedCable = cables.find((c) => c.id === selectedCableId) ?? null;
+  const updateCable = (id: string, patch: Partial<CableRecord>) =>
+    setCables((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+
+
+
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
 
