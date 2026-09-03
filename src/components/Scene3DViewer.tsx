@@ -574,9 +574,24 @@ export default function Scene3DViewer() {
         point: rotateLocal(cableExitLocal(i.type), i.position, i.rotationY),
       });
     });
+    // Cable joints: an existing cable's midpoint can host a new branch cable
+    cables.forEach((c, idx) => {
+      const a = list.find((e) => e.id === c.a);
+      const b = list.find((e) => e.id === c.b);
+      if (!a || !b) return;
+      list.push({
+        id: `joint:${c.id}`,
+        name: `Cable joint #${idx + 1} (4×${c.size} mm²)`,
+        point: [
+          (a.point[0] + b.point[0]) / 2,
+          -0.7,
+          (a.point[2] + b.point[2]) / 2,
+        ],
+      });
+    });
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addedItems, sceneId]);
+  }, [addedItems, sceneId, cables]);
 
   const handleCableClick = (endId: string) => {
     if (!cableMode) return;
@@ -597,9 +612,12 @@ export default function Scene3DViewer() {
         b: endId,
         size: cableSize,
         conduit: cableConduit,
+        voltage: 400 as CableVoltage,
+        powerKw: 30,
       },
     ]);
     setCableFirst(null);
+
   };
 
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
