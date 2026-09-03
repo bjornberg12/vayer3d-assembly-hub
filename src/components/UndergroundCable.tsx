@@ -144,16 +144,32 @@ function TubeAlong({
   );
 }
 
+/** Total routed length (m) of the buried cable between two points. */
+export function cableRouteLength(
+  from: [number, number, number],
+  to: [number, number, number],
+  depth: number = TRENCH_DEPTH
+): number {
+  const pts = routePoints(from, to, depth);
+  let len = 0;
+  for (let i = 1; i < pts.length; i++) len += pts[i].distanceTo(pts[i - 1]);
+  return len;
+}
+
 export function UndergroundCable({
   from,
   to,
   spec,
   depth = TRENCH_DEPTH,
+  onSelect,
+  selected = false,
 }: {
   from: [number, number, number];
   to: [number, number, number];
   spec: CableSpec;
   depth?: number;
+  onSelect?: () => void;
+  selected?: boolean;
 }) {
   const size = CABLE_SIZES.find((s) => s.id === spec.size) ?? CABLE_SIZES[0];
   const conduit = CONDUITS.find((c) => c.id === spec.conduit) ?? CONDUITS[0];
@@ -168,13 +184,41 @@ export function UndergroundCable({
   const ring = size.outerD / 2 - insR; // 2×2 bundle offset
 
   const label = `LV cable 4×${size.area} mm² (L1, L2, L3, PEN)`;
+  const hitR = Math.max(size.outerD, conduit.outerD) / 2 + 0.06;
 
   return (
     <group>
+      {/* Clickable hit volume — surfaces the cable data card */}
+      {onSelect && (
+        <group
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation();
+            document.body.style.cursor = "pointer";
+          }}
+          onPointerOut={() => {
+            document.body.style.cursor = "";
+          }}
+        >
+          <TubeAlong
+            curve={curve}
+            radius={hitR}
+            color={selected ? "#f59e0b" : "#ffffff"}
+            transparent
+            opacity={selected ? 0.22 : 0.02}
+            roughness={0.5}
+          />
+        </group>
+      )}
+
       {/* Outer sheath */}
       <Part name={label}>
         <TubeAlong curve={curve} radius={size.outerD / 2} color="#1f1f22" roughness={0.75} />
       </Part>
+
 
       {/* Individual cores, arranged 2×2 inside the sheath */}
       {CORES.map((c, i) => {

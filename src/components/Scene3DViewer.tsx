@@ -13,9 +13,11 @@ import {
   UndergroundCable,
   CABLE_SIZES,
   CONDUITS,
+  cableRouteLength,
   type CableSizeId,
   type ConduitId,
 } from "./UndergroundCable";
+
 
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
@@ -432,9 +434,19 @@ export default function Scene3DViewer() {
   const [cableFirst, setCableFirst] = useState<string | null>(null);
   const [cableSize, setCableSize] = useState<CableSizeId>("95");
   const [cableConduit, setCableConduit] = useState<ConduitId>("none");
-  const [cables, setCables] = useState<
-    { id: string; a: string; b: string; size: CableSizeId; conduit: ConduitId }[]
-  >([]);
+  type CableVoltage = 230 | 400;
+  type CableRecord = {
+    id: string;
+    a: string;
+    b: string;
+    size: CableSizeId;
+    conduit: ConduitId;
+    voltage: CableVoltage;
+    powerKw: number;
+  };
+  const [cables, setCables] = useState<CableRecord[]>([]);
+  const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
+
 
 
   const [cameraReset, setCameraReset] = useState(0);
@@ -562,9 +574,24 @@ export default function Scene3DViewer() {
         point: rotateLocal(cableExitLocal(i.type), i.position, i.rotationY),
       });
     });
+    // Cable joints: an existing cable's midpoint can host a new branch cable
+    cables.forEach((c, idx) => {
+      const a = list.find((e) => e.id === c.a);
+      const b = list.find((e) => e.id === c.b);
+      if (!a || !b) return;
+      list.push({
+        id: `joint:${c.id}`,
+        name: `Cable joint #${idx + 1} (4×${c.size} mm²)`,
+        point: [
+          (a.point[0] + b.point[0]) / 2,
+          -0.7,
+          (a.point[2] + b.point[2]) / 2,
+        ],
+      });
+    });
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addedItems, sceneId]);
+  }, [addedItems, sceneId, cables]);
 
   const handleCableClick = (endId: string) => {
     if (!cableMode) return;
@@ -585,10 +612,54 @@ export default function Scene3DViewer() {
         b: endId,
         size: cableSize,
         conduit: cableConduit,
+        voltage: 400 as CableVoltage,
+        powerKw: 30,
       },
     ]);
     setCableFirst(null);
+
   };
+
+  /** Remove a cable and any cables branched off its joint. */
+  const removeCable = (id: string) => {
+    setCables((prev) => {
+      const doomed = new Set([id]);
+      let grew = true;
+      while (grew) {
+        grew = false;
+        prev.forEach((c) => {
+          const parentA = c.a.startsWith("joint:") ? c.a.slice(6) : null;
+          const parentB = c.b.startsWith("joint:") ? c.b.slice(6) : null;
+          if (
+            !doomed.has(c.id) &&
+            ((parentA && doomed.has(parentA)) || (parentB && doomed.has(parentB)))
+          ) {
+            doomed.add(c.id);
+            grew = true;
+          }
+        });
+      }
+      return prev.filter((c) => !doomed.has(c.id));
+    });
+    setSelectedCableId((cur) => (cur === id ? null : cur));
+  };
+
+  const PF = 0.95; // assumed power factor
+  const cableLengthOf = (c: CableRecord) => {
+    const a = cableEndpoints.find((e) => e.id === c.a);
+    const b = cableEndpoints.find((e) => e.id === c.b);
+    if (!a || !b) return 0;
+    return cableRouteLength(a.point, b.point, 0.7);
+  };
+  const cableCurrentOf = (c: CableRecord) =>
+    c.voltage === 400
+      ? (c.powerKw * 1000) / (Math.sqrt(3) * 400 * PF)
+      : (c.powerKw * 1000) / (230 * PF);
+  const selectedCable = cables.find((c) => c.id === selectedCableId) ?? null;
+  const updateCable = (id: string, patch: Partial<CableRecord>) =>
+    setCables((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+
+
 
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
@@ -631,6 +702,8 @@ export default function Scene3DViewer() {
     setCables([]);
     setCableMode(false);
     setCableFirst(null);
+    setSelectedCableId(null);
+
     setMoveMode(false);
     setDraggingId(null);
 
@@ -867,9 +940,40 @@ export default function Scene3DViewer() {
                   from={a.point}
                   to={b.point}
                   spec={{ size: c.size, conduit: c.conduit }}
+                  selected={selectedCableId === c.id}
+                  onSelect={() => {
+                    if (cableMode) {
+                      handleCableClick(`joint:${c.id}`);
+                      return;
+                    }
+                    setSelectedCableId(c.id);
+                    setPartLabel(null);
+                  }}
                 />
               );
             })}
+            {/* Joint markers so cables can be branched into each other */}
+            {cableMode &&
+              cableEndpoints
+                .filter((e) => e.id.startsWith("joint:"))
+                .map((e) => (
+                  <mesh
+                    key={e.id}
+                    position={e.point}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      handleCableClick(e.id);
+                    }}
+                  >
+                    <sphereGeometry args={[0.18, 16, 16]} />
+                    <meshBasicMaterial
+                      color={cableFirst === e.id ? "#f59e0b" : "#eab308"}
+                      transparent
+                      opacity={cableFirst === e.id ? 0.75 : 0.5}
+                    />
+                  </mesh>
+                ))}
+
             {/* Cable proxy for the fixed scene model at the origin */}
             {cableMode && (sceneId === "jaotuskilp" || sceneId === "alajaam") && (
               <mesh
@@ -1349,19 +1453,26 @@ export default function Scene3DViewer() {
                       return (
                         <li
                           key={c.id}
-                          className="flex items-center justify-between gap-2 rounded-md bg-white/40 px-2 py-1 text-[11px] text-neutral-800"
+                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] text-neutral-800 ${
+                            selectedCableId === c.id
+                              ? "bg-amber-300/60"
+                              : "bg-white/40"
+                          }`}
                         >
-                          <span className="truncate">
+                          <button
+                            onClick={() => setSelectedCableId(c.id)}
+                            className="min-w-0 flex-1 truncate text-left"
+                          >
                             4×{c.size} mm²
                             {c.conduit !== "none" ? ` · ${c.conduit}` : ""}
+                            {" · "}
+                            {cableLengthOf(c).toFixed(1)} m
                             <span className="ml-1 text-neutral-500">
                               {a?.name ?? "?"} → {b?.name ?? "?"}
                             </span>
-                          </span>
+                          </button>
                           <button
-                            onClick={() =>
-                              setCables((prev) => prev.filter((x) => x.id !== c.id))
-                            }
+                            onClick={() => removeCable(c.id)}
                             aria-label="Remove cable"
                             className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
                           >
@@ -1369,6 +1480,7 @@ export default function Scene3DViewer() {
                           </button>
                         </li>
                       );
+
                     })}
                   </ul>
                 )}
@@ -1562,6 +1674,132 @@ export default function Scene3DViewer() {
           </button>
         </div>
       )}
+
+      {selectedCable && (
+        <DraggablePanel
+          key={selectedCable.id}
+          initialX={typeof window !== "undefined" ? Math.max(12, window.innerWidth - 320) : 24}
+          initialY={120}
+          width={296}
+          title="Cable data"
+        >
+          <div className="px-4 py-3 text-xs text-neutral-800">
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="font-semibold">
+                LV cable 4×{selectedCable.size} mm²
+                <div className="text-[10px] font-normal text-neutral-600">
+                  {selectedCable.conduit === "none"
+                    ? "No conduit · sand bed"
+                    : `Conduit ${selectedCable.conduit}`}
+                  {" · "}
+                  {cableEndpoints.find((e) => e.id === selectedCable.a)?.name ?? "?"}
+                  {" → "}
+                  {cableEndpoints.find((e) => e.id === selectedCable.b)?.name ?? "?"}
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedCableId(null)}
+                aria-label="Close cable data"
+                className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <dl className="grid grid-cols-2 gap-1.5">
+              <div className="rounded-md bg-white/45 px-2 py-1.5">
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
+                  Length
+                </dt>
+                <dd className="font-semibold">
+                  {cableLengthOf(selectedCable).toFixed(2)} m
+                </dd>
+              </div>
+              <div className="rounded-md bg-white/45 px-2 py-1.5">
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
+                  Current
+                </dt>
+                <dd className="font-semibold">
+                  {cableCurrentOf(selectedCable).toFixed(1)} A
+                </dd>
+              </div>
+              <div className="rounded-md bg-white/45 px-2 py-1.5">
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
+                  Voltage
+                </dt>
+                <dd className="font-semibold">{selectedCable.voltage} V</dd>
+              </div>
+              <div className="rounded-md bg-white/45 px-2 py-1.5">
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
+                  Power
+                </dt>
+                <dd className="font-semibold">{selectedCable.powerKw} kW</dd>
+              </div>
+            </dl>
+
+            <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
+              Voltage
+            </div>
+            <div className="mt-1 grid grid-cols-2 gap-1">
+              {([230, 400] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => updateCable(selectedCable.id, { voltage: v })}
+                  className={`rounded-lg border px-2 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                    selectedCable.voltage === v
+                      ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                      : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                  }`}
+                >
+                  {v} V {v === 400 ? "(3-phase)" : "(1-phase)"}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
+              <span>Power</span>
+              <span className="normal-case">{selectedCable.powerKw} kW</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={400}
+              step={1}
+              value={selectedCable.powerKw}
+              onChange={(e) =>
+                updateCable(selectedCable.id, {
+                  powerKw: Number(e.target.value),
+                })
+              }
+              className="mt-1 w-full accent-amber-500"
+            />
+            <input
+              type="number"
+              min={0.1}
+              step={0.5}
+              value={selectedCable.powerKw}
+              onChange={(e) =>
+                updateCable(selectedCable.id, {
+                  powerKw: Math.max(0.1, Number(e.target.value) || 0.1),
+                })
+              }
+              className="mt-1 w-full rounded-md border border-white/60 bg-white/60 px-2 py-1 text-xs"
+            />
+            <p className="mt-2 text-[10px] leading-snug text-neutral-600">
+              Current from P / (√3 · U · cos φ) at cos φ = 0,95 (230 V single
+              phase: P / (U · cos φ)).
+            </p>
+            <button
+              onClick={() => removeCable(selectedCable.id)}
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-900 transition hover:bg-red-500/80 hover:text-white"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Remove cable
+            </button>
+          </div>
+        </DraggablePanel>
+      )}
+
 
       {cableMode && !pendingAdd && (
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
