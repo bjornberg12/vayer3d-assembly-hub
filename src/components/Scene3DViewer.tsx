@@ -897,9 +897,40 @@ export default function Scene3DViewer() {
                   from={a.point}
                   to={b.point}
                   spec={{ size: c.size, conduit: c.conduit }}
+                  selected={selectedCableId === c.id}
+                  onSelect={() => {
+                    if (cableMode) {
+                      handleCableClick(`joint:${c.id}`);
+                      return;
+                    }
+                    setSelectedCableId(c.id);
+                    setPartLabel(null);
+                  }}
                 />
               );
             })}
+            {/* Joint markers so cables can be branched into each other */}
+            {cableMode &&
+              cableEndpoints
+                .filter((e) => e.id.startsWith("joint:"))
+                .map((e) => (
+                  <mesh
+                    key={e.id}
+                    position={e.point}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      handleCableClick(e.id);
+                    }}
+                  >
+                    <sphereGeometry args={[0.18, 16, 16]} />
+                    <meshBasicMaterial
+                      color={cableFirst === e.id ? "#f59e0b" : "#eab308"}
+                      transparent
+                      opacity={cableFirst === e.id ? 0.75 : 0.5}
+                    />
+                  </mesh>
+                ))}
+
             {/* Cable proxy for the fixed scene model at the origin */}
             {cableMode && (sceneId === "jaotuskilp" || sceneId === "alajaam") && (
               <mesh
