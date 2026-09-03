@@ -661,6 +661,8 @@ export default function Scene3DViewer() {
     setCables([]);
     setCableMode(false);
     setCableFirst(null);
+    setSelectedCableId(null);
+
     setMoveMode(false);
     setDraggingId(null);
 
