@@ -13,9 +13,11 @@ import {
   UndergroundCable,
   CABLE_SIZES,
   CONDUITS,
+  cableRouteLength,
   type CableSizeId,
   type ConduitId,
 } from "./UndergroundCable";
+
 
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider } from "./PartLabel";
