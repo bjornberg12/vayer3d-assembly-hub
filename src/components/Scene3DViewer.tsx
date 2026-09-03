@@ -1675,6 +1675,132 @@ export default function Scene3DViewer() {
         </div>
       )}
 
+      {selectedCable && (
+        <DraggablePanel
+          key={selectedCable.id}
+          initialX={typeof window !== "undefined" ? Math.max(12, window.innerWidth - 320) : 24}
+          initialY={120}
+          width={296}
+          title="Cable data"
+        >
+          <div className="px-4 py-3 text-xs text-neutral-800">
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="font-semibold">
+                LV cable 4×{selectedCable.size} mm²
+                <div className="text-[10px] font-normal text-neutral-600">
+                  {selectedCable.conduit === "none"
+                    ? "No conduit · sand bed"
+                    : `Conduit ${selectedCable.conduit}`}
+                  {" · "}
+                  {cableEndpoints.find((e) => e.id === selectedCable.a)?.name ?? "?"}
+                  {" → "}
+                  {cableEndpoints.find((e) => e.id === selectedCable.b)?.name ?? "?"}
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedCableId(null)}
+                aria-label="Close cable data"
+                className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <dl className="grid grid-cols-2 gap-1.5">
+              <div className="rounded-md bg-white/45 px-2 py-1.5">
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
+                  Length
+                </dt>
+                <dd className="font-semibold">
+                  {cableLengthOf(selectedCable).toFixed(2)} m
+                </dd>
+              </div>
+              <div className="rounded-md bg-white/45 px-2 py-1.5">
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
+                  Current
+                </dt>
+                <dd className="font-semibold">
+                  {cableCurrentOf(selectedCable).toFixed(1)} A
+                </dd>
+              </div>
+              <div className="rounded-md bg-white/45 px-2 py-1.5">
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
+                  Voltage
+                </dt>
+                <dd className="font-semibold">{selectedCable.voltage} V</dd>
+              </div>
+              <div className="rounded-md bg-white/45 px-2 py-1.5">
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
+                  Power
+                </dt>
+                <dd className="font-semibold">{selectedCable.powerKw} kW</dd>
+              </div>
+            </dl>
+
+            <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
+              Voltage
+            </div>
+            <div className="mt-1 grid grid-cols-2 gap-1">
+              {([230, 400] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => updateCable(selectedCable.id, { voltage: v })}
+                  className={`rounded-lg border px-2 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                    selectedCable.voltage === v
+                      ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                      : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                  }`}
+                >
+                  {v} V {v === 400 ? "(3-phase)" : "(1-phase)"}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
+              <span>Power</span>
+              <span className="normal-case">{selectedCable.powerKw} kW</span>
+            </div>
+            <input
+              type="range"
+              min={1}
+              max={400}
+              step={1}
+              value={selectedCable.powerKw}
+              onChange={(e) =>
+                updateCable(selectedCable.id, {
+                  powerKw: Number(e.target.value),
+                })
+              }
+              className="mt-1 w-full accent-amber-500"
+            />
+            <input
+              type="number"
+              min={0.1}
+              step={0.5}
+              value={selectedCable.powerKw}
+              onChange={(e) =>
+                updateCable(selectedCable.id, {
+                  powerKw: Math.max(0.1, Number(e.target.value) || 0.1),
+                })
+              }
+              className="mt-1 w-full rounded-md border border-white/60 bg-white/60 px-2 py-1 text-xs"
+            />
+            <p className="mt-2 text-[10px] leading-snug text-neutral-600">
+              Current from P / (√3 · U · cos φ) at cos φ = 0,95 (230 V single
+              phase: P / (U · cos φ)).
+            </p>
+            <button
+              onClick={() => removeCable(selectedCable.id)}
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-900 transition hover:bg-red-500/80 hover:text-white"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Remove cable
+            </button>
+          </div>
+        </DraggablePanel>
+      )}
+
+
       {cableMode && !pendingAdd && (
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
           <Link2 className="h-3.5 w-3.5" />
