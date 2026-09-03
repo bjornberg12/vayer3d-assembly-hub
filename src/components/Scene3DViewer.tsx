@@ -434,9 +434,19 @@ export default function Scene3DViewer() {
   const [cableFirst, setCableFirst] = useState<string | null>(null);
   const [cableSize, setCableSize] = useState<CableSizeId>("95");
   const [cableConduit, setCableConduit] = useState<ConduitId>("none");
-  const [cables, setCables] = useState<
-    { id: string; a: string; b: string; size: CableSizeId; conduit: ConduitId }[]
-  >([]);
+  type CableVoltage = 230 | 400;
+  type CableRecord = {
+    id: string;
+    a: string;
+    b: string;
+    size: CableSizeId;
+    conduit: ConduitId;
+    voltage: CableVoltage;
+    powerKw: number;
+  };
+  const [cables, setCables] = useState<CableRecord[]>([]);
+  const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
+
 
 
   const [cameraReset, setCameraReset] = useState(0);
