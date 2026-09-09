@@ -45,6 +45,41 @@ export type CableSpec = {
   conduit: ConduitId;
 };
 
+/**
+ * Rounds every corner of a polyline with a quadratic-bezier fillet, so the
+ * resulting path has no sharp kinks anywhere.
+ */
+function filletPolyline(corners: THREE.Vector3[], radius: number, seg = 10): THREE.Vector3[] {
+  if (corners.length < 3) return corners.map((p) => p.clone());
+  const out: THREE.Vector3[] = [corners[0].clone()];
+  for (let i = 1; i < corners.length - 1; i++) {
+    const prev = corners[i - 1];
+    const cur = corners[i];
+    const next = corners[i + 1];
+    const inLen = cur.distanceTo(prev);
+    const outLen = cur.distanceTo(next);
+    const r = Math.min(radius, inLen * 0.45, outLen * 0.45);
+    if (r < 1e-4) {
+      out.push(cur.clone());
+      continue;
+    }
+    const p1 = cur.clone().lerp(prev, r / inLen);
+    const p2 = cur.clone().lerp(next, r / outLen);
+    for (let s = 0; s <= seg; s++) {
+      const t = s / seg;
+      // quadratic bezier p1 -> cur -> p2
+      const q = p1
+        .clone()
+        .multiplyScalar((1 - t) * (1 - t))
+        .addScaledVector(cur, 2 * (1 - t) * t)
+        .addScaledVector(p2, t * t);
+      out.push(q);
+    }
+  }
+  out.push(corners[corners.length - 1].clone());
+  return out;
+}
+
 function routePoints(
   from: [number, number, number],
   to: [number, number, number],
@@ -58,35 +93,16 @@ function routePoints(
   const len = dir.length() || 1;
   dir.normalize();
 
-  // Gradual bends: descend/ascend diagonally (like a real trench sweep,
-  // roughly 30-40°) instead of dropping vertically at 90°.
-  const pts: THREE.Vector3[] = [a.clone()];
-  const steps = 5;
-  for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    // ease the vertical drop while drifting along the run direction
-    const drop = depth * t * t * (3 - 2 * t); // smoothstep
-    const drift = Math.min(len * 0.12, depth * 0.9) * t * t * (3 - 2 * t);
-    pts.push(
-      new THREE.Vector3(a.x, a.y, a.z)
-        .addScaledVector(dir, drift)
-        .setY(a.y - drop)
-    );
-  }
-  // Flat run along the trench bottom
-  pts.push(aDown.clone().addScaledVector(dir, Math.min(len * 0.15, depth)));
-  pts.push(bDown.clone().addScaledVector(dir, -Math.min(len * 0.15, depth)));
-  for (let i = steps - 1; i >= 0; i--) {
-    const t = i / steps;
-    const drop = depth * t * t * (3 - 2 * t);
-    const drift = Math.min(len * 0.12, depth * 0.9) * t * t * (3 - 2 * t);
-    pts.push(
-      new THREE.Vector3(b.x, b.y, b.z)
-        .addScaledVector(dir, -drift)
-        .setY(b.y - drop)
-    );
-  }
-  return pts;
+  // Diagonal descent/ascent (~45°) with generously rounded corners.
+  const run = Math.min(depth, len * 0.35);
+  const corners = [
+    a.clone(),
+    aDown.clone().addScaledVector(dir, run),
+    bDown.clone().addScaledVector(dir, -run),
+    b.clone(),
+  ];
+  const radius = Math.min(depth * 0.6, run * 0.9, len * 0.2);
+  return filletPolyline(corners, radius, 12);
 }
 
 function TubeAlong({
@@ -125,7 +141,7 @@ function TubeAlong({
           .addScaledVector(side, offset[0])
           .addScaledVector(vert, offset[1]);
       });
-      c = new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.2);
+      c = new THREE.CatmullRomCurve3(pts, false, "centripetal");
     }
     return new THREE.TubeGeometry(c, 140, radius, 12, false);
   }, [curve, radius, offset]);
@@ -175,7 +191,7 @@ export function UndergroundCable({
   const conduit = CONDUITS.find((c) => c.id === spec.conduit) ?? CONDUITS[0];
 
   const curve = useMemo(
-    () => new THREE.CatmullRomCurve3(routePoints(from, to, depth), false, "catmullrom", 0.2),
+    () => new THREE.CatmullRomCurve3(routePoints(from, to, depth), false, "centripetal"),
     [from, to, depth]
   );
 
