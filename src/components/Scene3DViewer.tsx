@@ -519,6 +519,12 @@ export default function Scene3DViewer() {
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
     setConnections((prev) => prev.filter((c) => c.a !== id && c.b !== id));
     setCables((prev) => prev.filter((c) => c.a !== id && c.b !== id));
+    setFeeders((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setFeederPanelKey((cur) => (cur === id ? null : cur));
   };
   const setItemRotation = (id: string, rotationY: number) =>
     setAddedItems((prev) =>
