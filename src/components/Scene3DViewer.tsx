@@ -882,7 +882,18 @@ export default function Scene3DViewer() {
                     />
                   )}
                   {item.type === "jaotuskilp" && (
-                    <DistributionPanel step={PANEL_STEPS.length} />
+                    <>
+                      <DistributionPanel step={PANEL_STEPS.length} />
+                      <FeederBlocks feeders={feedersOf(item.id)} />
+                      <Html position={[0, 1.5, 0]} center>
+                        <button
+                          onClick={() => openFeeders(item.id)}
+                          className="whitespace-nowrap rounded-full border border-white/60 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-amber-400/90"
+                        >
+                          Feeders ({feedersOf(item.id).length})
+                        </button>
+                      </Html>
+                    </>
                   )}
                   {item.type === "alajaam" && (
                     <Substation step={SUBSTATION_STEPS.length} />
