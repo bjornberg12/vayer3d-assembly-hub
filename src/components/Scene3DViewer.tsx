@@ -750,6 +750,9 @@ export default function Scene3DViewer() {
     setCableMode(false);
     setCableFirst(null);
     setSelectedCableId(null);
+    setFeeders({});
+    setFeederPanelKey(null);
+
 
     setMoveMode(false);
     setDraggingId(null);
