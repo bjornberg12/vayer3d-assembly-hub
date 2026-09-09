@@ -10,6 +10,14 @@ import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
 import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "./WoodenMast20kV";
 import { Substation, SUBSTATION_STEPS } from "./Substation";
 import {
+  BREAKERS,
+  FeederBlocks,
+  breakerById,
+  makeFeeder,
+  type Feeder,
+  type FeederDirection,
+} from "./PanelFeeders";
+import {
   UndergroundCable,
   CABLE_SIZES,
   CONDUITS,
@@ -447,6 +455,39 @@ export default function Scene3DViewer() {
   const [cables, setCables] = useState<CableRecord[]>([]);
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
 
+  // --- Panel feeders ---------------------------------------------------------
+  // Keyed by panel: "scene" for the scene panel, otherwise the added item id.
+  const [feeders, setFeeders] = useState<Record<string, Feeder[]>>({});
+  const [feederPanelKey, setFeederPanelKey] = useState<string | null>(null);
+  const feedersOf = (key: string) => feeders[key] ?? [];
+  const addFeeder = (key: string, direction: FeederDirection) =>
+    setFeeders((prev) => {
+      const list = prev[key] ?? [];
+      const count = list.filter((f) => f.direction === direction).length;
+      return { ...prev, [key]: [...list, makeFeeder(direction, count + 1)] };
+    });
+  const updateFeeder = (key: string, id: string, patch: Partial<Feeder>) =>
+    setFeeders((prev) => ({
+      ...prev,
+      [key]: (prev[key] ?? []).map((f) => (f.id === id ? { ...f, ...patch } : f)),
+    }));
+  const removeFeeder = (key: string, id: string) =>
+    setFeeders((prev) => ({
+      ...prev,
+      [key]: (prev[key] ?? []).filter((f) => f.id !== id),
+    }));
+  const panelName = (key: string) => {
+    if (key === "scene") return "Jaotuskilp (scene)";
+    const idx = addedItems
+      .filter((i) => i.type === "jaotuskilp")
+      .findIndex((i) => i.id === key);
+    return idx >= 0 ? `Jaotuskilp #${idx + 1}` : "Jaotuskilp";
+  };
+  const openFeeders = (key: string) => {
+    setFeederPanelKey(key);
+    setSelectedCableId(null);
+  };
+
 
 
   const [cameraReset, setCameraReset] = useState(0);
@@ -485,6 +526,12 @@ export default function Scene3DViewer() {
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
     setConnections((prev) => prev.filter((c) => c.a !== id && c.b !== id));
     setCables((prev) => prev.filter((c) => c.a !== id && c.b !== id));
+    setFeeders((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setFeederPanelKey((cur) => (cur === id ? null : cur));
   };
   const setItemRotation = (id: string, rotationY: number) =>
     setAddedItems((prev) =>
@@ -703,6 +750,9 @@ export default function Scene3DViewer() {
     setCableMode(false);
     setCableFirst(null);
     setSelectedCableId(null);
+    setFeeders({});
+    setFeederPanelKey(null);
+
 
     setMoveMode(false);
     setDraggingId(null);
@@ -802,7 +852,24 @@ export default function Scene3DViewer() {
           >
             {sceneId === "puitmast" && <ElectricalPost step={step} />}
             {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
-            {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
+            {sceneId === "jaotuskilp" && (
+              <group>
+                <DistributionPanel step={step} />
+                {step >= PANEL_STEPS.length && (
+                  <>
+                    <FeederBlocks feeders={feedersOf("scene")} />
+                    <Html position={[0, 1.5, 0]} center>
+                      <button
+                        onClick={() => openFeeders("scene")}
+                        className="whitespace-nowrap rounded-full border border-white/60 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-amber-400/90"
+                      >
+                        Feeders ({feedersOf("scene").length})
+                      </button>
+                    </Html>
+                  </>
+                )}
+              </group>
+            )}
             {sceneId === "alajaam" && <Substation step={step} />}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
@@ -825,7 +892,18 @@ export default function Scene3DViewer() {
                     />
                   )}
                   {item.type === "jaotuskilp" && (
-                    <DistributionPanel step={PANEL_STEPS.length} />
+                    <>
+                      <DistributionPanel step={PANEL_STEPS.length} />
+                      <FeederBlocks feeders={feedersOf(item.id)} />
+                      <Html position={[0, 1.5, 0]} center>
+                        <button
+                          onClick={() => openFeeders(item.id)}
+                          className="whitespace-nowrap rounded-full border border-white/60 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-amber-400/90"
+                        >
+                          Feeders ({feedersOf(item.id).length})
+                        </button>
+                      </Html>
+                    </>
                   )}
                   {item.type === "alajaam" && (
                     <Substation step={SUBSTATION_STEPS.length} />
@@ -1673,6 +1751,131 @@ export default function Scene3DViewer() {
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
+      )}
+
+      {feederPanelKey && (
+        <DraggablePanel
+          key={feederPanelKey}
+          initialX={typeof window !== "undefined" ? Math.max(12, window.innerWidth - 660) : 24}
+          initialY={120}
+          width={330}
+          title="Panel feeders"
+        >
+          <div className="px-4 py-3 text-xs text-neutral-800">
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="font-semibold">
+                {panelName(feederPanelKey)}
+                <div className="text-[10px] font-normal text-neutral-600">
+                  {feedersOf(feederPanelKey).filter((f) => f.direction === "in").length} incoming ·{" "}
+                  {feedersOf(feederPanelKey).filter((f) => f.direction === "out").length} outgoing
+                </div>
+              </div>
+              <button
+                onClick={() => setFeederPanelKey(null)}
+                aria-label="Close panel feeders"
+                className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1">
+              <button
+                onClick={() => addFeeder(feederPanelKey, "in")}
+                className="flex items-center justify-center gap-1 rounded-lg border border-emerald-300/60 bg-emerald-400/70 px-2 py-1.5 text-[11px] font-semibold text-neutral-900 shadow-sm transition hover:bg-emerald-400"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Incoming
+              </button>
+              <button
+                onClick={() => addFeeder(feederPanelKey, "out")}
+                className="flex items-center justify-center gap-1 rounded-lg border border-blue-300/60 bg-blue-400/70 px-2 py-1.5 text-[11px] font-semibold text-neutral-900 shadow-sm transition hover:bg-blue-400"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Outgoing
+              </button>
+            </div>
+
+            <div className="mt-3 max-h-[46vh] space-y-2 overflow-y-auto pr-0.5">
+              {feedersOf(feederPanelKey).length === 0 && (
+                <p className="text-[11px] text-neutral-600">
+                  No feeders yet. Add an incoming supply and outgoing circuits.
+                </p>
+              )}
+              {feedersOf(feederPanelKey).map((f) => {
+                const b = breakerById(f.breakerId);
+                return (
+                  <div
+                    key={f.id}
+                    className={`rounded-lg border px-2 py-2 ${
+                      f.direction === "in"
+                        ? "border-emerald-300/60 bg-emerald-400/15"
+                        : "border-blue-300/60 bg-blue-400/15"
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        value={f.name}
+                        onChange={(e) =>
+                          updateFeeder(feederPanelKey, f.id, { name: e.target.value })
+                        }
+                        className="min-w-0 flex-1 rounded-md border border-white/60 bg-white/70 px-2 py-1 text-[11px] font-semibold"
+                      />
+                      <button
+                        onClick={() => removeFeeder(feederPanelKey, f.id)}
+                        aria-label="Remove feeder"
+                        className="rounded-md p-1 text-neutral-700 transition hover:bg-red-500/80 hover:text-white"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="mt-1.5 grid grid-cols-2 gap-1">
+                      {(["in", "out"] as FeederDirection[]).map((d) => (
+                        <button
+                          key={d}
+                          onClick={() =>
+                            updateFeeder(feederPanelKey, f.id, { direction: d })
+                          }
+                          className={`rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition ${
+                            f.direction === d
+                              ? d === "in"
+                                ? "border-emerald-400 bg-emerald-500/85 text-white"
+                                : "border-blue-400 bg-blue-500/85 text-white"
+                              : "border-white/60 bg-white/50 text-neutral-700 hover:bg-white/75"
+                          }`}
+                        >
+                          {d === "in" ? "Incoming" : "Outgoing"}
+                        </button>
+                      ))}
+                    </div>
+
+                    <select
+                      value={f.breakerId}
+                      onChange={(e) =>
+                        updateFeeder(feederPanelKey, f.id, { breakerId: e.target.value })
+                      }
+                      className="mt-1.5 w-full rounded-md border border-white/60 bg-white/70 px-2 py-1 text-[11px]"
+                    >
+                      {BREAKERS.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-[10px] text-neutral-600">
+                      {b.kind} · {b.rating} A · {b.poles === 3 ? "3-phase" : "1-phase"} · {b.note}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[10px] leading-snug text-neutral-600">
+              Breakers appear on the panel front: green rail = incoming, blue rail
+              = outgoing.
+            </p>
+          </div>
+        </DraggablePanel>
       )}
 
       {selectedCable && (
