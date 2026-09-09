@@ -476,6 +476,13 @@ export default function Scene3DViewer() {
       ...prev,
       [key]: (prev[key] ?? []).filter((f) => f.id !== id),
     }));
+  const panelName = (key: string) => {
+    if (key === "scene") return "Jaotuskilp (scene)";
+    const idx = addedItems
+      .filter((i) => i.type === "jaotuskilp")
+      .findIndex((i) => i.id === key);
+    return idx >= 0 ? `Jaotuskilp #${idx + 1}` : "Jaotuskilp";
+  };
   const openFeeders = (key: string) => {
     setFeederPanelKey(key);
     setSelectedCableId(null);
