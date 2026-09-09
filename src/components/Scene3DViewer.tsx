@@ -842,7 +842,24 @@ export default function Scene3DViewer() {
           >
             {sceneId === "puitmast" && <ElectricalPost step={step} />}
             {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
-            {sceneId === "jaotuskilp" && <DistributionPanel step={step} />}
+            {sceneId === "jaotuskilp" && (
+              <group>
+                <DistributionPanel step={step} />
+                {step >= PANEL_STEPS.length && (
+                  <>
+                    <FeederBlocks feeders={feedersOf("scene")} />
+                    <Html position={[0, 1.5, 0]} center>
+                      <button
+                        onClick={() => openFeeders("scene")}
+                        className="whitespace-nowrap rounded-full border border-white/60 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-amber-400/90"
+                      >
+                        Feeders ({feedersOf("scene").length})
+                      </button>
+                    </Html>
+                  </>
+                )}
+              </group>
+            )}
             {sceneId === "alajaam" && <Substation step={step} />}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
