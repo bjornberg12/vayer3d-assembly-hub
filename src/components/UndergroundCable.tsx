@@ -141,7 +141,7 @@ function TubeAlong({
           .addScaledVector(side, offset[0])
           .addScaledVector(vert, offset[1]);
       });
-      c = new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.2);
+      c = new THREE.CatmullRomCurve3(pts, false, "centripetal");
     }
     return new THREE.TubeGeometry(c, 140, radius, 12, false);
   }, [curve, radius, offset]);
@@ -191,7 +191,7 @@ export function UndergroundCable({
   const conduit = CONDUITS.find((c) => c.id === spec.conduit) ?? CONDUITS[0];
 
   const curve = useMemo(
-    () => new THREE.CatmullRomCurve3(routePoints(from, to, depth), false, "catmullrom", 0.2),
+    () => new THREE.CatmullRomCurve3(routePoints(from, to, depth), false, "centripetal"),
     [from, to, depth]
   );
 
