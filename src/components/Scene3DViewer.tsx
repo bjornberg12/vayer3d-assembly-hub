@@ -455,6 +455,32 @@ export default function Scene3DViewer() {
   const [cables, setCables] = useState<CableRecord[]>([]);
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
 
+  // --- Panel feeders ---------------------------------------------------------
+  // Keyed by panel: "scene" for the scene panel, otherwise the added item id.
+  const [feeders, setFeeders] = useState<Record<string, Feeder[]>>({});
+  const [feederPanelKey, setFeederPanelKey] = useState<string | null>(null);
+  const feedersOf = (key: string) => feeders[key] ?? [];
+  const addFeeder = (key: string, direction: FeederDirection) =>
+    setFeeders((prev) => {
+      const list = prev[key] ?? [];
+      const count = list.filter((f) => f.direction === direction).length;
+      return { ...prev, [key]: [...list, makeFeeder(direction, count + 1)] };
+    });
+  const updateFeeder = (key: string, id: string, patch: Partial<Feeder>) =>
+    setFeeders((prev) => ({
+      ...prev,
+      [key]: (prev[key] ?? []).map((f) => (f.id === id ? { ...f, ...patch } : f)),
+    }));
+  const removeFeeder = (key: string, id: string) =>
+    setFeeders((prev) => ({
+      ...prev,
+      [key]: (prev[key] ?? []).filter((f) => f.id !== id),
+    }));
+  const openFeeders = (key: string) => {
+    setFeederPanelKey(key);
+    setSelectedCableId(null);
+  };
+
 
 
   const [cameraReset, setCameraReset] = useState(0);
