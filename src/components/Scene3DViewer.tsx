@@ -451,6 +451,9 @@ export default function Scene3DViewer() {
     conduit: ConduitId;
     voltage: CableVoltage;
     powerKw: number;
+    /** Feeder assignments at each end (feeder id within that panel). */
+    feederA?: string;
+    feederB?: string;
   };
   const [cables, setCables] = useState<CableRecord[]>([]);
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
