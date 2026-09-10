@@ -474,11 +474,20 @@ export default function Scene3DViewer() {
       ...prev,
       [key]: (prev[key] ?? []).map((f) => (f.id === id ? { ...f, ...patch } : f)),
     }));
-  const removeFeeder = (key: string, id: string) =>
+  const removeFeeder = (key: string, id: string) => {
     setFeeders((prev) => ({
       ...prev,
       [key]: (prev[key] ?? []).filter((f) => f.id !== id),
     }));
+    // Drop any cable end assigned to the removed feeder.
+    setCables((prev) =>
+      prev.map((c) => ({
+        ...c,
+        feederA: c.a === key && c.feederA === id ? undefined : c.feederA,
+        feederB: c.b === key && c.feederB === id ? undefined : c.feederB,
+      }))
+    );
+  };
   const panelName = (key: string) => {
     if (key === "scene") return "Jaotuskilp (scene)";
     const idx = addedItems
