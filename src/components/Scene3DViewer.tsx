@@ -2003,18 +2003,18 @@ export default function Scene3DViewer() {
                       {chosen && br && (
                         <div
                           className={`mt-1 text-[10px] ${
-                            cableCurrentOf(selectedCable) > br.amps
+                            cableCurrentOf(selectedCable) > br.rating
                               ? "font-semibold text-red-600"
                               : "text-neutral-600"
                           }`}
                         >
-                          {br.label} · {br.amps} A —{" "}
-                          {cableCurrentOf(selectedCable) > br.amps
+                          {br.label} · {br.rating} A —{" "}
+                          {cableCurrentOf(selectedCable) > br.rating
                             ? `overloaded by ${(
-                                cableCurrentOf(selectedCable) - br.amps
+                                cableCurrentOf(selectedCable) - br.rating
                               ).toFixed(1)} A`
                             : `${(
-                                (cableCurrentOf(selectedCable) / br.amps) *
+                                (cableCurrentOf(selectedCable) / br.rating) *
                                 100
                               ).toFixed(0)}% of breaker rating`}
                         </div>
