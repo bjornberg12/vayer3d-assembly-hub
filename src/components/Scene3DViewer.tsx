@@ -451,6 +451,9 @@ export default function Scene3DViewer() {
     conduit: ConduitId;
     voltage: CableVoltage;
     powerKw: number;
+    /** Feeder assignments at each end (feeder id within that panel). */
+    feederA?: string;
+    feederB?: string;
   };
   const [cables, setCables] = useState<CableRecord[]>([]);
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
@@ -471,11 +474,20 @@ export default function Scene3DViewer() {
       ...prev,
       [key]: (prev[key] ?? []).map((f) => (f.id === id ? { ...f, ...patch } : f)),
     }));
-  const removeFeeder = (key: string, id: string) =>
+  const removeFeeder = (key: string, id: string) => {
     setFeeders((prev) => ({
       ...prev,
       [key]: (prev[key] ?? []).filter((f) => f.id !== id),
     }));
+    // Drop any cable end assigned to the removed feeder.
+    setCables((prev) =>
+      prev.map((c) => ({
+        ...c,
+        feederA: c.a === key && c.feederA === id ? undefined : c.feederA,
+        feederB: c.b === key && c.feederB === id ? undefined : c.feederB,
+      }))
+    );
+  };
   const panelName = (key: string) => {
     if (key === "scene") return "Jaotuskilp (scene)";
     const idx = addedItems
@@ -1939,6 +1951,79 @@ export default function Scene3DViewer() {
                 <dd className="font-semibold">{selectedCable.powerKw} kW</dd>
               </div>
             </dl>
+
+            <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
+              Feeder assignment
+            </div>
+            {(
+              [
+                { end: "a" as const, id: selectedCable.a, field: "feederA" as const },
+                { end: "b" as const, id: selectedCable.b, field: "feederB" as const },
+              ]
+            ).map(({ end, id, field }) => {
+              const list = feedersOf(id);
+              const endName =
+                cableEndpoints.find((e) => e.id === id)?.name ?? "Unknown";
+              const value = selectedCable[field] ?? "";
+              const chosen = list.find((f) => f.id === value);
+              const br = chosen ? breakerById(chosen.breakerId) : null;
+              return (
+                <div key={end} className="mt-1.5 rounded-md bg-white/45 px-2 py-1.5">
+                  <div className="text-[10px] uppercase tracking-wide text-neutral-600">
+                    {end === "a" ? "From" : "To"} · {endName}
+                  </div>
+                  {id.startsWith("joint:") ? (
+                    <div className="text-[11px] text-neutral-600">
+                      Cable joint — no feeder
+                    </div>
+                  ) : list.length === 0 ? (
+                    <div className="text-[11px] text-neutral-600">
+                      No feeders on this panel yet — add them from the panel’s
+                      Feeders tag.
+                    </div>
+                  ) : (
+                    <>
+                      <select
+                        value={value}
+                        onChange={(e) =>
+                          updateCable(selectedCable.id, {
+                            [field]: e.target.value || undefined,
+                          } as Partial<CableRecord>)
+                        }
+                        className="mt-1 w-full rounded-md border border-white/60 bg-white/70 px-2 py-1 text-[11px]"
+                      >
+                        <option value="">— Not assigned —</option>
+                        {list.map((f) => (
+                          <option key={f.id} value={f.id}>
+                            {f.direction === "in" ? "IN" : "OUT"} · {f.name} ·{" "}
+                            {breakerById(f.breakerId)?.label ?? "?"}
+                          </option>
+                        ))}
+                      </select>
+                      {chosen && br && (
+                        <div
+                          className={`mt-1 text-[10px] ${
+                            cableCurrentOf(selectedCable) > br.rating
+                              ? "font-semibold text-red-600"
+                              : "text-neutral-600"
+                          }`}
+                        >
+                          {br.label} · {br.rating} A —{" "}
+                          {cableCurrentOf(selectedCable) > br.rating
+                            ? `overloaded by ${(
+                                cableCurrentOf(selectedCable) - br.rating
+                              ).toFixed(1)} A`
+                            : `${(
+                                (cableCurrentOf(selectedCable) / br.rating) *
+                                100
+                              ).toFixed(0)}% of breaker rating`}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })}
 
             <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
               Voltage
