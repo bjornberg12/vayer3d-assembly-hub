@@ -1,18 +1,7 @@
 # Vayer3d Assembly Hub
 
-My idea is to create an online website, where engineers and technicians can view 3d models of electrical infrastructure and see step by step 3d instructions for assembly. I need you to create an online 3d plane, where the xy axis is gray, thus representing the ground plane and the z plane is off white, so it represents the air. Ontop create a header that says "Vayer3d electrical assembly"
+Hello! My name is Hugo Martin Liivaleht and i am studying electrical engineering. With work experience in electrical grid infrastructure i have created this website called Vayer3d, where engineers and technicians can view 3d models of electrical grid infrastructure and designers can make super fast concepts. 
 
-This project was built with [Lovable](https://lovable.dev).
-
-## Build with Lovable
-
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/1b641970-f501-40fe-8c3e-5cb7b297924b).
-
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
-
-## Development
 
 Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
 
