@@ -395,6 +395,8 @@ function PartLabel3D({
 export default function Scene3DViewer() {
   const [sceneId, setSceneId] = useState<SceneId>("puitmast");
   const [step, setStep] = useState(1);
+  const [assemblyVisible, setAssemblyVisible] = useState(false);
+  const [propsTarget, setPropsTarget] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
