@@ -867,12 +867,12 @@ export default function Scene3DViewer() {
             }}
             enabled={!rulerActive}
           >
-            {sceneId === "puitmast" && <ElectricalPost step={step} />}
-            {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
+            {sceneId === "puitmast" && <ElectricalPost step={shownStep} />}
+            {sceneId === "puitmast20" && <WoodenMast20kV step={shownStep} />}
             {sceneId === "jaotuskilp" && (
               <group>
-                <DistributionPanel step={step} />
-                {step >= PANEL_STEPS.length && (
+                <DistributionPanel step={shownStep} />
+                {shownStep >= PANEL_STEPS.length && (
                   <>
                     <FeederBlocks feeders={feedersOf("scene")} />
                     <Html position={[0, 1.5, 0]} center>
@@ -887,7 +887,7 @@ export default function Scene3DViewer() {
                 )}
               </group>
             )}
-            {sceneId === "alajaam" && <Substation step={step} />}
+            {sceneId === "alajaam" && <Substation step={shownStep} />}
             {sceneId === "electriccar" && null}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
