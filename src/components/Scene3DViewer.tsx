@@ -2186,8 +2186,51 @@ export default function Scene3DViewer() {
       </div>
 
 
+      {/* Properties panel (right click / Ctrl + click on a part) */}
+      {propsTarget && (
+        <DraggablePanel
+          initial={{ x: 24, y: 300 }}
+          onClose={() => setPropsTarget(null)}
+          title="Properties"
+        >
+          <div className="w-64 space-y-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-neutral-500">
+                Part
+              </div>
+              <div className="text-sm font-semibold text-neutral-900">
+                {propsTarget}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-neutral-500">
+                Scene
+              </div>
+              <div className="text-sm text-neutral-800">{activeScene.name}</div>
+            </div>
+            {stepLabels ? (
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
+                <input
+                  type="checkbox"
+                  checked={assemblyVisible}
+                  onChange={(e) => {
+                    setAssemblyVisible(e.target.checked);
+                    if (e.target.checked && step === 0) setStep(1);
+                  }}
+                />
+                Show assembly
+              </label>
+            ) : (
+              <div className="text-xs text-neutral-500">
+                This scene has no assembly instructions.
+              </div>
+            )}
+          </div>
+        </DraggablePanel>
+      )}
+
       {/* Step controls overlay */}
-      {stepLabels && (
+      {stepLabels && assemblyVisible && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
           <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
             {step === 0
