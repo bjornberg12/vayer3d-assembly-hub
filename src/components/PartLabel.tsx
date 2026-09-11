@@ -3,6 +3,7 @@ import type { ThreeEvent } from "@react-three/fiber";
 
 type Ctx = {
   setLabel: (name: string | null, position?: [number, number, number] | null) => void;
+  openProperties?: (name: string) => void;
   enabled: boolean;
 };
 
@@ -10,15 +11,17 @@ const PartLabelCtx = createContext<Ctx>({ setLabel: () => {}, enabled: true });
 
 export function PartLabelProvider({
   setLabel,
+  openProperties,
   enabled,
   children,
 }: {
   setLabel: (name: string | null, position?: [number, number, number] | null) => void;
+  openProperties?: (name: string) => void;
   enabled: boolean;
   children: ReactNode;
 }) {
   return (
-    <PartLabelCtx.Provider value={{ setLabel, enabled }}>
+    <PartLabelCtx.Provider value={{ setLabel, openProperties, enabled }}>
       {children}
     </PartLabelCtx.Provider>
   );
