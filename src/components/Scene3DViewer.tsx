@@ -820,7 +820,10 @@ export default function Scene3DViewer() {
     groundMode === "custom" ? customGroundWidthM : undefined;
 
   return (
-    <div className="relative h-full w-full">
+    <div
+      className="relative h-full w-full"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <img
         src={vayerLogo.url}
         alt="Vayer 3d"
