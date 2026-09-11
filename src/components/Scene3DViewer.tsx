@@ -884,6 +884,7 @@ export default function Scene3DViewer() {
               </group>
             )}
             {sceneId === "alajaam" && <Substation step={step} />}
+            {sceneId === "electriccar" && null}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
               return (
