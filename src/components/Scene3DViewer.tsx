@@ -2227,6 +2227,12 @@ export default function Scene3DViewer() {
                 This scene has no assembly instructions.
               </div>
             )}
+            <button
+              onClick={() => setPropsTarget(null)}
+              className="w-full rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-white/60"
+            >
+              Close
+            </button>
           </div>
         </DraggablePanel>
       )}
