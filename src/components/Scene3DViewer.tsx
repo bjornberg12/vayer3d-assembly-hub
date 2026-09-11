@@ -44,13 +44,14 @@ import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 // thread so labels behave identically in development and production builds.
 configureTextBuilder({ useWorker: false });
 
-type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
+type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "electriccar";
 
 const SCENES: { id: SceneId; name: string; subtitle: string; footprintM: number }[] = [
   { id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole assembly", footprintM: 20 },
   { id: "puitmast20", name: "Puitmast -20kV", subtitle: "20 kV overhead line mast", footprintM: 95 },
   { id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel", footprintM: 10 },
   { id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation", footprintM: 20 },
+  { id: "electriccar", name: "Electric car", subtitle: "Blank scene", footprintM: 20 },
 ];
 
 type ViewId = "front" | "top" | "side" | "iso";
@@ -883,6 +884,7 @@ export default function Scene3DViewer() {
               </group>
             )}
             {sceneId === "alajaam" && <Substation step={step} />}
+            {sceneId === "electriccar" && null}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
               return (
