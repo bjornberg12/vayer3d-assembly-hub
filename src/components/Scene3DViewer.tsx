@@ -2191,8 +2191,8 @@ export default function Scene3DViewer() {
       {/* Properties panel (right click / Ctrl + click on a part) */}
       {propsTarget && (
         <DraggablePanel
-          initial={{ x: 24, y: 300 }}
-          onClose={() => setPropsTarget(null)}
+          initialX={24}
+          initialY={300}
           title="Properties"
         >
           <div className="w-64 space-y-3">
