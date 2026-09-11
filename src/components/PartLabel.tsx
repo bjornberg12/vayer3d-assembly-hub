@@ -3,6 +3,7 @@ import type { ThreeEvent } from "@react-three/fiber";
 
 type Ctx = {
   setLabel: (name: string | null, position?: [number, number, number] | null) => void;
+  openProperties?: (name: string) => void;
   enabled: boolean;
 };
 
@@ -10,15 +11,17 @@ const PartLabelCtx = createContext<Ctx>({ setLabel: () => {}, enabled: true });
 
 export function PartLabelProvider({
   setLabel,
+  openProperties,
   enabled,
   children,
 }: {
   setLabel: (name: string | null, position?: [number, number, number] | null) => void;
+  openProperties?: (name: string) => void;
   enabled: boolean;
   children: ReactNode;
 }) {
   return (
-    <PartLabelCtx.Provider value={{ setLabel, enabled }}>
+    <PartLabelCtx.Provider value={{ setLabel, openProperties, enabled }}>
       {children}
     </PartLabelCtx.Provider>
   );
@@ -37,18 +40,31 @@ export function Part({
   position?: [number, number, number];
   children: ReactNode;
 }) {
-  const { setLabel, enabled } = useContext(PartLabelCtx);
+  const { setLabel, openProperties, enabled } = useContext(PartLabelCtx);
 
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
     if (!enabled) return;
     e.stopPropagation();
+    // Ctrl / Cmd + left click opens the properties panel instead of the label.
+    if (e.ctrlKey || e.metaKey) {
+      openProperties?.(name);
+      return;
+    }
     setLabel(name, e.point.toArray() as [number, number, number]);
+  };
+
+  const handleContextMenu = (e: ThreeEvent<MouseEvent>) => {
+    if (!enabled) return;
+    e.stopPropagation();
+    e.nativeEvent?.preventDefault?.();
+    openProperties?.(name);
   };
 
   return (
     <group
       position={position}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
       onPointerOver={(e) => {
         if (!enabled) return;
         e.stopPropagation();

@@ -395,6 +395,8 @@ function PartLabel3D({
 export default function Scene3DViewer() {
   const [sceneId, setSceneId] = useState<SceneId>("puitmast");
   const [step, setStep] = useState(1);
+  const [assemblyVisible, setAssemblyVisible] = useState(false);
+  const [propsTarget, setPropsTarget] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
@@ -735,6 +737,8 @@ export default function Scene3DViewer() {
       ? SUBSTATION_STEPS
       : null;
   const maxStep = stepLabels?.length ?? 0;
+  // With assembly instructions hidden the scene shows the finished model.
+  const shownStep = assemblyVisible ? step : maxStep;
 
   const selectScene = (id: SceneId) => {
     setSceneId(id);
@@ -816,7 +820,10 @@ export default function Scene3DViewer() {
     groundMode === "custom" ? customGroundWidthM : undefined;
 
   return (
-    <div className="relative h-full w-full">
+    <div
+      className="relative h-full w-full"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       <img
         src={vayerLogo.url}
         alt="Vayer 3d"
@@ -861,14 +868,19 @@ export default function Scene3DViewer() {
               setPartLabel(name);
               setPartLabelPos(pos ?? null);
             }}
+            openProperties={(name) => {
+              setPartLabel(null);
+              setPartLabelPos(null);
+              setPropsTarget(name);
+            }}
             enabled={!rulerActive}
           >
-            {sceneId === "puitmast" && <ElectricalPost step={step} />}
-            {sceneId === "puitmast20" && <WoodenMast20kV step={step} />}
+            {sceneId === "puitmast" && <ElectricalPost step={shownStep} />}
+            {sceneId === "puitmast20" && <WoodenMast20kV step={shownStep} />}
             {sceneId === "jaotuskilp" && (
               <group>
-                <DistributionPanel step={step} />
-                {step >= PANEL_STEPS.length && (
+                <DistributionPanel step={shownStep} />
+                {shownStep >= PANEL_STEPS.length && (
                   <>
                     <FeederBlocks feeders={feedersOf("scene")} />
                     <Html position={[0, 1.5, 0]} center>
@@ -883,7 +895,7 @@ export default function Scene3DViewer() {
                 )}
               </group>
             )}
-            {sceneId === "alajaam" && <Substation step={step} />}
+            {sceneId === "alajaam" && <Substation step={shownStep} />}
             {sceneId === "electriccar" && null}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
@@ -2186,8 +2198,57 @@ export default function Scene3DViewer() {
       </div>
 
 
+      {/* Properties panel (right click / Ctrl + click on a part) */}
+      {propsTarget && (
+        <DraggablePanel
+          initialX={24}
+          initialY={300}
+          title="Properties"
+        >
+          <div className="w-64 space-y-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-neutral-500">
+                Part
+              </div>
+              <div className="text-sm font-semibold text-neutral-900">
+                {propsTarget}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] uppercase tracking-wide text-neutral-500">
+                Scene
+              </div>
+              <div className="text-sm text-neutral-800">{activeScene.name}</div>
+            </div>
+            {stepLabels ? (
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
+                <input
+                  type="checkbox"
+                  checked={assemblyVisible}
+                  onChange={(e) => {
+                    setAssemblyVisible(e.target.checked);
+                    if (e.target.checked && step === 0) setStep(1);
+                  }}
+                />
+                Show assembly
+              </label>
+            ) : (
+              <div className="text-xs text-neutral-500">
+                This scene has no assembly instructions.
+              </div>
+            )}
+            <button
+              onClick={() => setPropsTarget(null)}
+              className="w-full rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-white/60"
+            >
+              Close
+            </button>
+          </div>
+        </DraggablePanel>
+      )}
+
       {/* Step controls overlay */}
-      {stepLabels && (
+      {stepLabels && assemblyVisible && (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
           <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
             {step === 0
