@@ -865,6 +865,11 @@ export default function Scene3DViewer() {
               setPartLabel(name);
               setPartLabelPos(pos ?? null);
             }}
+            openProperties={(name) => {
+              setPartLabel(null);
+              setPartLabelPos(null);
+              setPropsTarget(name);
+            }}
             enabled={!rulerActive}
           >
             {sceneId === "puitmast" && <ElectricalPost step={shownStep} />}
