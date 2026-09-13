@@ -738,12 +738,13 @@ export default function Scene3DViewer() {
       ? SUBSTATION_STEPS
       : null;
   const maxStep = stepLabels?.length ?? 0;
-  // With assembly instructions hidden the scene shows the finished model.
-  const shownStep = assemblyVisible ? step : maxStep;
+  // With assembly hidden the scene shows the finished model, unless it was cleared by Reset.
+  const shownStep = assemblyVisible ? step : sceneCleared ? 0 : maxStep;
 
   const selectScene = (id: SceneId) => {
     setSceneId(id);
     setStep(1);
+    setSceneCleared(false);
     setMenuOpen(false);
   };
 
