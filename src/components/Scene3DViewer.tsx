@@ -2237,7 +2237,10 @@ export default function Scene3DViewer() {
                   checked={assemblyVisible}
                   onChange={(e) => {
                     setAssemblyVisible(e.target.checked);
-                    if (e.target.checked && step === 0) setStep(1);
+                    if (e.target.checked) {
+                      setSceneCleared(false);
+                      if (step === 0) setStep(1);
+                    }
                   }}
                 />
                 Show assembly
