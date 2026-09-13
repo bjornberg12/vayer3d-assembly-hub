@@ -551,6 +551,11 @@ export default function Scene3DViewer() {
       return next;
     });
     setFeederPanelKey((cur) => (cur === id ? null : cur));
+    setItemAssembly((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
   const setItemRotation = (id: string, rotationY: number) =>
     setAddedItems((prev) =>
