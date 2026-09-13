@@ -2244,8 +2244,29 @@ export default function Scene3DViewer() {
                 This scene has no assembly instructions.
               </div>
             )}
+            {propsOwnerId ? (
+              <button
+                onClick={() => {
+                  removeItem(propsOwnerId);
+                  setPropsTarget(null);
+                  setPropsOwnerId(null);
+                  setPartLabel(null);
+                  setPartLabelPos(null);
+                }}
+                className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-500/30"
+              >
+                Delete object
+              </button>
+            ) : (
+              <div className="text-xs text-neutral-500">
+                Fixed scene model — use Reset to clear the scene.
+              </div>
+            )}
             <button
-              onClick={() => setPropsTarget(null)}
+              onClick={() => {
+                setPropsTarget(null);
+                setPropsOwnerId(null);
+              }}
               className="w-full rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-white/60"
             >
               Close
