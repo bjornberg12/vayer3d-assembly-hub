@@ -28,7 +28,7 @@ import {
 
 
 import { AerialGround } from "./AerialGround";
-import { PartLabelProvider } from "./PartLabel";
+import { PartLabelProvider, PartOwner } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
 import {
   WeatherEffects,
