@@ -992,6 +992,7 @@ export default function Scene3DViewer() {
 
 
 
+                 </PartOwner>
                 </group>
               );
             })}
