@@ -763,6 +763,7 @@ export default function Scene3DViewer() {
   const resetAll = () => {
     setSceneId("puitmast");
     setStep(0);
+    setSceneCleared(true);
     setAddedItems([]);
     setConnections([]);
     setConnectMode(false);
