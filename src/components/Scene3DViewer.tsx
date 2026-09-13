@@ -399,6 +399,8 @@ export default function Scene3DViewer() {
   const [propsTarget, setPropsTarget] = useState<string | null>(null);
   const [propsOwnerId, setPropsOwnerId] = useState<string | null>(null);
   const [sceneCleared, setSceneCleared] = useState(false);
+  // Per-placed-object assembly: id -> current step (absent = fully assembled)
+  const [itemAssembly, setItemAssembly] = useState<Record<string, number>>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
@@ -549,6 +551,11 @@ export default function Scene3DViewer() {
       return next;
     });
     setFeederPanelKey((cur) => (cur === id ? null : cur));
+    setItemAssembly((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
   };
   const setItemRotation = (id: string, rotationY: number) =>
     setAddedItems((prev) =>
@@ -741,6 +748,30 @@ export default function Scene3DViewer() {
   const maxStep = stepLabels?.length ?? 0;
   // With assembly hidden the scene shows the finished model, unless it was cleared by Reset.
   const shownStep = assemblyVisible ? step : sceneCleared ? 0 : maxStep;
+
+  const stepsForType = (t: AddableType) =>
+    t === "puitmast"
+      ? ASSEMBLY_STEPS
+      : t === "puitmast20"
+      ? MAST_20KV_STEPS
+      : t === "jaotuskilp"
+      ? PANEL_STEPS
+      : SUBSTATION_STEPS;
+
+  // Object whose properties panel is open (null = fixed scene model)
+  const propsItem = propsOwnerId
+    ? addedItems.find((i) => i.id === propsOwnerId) ?? null
+    : null;
+  const objLabels = propsItem ? stepsForType(propsItem.type) : null;
+  const objStep = propsOwnerId ? itemAssembly[propsOwnerId] : undefined;
+  const objAssemblyOn = objStep !== undefined;
+  const setObjStep = (fn: (s: number) => number) => {
+    if (!propsOwnerId) return;
+    setItemAssembly((prev) => ({
+      ...prev,
+      [propsOwnerId]: fn(prev[propsOwnerId] ?? 0),
+    }));
+  };
 
   const selectScene = (id: SceneId) => {
     setSceneId(id);
