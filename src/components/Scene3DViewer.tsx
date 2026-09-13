@@ -399,6 +399,8 @@ export default function Scene3DViewer() {
   const [propsTarget, setPropsTarget] = useState<string | null>(null);
   const [propsOwnerId, setPropsOwnerId] = useState<string | null>(null);
   const [sceneCleared, setSceneCleared] = useState(false);
+  // Per-placed-object assembly: id -> current step (absent = fully assembled)
+  const [itemAssembly, setItemAssembly] = useState<Record<string, number>>({});
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
