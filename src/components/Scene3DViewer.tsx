@@ -398,6 +398,7 @@ export default function Scene3DViewer() {
   const [assemblyVisible, setAssemblyVisible] = useState(false);
   const [propsTarget, setPropsTarget] = useState<string | null>(null);
   const [propsOwnerId, setPropsOwnerId] = useState<string | null>(null);
+  const [sceneCleared, setSceneCleared] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
@@ -738,12 +739,13 @@ export default function Scene3DViewer() {
       ? SUBSTATION_STEPS
       : null;
   const maxStep = stepLabels?.length ?? 0;
-  // With assembly instructions hidden the scene shows the finished model.
-  const shownStep = assemblyVisible ? step : maxStep;
+  // With assembly hidden the scene shows the finished model, unless it was cleared by Reset.
+  const shownStep = assemblyVisible ? step : sceneCleared ? 0 : maxStep;
 
   const selectScene = (id: SceneId) => {
     setSceneId(id);
     setStep(1);
+    setSceneCleared(false);
     setMenuOpen(false);
   };
 
@@ -761,6 +763,7 @@ export default function Scene3DViewer() {
   const resetAll = () => {
     setSceneId("puitmast");
     setStep(0);
+    setSceneCleared(true);
     setAddedItems([]);
     setConnections([]);
     setConnectMode(false);
@@ -2234,7 +2237,10 @@ export default function Scene3DViewer() {
                   checked={assemblyVisible}
                   onChange={(e) => {
                     setAssemblyVisible(e.target.checked);
-                    if (e.target.checked && step === 0) setStep(1);
+                    if (e.target.checked) {
+                      setSceneCleared(false);
+                      if (step === 0) setStep(1);
+                    }
                   }}
                 />
                 Show assembly
