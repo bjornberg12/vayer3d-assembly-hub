@@ -779,6 +779,8 @@ export default function Scene3DViewer() {
     setRulerActive(false);
     setRulerPoints([]);
     setPartLabel(null);
+    setPropsTarget(null);
+    setAssemblyVisible(false);
     setPartLabelPos(null);
     setViewId("iso");
     setCameraReset((n) => n + 1);
