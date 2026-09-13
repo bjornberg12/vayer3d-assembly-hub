@@ -749,6 +749,30 @@ export default function Scene3DViewer() {
   // With assembly hidden the scene shows the finished model, unless it was cleared by Reset.
   const shownStep = assemblyVisible ? step : sceneCleared ? 0 : maxStep;
 
+  const stepsForType = (t: AddableType) =>
+    t === "puitmast"
+      ? ASSEMBLY_STEPS
+      : t === "puitmast20"
+      ? MAST_20KV_STEPS
+      : t === "jaotuskilp"
+      ? PANEL_STEPS
+      : SUBSTATION_STEPS;
+
+  // Object whose properties panel is open (null = fixed scene model)
+  const propsItem = propsOwnerId
+    ? addedItems.find((i) => i.id === propsOwnerId) ?? null
+    : null;
+  const objLabels = propsItem ? stepsForType(propsItem.type) : null;
+  const objStep = propsOwnerId ? itemAssembly[propsOwnerId] : undefined;
+  const objAssemblyOn = objStep !== undefined;
+  const setObjStep = (fn: (s: number) => number) => {
+    if (!propsOwnerId) return;
+    setItemAssembly((prev) => ({
+      ...prev,
+      [propsOwnerId]: fn(prev[propsOwnerId] ?? 0),
+    }));
+  };
+
   const selectScene = (id: SceneId) => {
     setSceneId(id);
     setStep(1);
