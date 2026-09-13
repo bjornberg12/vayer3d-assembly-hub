@@ -907,6 +907,8 @@ export default function Scene3DViewer() {
                   position={item.position}
                   rotation={[0, item.rotationY, 0]}
                 >
+                 <PartOwner id={item.id}>
+
                   {item.type === "puitmast" && (
                     <ElectricalPost
                       step={ASSEMBLY_STEPS.length}
