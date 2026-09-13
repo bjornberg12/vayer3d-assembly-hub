@@ -28,7 +28,7 @@ import {
 
 
 import { AerialGround } from "./AerialGround";
-import { PartLabelProvider } from "./PartLabel";
+import { PartLabelProvider, PartOwner } from "./PartLabel";
 import { DraggablePanel } from "./DraggablePanel";
 import {
   WeatherEffects,
@@ -397,6 +397,7 @@ export default function Scene3DViewer() {
   const [step, setStep] = useState(1);
   const [assemblyVisible, setAssemblyVisible] = useState(false);
   const [propsTarget, setPropsTarget] = useState<string | null>(null);
+  const [propsOwnerId, setPropsOwnerId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
@@ -870,10 +871,11 @@ export default function Scene3DViewer() {
               setPartLabel(name);
               setPartLabelPos(pos ?? null);
             }}
-            openProperties={(name) => {
+            openProperties={(name, ownerId) => {
               setPartLabel(null);
               setPartLabelPos(null);
               setPropsTarget(name);
+              setPropsOwnerId(ownerId ?? null);
             }}
             enabled={!rulerActive}
           >
@@ -907,6 +909,8 @@ export default function Scene3DViewer() {
                   position={item.position}
                   rotation={[0, item.rotationY, 0]}
                 >
+                 <PartOwner id={item.id}>
+
                   {item.type === "puitmast" && (
                     <ElectricalPost
                       step={ASSEMBLY_STEPS.length}
@@ -990,6 +994,7 @@ export default function Scene3DViewer() {
 
 
 
+                 </PartOwner>
                 </group>
               );
             })}
@@ -2239,8 +2244,29 @@ export default function Scene3DViewer() {
                 This scene has no assembly instructions.
               </div>
             )}
+            {propsOwnerId ? (
+              <button
+                onClick={() => {
+                  removeItem(propsOwnerId);
+                  setPropsTarget(null);
+                  setPropsOwnerId(null);
+                  setPartLabel(null);
+                  setPartLabelPos(null);
+                }}
+                className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-500/30"
+              >
+                Delete object
+              </button>
+            ) : (
+              <div className="text-xs text-neutral-500">
+                Fixed scene model — use Reset to clear the scene.
+              </div>
+            )}
             <button
-              onClick={() => setPropsTarget(null)}
+              onClick={() => {
+                setPropsTarget(null);
+                setPropsOwnerId(null);
+              }}
               className="w-full rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-white/60"
             >
               Close
