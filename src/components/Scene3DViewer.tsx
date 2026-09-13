@@ -871,10 +871,11 @@ export default function Scene3DViewer() {
               setPartLabel(name);
               setPartLabelPos(pos ?? null);
             }}
-            openProperties={(name) => {
+            openProperties={(name, ownerId) => {
               setPartLabel(null);
               setPartLabelPos(null);
               setPropsTarget(name);
+              setPropsOwnerId(ownerId ?? null);
             }}
             enabled={!rulerActive}
           >
