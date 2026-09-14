@@ -2341,10 +2341,10 @@ export default function Scene3DViewer() {
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
           <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
             {objStep === 0
-              ? `${propsItem.label ?? "Object"} — press Forward to start assembly`
-              : `${propsItem.label ?? "Object"} — step ${objStep} / ${
-                  objLabels.length
-                } — ${objLabels[(objStep ?? 1) - 1]}`}
+              ? `${objName} — press Forward to start assembly`
+              : `${objName} — step ${objStep} / ${objLabels.length} — ${
+                  objLabels[(objStep ?? 1) - 1]
+                }`}
           </div>
           <div className="pointer-events-auto flex items-center gap-3">
             <button
