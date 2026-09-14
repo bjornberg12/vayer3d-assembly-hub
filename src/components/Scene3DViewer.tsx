@@ -1506,6 +1506,7 @@ export default function Scene3DViewer() {
               setMenuOpen(false);
               setViewsOpen(false);
               setGroundOpen(false);
+              setCablesOpen(false);
             }}
             aria-label="Open add menu"
             className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
