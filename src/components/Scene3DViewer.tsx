@@ -828,6 +828,7 @@ export default function Scene3DViewer() {
     setViewsOpen(false);
     setGroundOpen(false);
     setAddOpen(false);
+    setCablesOpen(false);
     if (customGroundUrl) {
       URL.revokeObjectURL(customGroundUrl);
       setCustomGroundUrl(null);
