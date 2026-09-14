@@ -764,6 +764,9 @@ export default function Scene3DViewer() {
     : null;
   const objLabels = propsItem ? stepsForType(propsItem.type) : null;
   const objStep = propsOwnerId ? itemAssembly[propsOwnerId] : undefined;
+  const objName = propsItem
+    ? SCENES.find((s) => s.id === (propsItem.type as SceneId))?.name ?? "Object"
+    : "Object";
   const objAssemblyOn = objStep !== undefined;
   const setObjStep = (fn: (s: number) => number) => {
     if (!propsOwnerId) return;
