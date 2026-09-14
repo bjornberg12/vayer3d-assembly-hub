@@ -798,6 +798,7 @@ export default function Scene3DViewer() {
     setSceneId("puitmast");
     setStep(0);
     setSceneCleared(true);
+    setItemAssembly({});
     setAddedItems([]);
     setConnections([]);
     setConnectMode(false);
