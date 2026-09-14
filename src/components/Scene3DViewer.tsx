@@ -937,6 +937,8 @@ export default function Scene3DViewer() {
             {sceneId === "electriccar" && null}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
+              const itemStep =
+                itemAssembly[item.id] ?? stepsForType(item.type).length;
               return (
                 <group
                   key={item.id}
@@ -947,19 +949,19 @@ export default function Scene3DViewer() {
 
                   {item.type === "puitmast" && (
                     <ElectricalPost
-                      step={ASSEMBLY_STEPS.length}
+                      step={itemStep}
                       showAutoLines={false}
                     />
                   )}
                   {item.type === "puitmast20" && (
                     <WoodenMast20kV
-                      step={MAST_20KV_STEPS.length}
+                      step={itemStep}
                       showNextSpan={false}
                     />
                   )}
                   {item.type === "jaotuskilp" && (
                     <>
-                      <DistributionPanel step={PANEL_STEPS.length} />
+                      <DistributionPanel step={itemStep} />
                       <FeederBlocks feeders={feedersOf(item.id)} />
                       <Html position={[0, 1.5, 0]} center>
                         <button
