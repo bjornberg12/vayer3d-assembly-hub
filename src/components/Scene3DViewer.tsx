@@ -2336,8 +2336,36 @@ export default function Scene3DViewer() {
         </DraggablePanel>
       )}
 
-      {/* Step controls overlay */}
-      {stepLabels && assemblyVisible && (
+      {/* Step controls — for the selected object, or for the fixed scene model */}
+      {objAssemblyOn && objLabels && propsItem ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
+          <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
+            {objStep === 0
+              ? `${propsItem.label ?? "Object"} — press Forward to start assembly`
+              : `${propsItem.label ?? "Object"} — step ${objStep} / ${
+                  objLabels.length
+                } — ${objLabels[(objStep ?? 1) - 1]}`}
+          </div>
+          <div className="pointer-events-auto flex items-center gap-3">
+            <button
+              onClick={() => setObjStep((s) => Math.max(0, s - 1))}
+              disabled={objStep === 0}
+              className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() =>
+                setObjStep((s) => Math.min(objLabels.length, s + 1))
+              }
+              disabled={objStep === objLabels.length}
+              className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Forward →
+            </button>
+          </div>
+        </div>
+      ) : stepLabels && assemblyVisible ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
           <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
             {step === 0
@@ -2361,7 +2389,7 @@ export default function Scene3DViewer() {
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
