@@ -424,6 +424,7 @@ export default function Scene3DViewer() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [cablesOpen, setCablesOpen] = useState(false);
   type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
@@ -827,6 +828,7 @@ export default function Scene3DViewer() {
     setViewsOpen(false);
     setGroundOpen(false);
     setAddOpen(false);
+    setCablesOpen(false);
     if (customGroundUrl) {
       URL.revokeObjectURL(customGroundUrl);
       setCustomGroundUrl(null);
@@ -1504,6 +1506,7 @@ export default function Scene3DViewer() {
               setMenuOpen(false);
               setViewsOpen(false);
               setGroundOpen(false);
+              setCablesOpen(false);
             }}
             aria-label="Open add menu"
             className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
@@ -1532,110 +1535,6 @@ export default function Scene3DViewer() {
                 ))}
               </ul>
 
-              {/* --- Underground LV cable --- */}
-              <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
-                Underground LV cable
-              </div>
-              <div className="px-4 pb-2">
-                <div className="mb-1 text-[11px] text-neutral-600">
-                  Conductor size (L1, L2, L3, PEN)
-                </div>
-                <div className="grid grid-cols-4 gap-1">
-                  {CABLE_SIZES.map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setCableSize(s.id)}
-                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
-                        cableSize === s.id
-                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
-                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
-                      }`}
-                    >
-                      {s.area}
-                    </button>
-                  ))}
-                </div>
-                <div className="mb-1 mt-2 text-[11px] text-neutral-600">
-                  Protective conduit pipe
-                </div>
-                <div className="grid grid-cols-3 gap-1">
-                  {CONDUITS.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => setCableConduit(c.id)}
-                      title={c.subtitle}
-                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
-                        cableConduit === c.id
-                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
-                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
-                      }`}
-                    >
-                      {c.id === "none" ? "None" : c.id}
-                    </button>
-                  ))}
-                </div>
-                <button
-                  onClick={() => {
-                    setCableMode((m) => !m);
-                    setCableFirst(null);
-                    setConnectMode(false);
-                    setMoveMode(false);
-                    setPendingAdd(null);
-                  }}
-                  className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
-                    cableMode
-                      ? "border-amber-300/70 bg-amber-500/85 text-white hover:bg-amber-500"
-                      : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
-                  }`}
-                >
-                  <Link2 className="h-3.5 w-3.5" />
-                  {cableMode ? "Laying cable…" : "Lay cable"}
-                </button>
-                <p className="mt-1 text-[10px] leading-snug text-neutral-600">
-                  Click a substation, then a distribution panel. Buried 0,7 m deep.
-                  {cableEndpoints.length < 2 &&
-                    " Add at least two panels/substations."}
-                </p>
-                {cables.length > 0 && (
-                  <ul className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
-                    {cables.map((c) => {
-                      const a = cableEndpoints.find((e) => e.id === c.a);
-                      const b = cableEndpoints.find((e) => e.id === c.b);
-                      return (
-                        <li
-                          key={c.id}
-                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] text-neutral-800 ${
-                            selectedCableId === c.id
-                              ? "bg-amber-300/60"
-                              : "bg-white/40"
-                          }`}
-                        >
-                          <button
-                            onClick={() => setSelectedCableId(c.id)}
-                            className="min-w-0 flex-1 truncate text-left"
-                          >
-                            4×{c.size} mm²
-                            {c.conduit !== "none" ? ` · ${c.conduit}` : ""}
-                            {" · "}
-                            {cableLengthOf(c).toFixed(1)} m
-                            <span className="ml-1 text-neutral-500">
-                              {a?.name ?? "?"} → {b?.name ?? "?"}
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => removeCable(c.id)}
-                            aria-label="Remove cable"
-                            className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </li>
-                      );
-
-                    })}
-                  </ul>
-                )}
-              </div>
 
               {addedItems.length > 0 && (
                 <>
@@ -1850,7 +1749,129 @@ export default function Scene3DViewer() {
               >
                 <X className="h-3.5 w-3.5" />
               </button>
-            </div>
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => {
+              setCablesOpen((o) => !o);
+              setAddOpen(false);
+              setMenuOpen(false);
+              setViewsOpen(false);
+              setGroundOpen(false);
+            }}
+            aria-label="Open cables menu"
+            className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+          >
+            <Link2 className="h-5 w-5" />
+            <span className="text-sm font-medium">Cables</span>
+          </button>
+          {cablesOpen && (
+            <DraggablePanel initialX={410} initialY={64} title="Cables" width={288} onClose={() => setCablesOpen(false)}>
+              <div className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
+                Underground LV cable
+              </div>
+              <div className="px-4 pb-3">
+                <div className="mb-1 text-[11px] text-neutral-600">
+                  Conductor size (L1, L2, L3, PEN)
+                </div>
+                <div className="grid grid-cols-4 gap-1">
+                  {CABLE_SIZES.map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setCableSize(s.id)}
+                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                        cableSize === s.id
+                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                      }`}
+                    >
+                      {s.area}
+                    </button>
+                  ))}
+                </div>
+                <div className="mb-1 mt-2 text-[11px] text-neutral-600">
+                  Protective conduit pipe
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {CONDUITS.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setCableConduit(c.id)}
+                      title={c.subtitle}
+                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                        cableConduit === c.id
+                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                      }`}
+                    >
+                      {c.id === "none" ? "None" : c.id}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => {
+                    setCableMode((m) => !m);
+                    setCableFirst(null);
+                    setConnectMode(false);
+                    setMoveMode(false);
+                    setPendingAdd(null);
+                  }}
+                  className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                    cableMode
+                      ? "border-amber-300/70 bg-amber-500/85 text-white hover:bg-amber-500"
+                      : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
+                  }`}
+                >
+                  <Link2 className="h-3.5 w-3.5" />
+                  {cableMode ? "Laying cable…" : "Lay cable"}
+                </button>
+                <p className="mt-1 text-[10px] leading-snug text-neutral-600">
+                  Click a substation, then a distribution panel. Buried 0,7 m deep.
+                  {cableEndpoints.length < 2 &&
+                    " Add at least two panels/substations."}
+                </p>
+                {cables.length > 0 && (
+                  <ul className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
+                    {cables.map((c) => {
+                      const a = cableEndpoints.find((e) => e.id === c.a);
+                      const b = cableEndpoints.find((e) => e.id === c.b);
+                      return (
+                        <li
+                          key={c.id}
+                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] text-neutral-800 ${
+                            selectedCableId === c.id
+                              ? "bg-amber-300/60"
+                              : "bg-white/40"
+                          }`}
+                        >
+                          <button
+                            onClick={() => setSelectedCableId(c.id)}
+                            className="min-w-0 flex-1 truncate text-left"
+                          >
+                            4×{c.size} mm²
+                            {c.conduit !== "none" ? ` · ${c.conduit}` : ""}
+                            {" · "}
+                            {cableLengthOf(c).toFixed(1)} m
+                            <span className="ml-1 text-neutral-500">
+                              {a?.name ?? "?"} → {b?.name ?? "?"}
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => removeCable(c.id)}
+                            aria-label="Remove cable"
+                            className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            </DraggablePanel>
+          )}
+        </div>
 
             <div className="grid grid-cols-2 gap-1">
               <button
