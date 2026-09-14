@@ -764,6 +764,9 @@ export default function Scene3DViewer() {
     : null;
   const objLabels = propsItem ? stepsForType(propsItem.type) : null;
   const objStep = propsOwnerId ? itemAssembly[propsOwnerId] : undefined;
+  const objName = propsItem
+    ? SCENES.find((s) => s.id === (propsItem.type as SceneId))?.name ?? "Object"
+    : "Object";
   const objAssemblyOn = objStep !== undefined;
   const setObjStep = (fn: (s: number) => number) => {
     if (!propsOwnerId) return;
@@ -795,6 +798,7 @@ export default function Scene3DViewer() {
     setSceneId("puitmast");
     setStep(0);
     setSceneCleared(true);
+    setItemAssembly({});
     setAddedItems([]);
     setConnections([]);
     setConnectMode(false);
@@ -937,6 +941,8 @@ export default function Scene3DViewer() {
             {sceneId === "electriccar" && null}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
+              const itemStep =
+                itemAssembly[item.id] ?? stepsForType(item.type).length;
               return (
                 <group
                   key={item.id}
@@ -947,19 +953,19 @@ export default function Scene3DViewer() {
 
                   {item.type === "puitmast" && (
                     <ElectricalPost
-                      step={ASSEMBLY_STEPS.length}
+                      step={itemStep}
                       showAutoLines={false}
                     />
                   )}
                   {item.type === "puitmast20" && (
                     <WoodenMast20kV
-                      step={MAST_20KV_STEPS.length}
+                      step={itemStep}
                       showNextSpan={false}
                     />
                   )}
                   {item.type === "jaotuskilp" && (
                     <>
-                      <DistributionPanel step={PANEL_STEPS.length} />
+                      <DistributionPanel step={itemStep} />
                       <FeederBlocks feeders={feedersOf(item.id)} />
                       <Html position={[0, 1.5, 0]} center>
                         <button
@@ -972,7 +978,7 @@ export default function Scene3DViewer() {
                     </>
                   )}
                   {item.type === "alajaam" && (
-                    <Substation step={SUBSTATION_STEPS.length} />
+                    <Substation step={itemStep} />
                   )}
                   {/* Invisible proxy for connect / move mode */}
                   {(connectMode || moveMode) && (
@@ -2261,7 +2267,29 @@ export default function Scene3DViewer() {
               </div>
               <div className="text-sm text-neutral-800">{activeScene.name}</div>
             </div>
-            {stepLabels ? (
+            {propsOwnerId ? (
+              objLabels ? (
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
+                  <input
+                    type="checkbox"
+                    checked={objAssemblyOn}
+                    onChange={(e) => {
+                      setItemAssembly((prev) => {
+                        const next = { ...prev };
+                        if (e.target.checked) next[propsOwnerId] = 1;
+                        else delete next[propsOwnerId];
+                        return next;
+                      });
+                    }}
+                  />
+                  Show assembly (this object)
+                </label>
+              ) : (
+                <div className="text-xs text-neutral-500">
+                  This object has no assembly instructions.
+                </div>
+              )
+            ) : stepLabels ? (
               <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
                 <input
                   type="checkbox"
@@ -2312,8 +2340,36 @@ export default function Scene3DViewer() {
         </DraggablePanel>
       )}
 
-      {/* Step controls overlay */}
-      {stepLabels && assemblyVisible && (
+      {/* Step controls — for the selected object, or for the fixed scene model */}
+      {objAssemblyOn && objLabels && propsItem ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
+          <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
+            {objStep === 0
+              ? `${objName} — press Forward to start assembly`
+              : `${objName} — step ${objStep} / ${objLabels.length} — ${
+                  objLabels[(objStep ?? 1) - 1]
+                }`}
+          </div>
+          <div className="pointer-events-auto flex items-center gap-3">
+            <button
+              onClick={() => setObjStep((s) => Math.max(0, s - 1))}
+              disabled={objStep === 0}
+              className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              ← Back
+            </button>
+            <button
+              onClick={() =>
+                setObjStep((s) => Math.min(objLabels.length, s + 1))
+              }
+              disabled={objStep === objLabels.length}
+              className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              Forward →
+            </button>
+          </div>
+        </div>
+      ) : stepLabels && assemblyVisible ? (
         <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
           <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
             {step === 0
@@ -2337,7 +2393,7 @@ export default function Scene3DViewer() {
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
