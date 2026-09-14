@@ -424,6 +424,7 @@ export default function Scene3DViewer() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [cablesOpen, setCablesOpen] = useState(false);
   type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
