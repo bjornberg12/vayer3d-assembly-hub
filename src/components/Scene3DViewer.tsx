@@ -2263,7 +2263,29 @@ export default function Scene3DViewer() {
               </div>
               <div className="text-sm text-neutral-800">{activeScene.name}</div>
             </div>
-            {stepLabels ? (
+            {propsOwnerId ? (
+              objLabels ? (
+                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
+                  <input
+                    type="checkbox"
+                    checked={objAssemblyOn}
+                    onChange={(e) => {
+                      setItemAssembly((prev) => {
+                        const next = { ...prev };
+                        if (e.target.checked) next[propsOwnerId] = 1;
+                        else delete next[propsOwnerId];
+                        return next;
+                      });
+                    }}
+                  />
+                  Show assembly (this object)
+                </label>
+              ) : (
+                <div className="text-xs text-neutral-500">
+                  This object has no assembly instructions.
+                </div>
+              )
+            ) : stepLabels ? (
               <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
                 <input
                   type="checkbox"
