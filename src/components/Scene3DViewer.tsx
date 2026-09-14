@@ -974,7 +974,7 @@ export default function Scene3DViewer() {
                     </>
                   )}
                   {item.type === "alajaam" && (
-                    <Substation step={SUBSTATION_STEPS.length} />
+                    <Substation step={itemStep} />
                   )}
                   {/* Invisible proxy for connect / move mode */}
                   {(connectMode || moveMode) && (
