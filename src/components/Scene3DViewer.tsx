@@ -1647,7 +1647,7 @@ export default function Scene3DViewer() {
                     </button>
                   </div>
                 </>
-              )}
+              </div>
             </DraggablePanel>
           )}
         </div>
