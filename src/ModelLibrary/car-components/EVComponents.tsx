@@ -26,7 +26,7 @@ export type EVPartRecord = {
   params: Record<string, number>;
 };
 
-export type EVWireRecord = { id: string; a: string; b: string; crossSection: number };
+export type EVWireRecord = { id: string; a: string; b: string; crossSection: number; wireType?: string };
 
 type Def = {
   name: string;
@@ -130,6 +130,10 @@ export function wireLength(w: EVWireRecord, parts: EVPartRecord[]) {
   if (!a || !b) return 0;
   const curve = wireCurve(terminalPoint(a), terminalPoint(b));
   return curve.getLength();
+}
+
+export function wireCurveLength(a: [number, number, number], b: [number, number, number]) {
+  return wireCurve(a, b).getLength();
 }
 
 function wireCurve(a: [number, number, number], b: [number, number, number]) {
@@ -255,8 +259,9 @@ export function EVPart({ part }: { part: EVPartRecord }) {
 }
 
 export function EVWire({
-  from, to, hv, crossSection, selected, onSelect,
+  from, to, hv, crossSection, selected, onSelect, color,
 }: {
+  color?: string;
   from: [number, number, number];
   to: [number, number, number];
   hv: boolean;
@@ -276,7 +281,7 @@ export function EVWire({
       onContextMenu={(e) => { e.stopPropagation(); e.nativeEvent?.preventDefault?.(); onSelect({ ctx: true }); }}
     >
       <meshStandardMaterial
-        color={selected ? "#facc15" : hv ? "#f07a1a" : "#1a1a1a"}
+        color={selected ? "#facc15" : color ?? (hv ? "#f07a1a" : "#1a1a1a")}
         emissive={selected ? "#a16207" : "#000000"}
         roughness={0.55}
       />

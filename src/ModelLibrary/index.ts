@@ -17,6 +17,7 @@ export * from "./distribution/DistributionPanel";
 export * from "./distribution/PanelFeeders";
 export * from "./substations/KioskSubstation";
 export * from "./cables/UndergroundCable";
+export * from "./cables/catalog";
 export * from "./car-components/EVComponents";
 
 export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "car-components";
