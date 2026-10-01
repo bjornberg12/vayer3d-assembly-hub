@@ -568,7 +568,7 @@ function DragProxy({
 }
 
 type GroundPt = [number, number];
-function groundHit(e: PointerEvent, dom: HTMLElement, camera: THREE.Camera): GroundPt | null {
+function groundHit(e: MouseEvent, dom: HTMLElement, camera: THREE.Camera): GroundPt | null {
   const rect = dom.getBoundingClientRect();
   const ndc = new THREE.Vector2(
     ((e.clientX - rect.left) / rect.width) * 2 - 1,
@@ -581,22 +581,66 @@ function groundHit(e: PointerEvent, dom: HTMLElement, camera: THREE.Camera): Gro
   return [Math.round(hit.x * 100) / 100, Math.round(hit.z * 100) / 100];
 }
 
-/** While routing a cable: ground clicks drop corner points; a dashed preview follows the cursor. */
+/** Loose (unconnected) connection ends are stored as "pt:x,z" ids. */
+const PT_PREFIX = "pt:";
+const makePt = (p: GroundPt) => `${PT_PREFIX}${p[0]},${p[1]}`;
+const parsePt = (id?: string | null): GroundPt | null => {
+  if (!id || !id.startsWith(PT_PREFIX)) return null;
+  const [x, z] = id.slice(PT_PREFIX.length).split(",").map(Number);
+  return Number.isFinite(x) && Number.isFinite(z) ? [x, z] : null;
+};
+
+/** Wire curve through optional ground waypoints (wires run just above ground). */
+function routedWireCurve(a: [number, number, number], b: [number, number, number], wps: Waypoint[]) {
+  return new THREE.CatmullRomCurve3(
+    [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], 0.15, w[1])), new THREE.Vector3(...b)],
+    false,
+    "centripetal"
+  );
+}
+function RoutedWire({
+  from, to, waypoints, crossSection, color, selected, onSelect,
+}: {
+  from: [number, number, number]; to: [number, number, number]; waypoints: Waypoint[];
+  crossSection: number; color: string; selected: boolean; onSelect: () => void;
+}) {
+  const geo = useMemo(() => {
+    const r = Math.max(0.006, (Math.sqrt(crossSection / Math.PI) / 1000) * 2.2);
+    return new THREE.TubeGeometry(routedWireCurve(from, to, waypoints), 120, r, 8, false);
+  }, [from, to, waypoints, crossSection]);
+  return (
+    <mesh geometry={geo} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
+      <meshStandardMaterial color={selected ? "#facc15" : color} roughness={0.5} emissive={selected ? "#f59e0b" : "#000000"} emissiveIntensity={selected ? 0.4 : 0} />
+    </mesh>
+  );
+}
+
+/**
+ * While routing any connection: single ground clicks drop corner points (or the
+ * start point), a double-click ends the connection at that spot. A dashed
+ * preview follows the cursor.
+ */
 function CableRouter({
   active,
   start,
   draft,
   onAdd,
+  onFinish,
   skipRef,
 }: {
   active: boolean;
   start: [number, number, number] | null;
   draft: Waypoint[];
   onAdd: (p: Waypoint) => void;
+  onFinish: (p: Waypoint) => void;
   skipRef: React.MutableRefObject<number>;
 }) {
   const { camera, gl } = useThree();
   const [hover, setHover] = useState<GroundPt | null>(null);
+  const addRef = useRef(onAdd);
+  const finishRef = useRef(onFinish);
+  addRef.current = onAdd;
+  finishRef.current = onFinish;
   useEffect(() => {
     if (!active) {
       setHover(null);
@@ -604,36 +648,58 @@ function CableRouter({
     }
     const dom = gl.domElement;
     let dx = 0, dy = 0;
+    let timer: number | null = null;
     const down = (e: PointerEvent) => { dx = e.clientX; dy = e.clientY; };
     const move = (e: PointerEvent) => setHover(groundHit(e, dom, camera));
     const up = (e: PointerEvent) => {
       if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
       if (Math.hypot(e.clientX - dx, e.clientY - dy) > 4) return;
+      // Second click of a double-click: drop the pending corner, dblclick finishes.
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+        return;
+      }
       const p = groundHit(e, dom, camera);
       if (!p) return;
-      window.setTimeout(() => {
-        if (performance.now() - skipRef.current < 120) return;
-        onAdd(p);
-      }, 40);
+      timer = window.setTimeout(() => {
+        timer = null;
+        if (performance.now() - skipRef.current < 400) return;
+        addRef.current(p);
+      }, 260);
+    };
+    const dbl = (e: MouseEvent) => {
+      if (performance.now() - skipRef.current < 400) return;
+      const p = groundHit(e, dom, camera);
+      if (p) finishRef.current(p);
     };
     dom.addEventListener("pointerdown", down);
     dom.addEventListener("pointermove", move);
     dom.addEventListener("pointerup", up);
+    dom.addEventListener("dblclick", dbl);
     return () => {
+      if (timer !== null) window.clearTimeout(timer);
       dom.removeEventListener("pointerdown", down);
       dom.removeEventListener("pointermove", move);
       dom.removeEventListener("pointerup", up);
+      dom.removeEventListener("dblclick", dbl);
     };
-  }, [active, camera, gl, onAdd, skipRef]);
-  if (!active || !start) return null;
+  }, [active, camera, gl, skipRef]);
+  if (!active) return null;
   const pts: [number, number, number][] = [
-    [start[0], 0.03, start[2]],
+    ...(start ? [[start[0], 0.03, start[2]] as [number, number, number]] : []),
     ...draft.map((w) => [w[0], 0.03, w[1]] as [number, number, number]),
     ...(hover ? [[hover[0], 0.03, hover[1]] as [number, number, number]] : []),
   ];
   return (
     <group>
       {pts.length > 1 && <Line points={pts} color="#f59e0b" lineWidth={2} dashed dashSize={0.3} gapSize={0.2} />}
+      {hover && (
+        <mesh position={[hover[0], 0.05, hover[1]]} raycast={() => null}>
+          <sphereGeometry args={[0.08, 12, 10]} />
+          <meshBasicMaterial color="#f59e0b" transparent opacity={0.6} />
+        </mesh>
+      )}
       {draft.map((w, i) => (
         <mesh key={i} position={[w[0], 0.05, w[1]]} raycast={() => null}>
           <sphereGeometry args={[0.12, 16, 12]} />
@@ -644,24 +710,31 @@ function CableRouter({
   );
 }
 
-/** Drag handles for every corner (and section midpoints) of a selected cable. */
+/** Drag handles for every corner (and section midpoints) of a selected connection. Loose ends get their own handles. */
 function CableRouteEditor({
   from,
   to,
   waypoints,
   onChange,
+  onFromMove,
+  onToMove,
   controlsRef,
 }: {
   from: [number, number, number];
   to: [number, number, number];
   waypoints: Waypoint[];
   onChange: (w: Waypoint[]) => void;
+  onFromMove?: (p: Waypoint) => void;
+  onToMove?: (p: Waypoint) => void;
   controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
 }) {
   const { camera, gl } = useThree();
+  // index into waypoints; -1 = loose start, -2 = loose end
   const [drag, setDrag] = useState<number | null>(null);
   const wpRef = useRef(waypoints);
   wpRef.current = waypoints;
+  const cbRef = useRef({ onChange, onFromMove, onToMove });
+  cbRef.current = { onChange, onFromMove, onToMove };
   useEffect(() => {
     if (drag === null) return;
     if (controlsRef.current) controlsRef.current.enabled = false;
@@ -669,9 +742,11 @@ function CableRouteEditor({
     const move = (e: PointerEvent) => {
       const p = groundHit(e, dom, camera);
       if (!p) return;
+      if (drag === -1) return cbRef.current.onFromMove?.(p);
+      if (drag === -2) return cbRef.current.onToMove?.(p);
       const next = wpRef.current.slice();
       next[drag] = p;
-      onChange(next);
+      cbRef.current.onChange(next);
     };
     const up = () => setDrag(null);
     window.addEventListener("pointermove", move);
@@ -683,7 +758,7 @@ function CableRouteEditor({
       dom.style.cursor = "";
       if (controlsRef.current) controlsRef.current.enabled = true;
     };
-  }, [drag, camera, gl, controlsRef, onChange]);
+  }, [drag, camera, gl, controlsRef]);
 
   const chain: GroundPt[] = [[from[0], from[2]], ...waypoints, [to[0], to[2]]];
   const hoverOn = (e: { stopPropagation: () => void }) => {
@@ -691,6 +766,22 @@ function CableRouteEditor({
     document.body.style.cursor = "grab";
   };
   const hoverOff = () => { document.body.style.cursor = ""; };
+  const endHandle = (p: [number, number, number], idx: -1 | -2) => (
+    <mesh
+      key={`e${idx}`}
+      position={[p[0], 0.1, p[2]]}
+      onPointerOver={hoverOn}
+      onPointerOut={hoverOff}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        if (e.nativeEvent.button === 0) setDrag(idx);
+      }}
+    >
+      <cylinderGeometry args={[0.2, 0.2, 0.12, 20]} />
+      <meshStandardMaterial color={drag === idx ? "#ffffff" : "#ef4444"} emissive="#ef4444" emissiveIntensity={0.35} />
+    </mesh>
+  );
   return (
     <group>
       <Line
@@ -701,6 +792,8 @@ function CableRouteEditor({
         dashSize={0.25}
         gapSize={0.15}
       />
+      {onFromMove && endHandle(from, -1)}
+      {onToMove && endHandle(to, -2)}
       {waypoints.map((w, i) => (
         <mesh
           key={`c${i}`}
@@ -733,7 +826,7 @@ function CableRouteEditor({
             position={[mx, 0.06, mz]}
             onPointerOver={hoverOn}
             onPointerOut={hoverOff}
-          onClick={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => {
               e.stopPropagation();
               if (e.nativeEvent.button !== 0) return;
@@ -750,6 +843,59 @@ function CableRouteEditor({
       })}
     </group>
   );
+}
+
+/** Loose line ends hang at 8 m, keeping the phase spacing of the other end. */
+const DEFAULT_LINE_PHASES: [number, number, number][] = [[-0.45, 8, 0], [0, 8, 0], [0.45, 8, 0]];
+const centroid = (pts: [number, number, number][]): [number, number, number] => {
+  const n = pts.length || 1;
+  return [
+    pts.reduce((s, p) => s + p[0], 0) / n,
+    pts.reduce((s, p) => s + p[1], 0) / n,
+    pts.reduce((s, p) => s + p[2], 0) / n,
+  ];
+};
+/** Sagging polyline for one phase: ends + waypoint supports, sag per span. */
+function linePhasePath(
+  s: [number, number, number],
+  e: [number, number, number],
+  sOff: [number, number, number],
+  eOff: [number, number, number],
+  wps: Waypoint[]
+): [number, number, number][] {
+  // Support nodes: ground distance drives height/offset interpolation
+  const ground: GroundPt[] = [[s[0] - sOff[0], s[2] - sOff[2]], ...wps, [e[0] - eOff[0], e[2] - eOff[2]]];
+  const cum = [0];
+  for (let i = 1; i < ground.length; i++)
+    cum.push(cum[i - 1] + Math.hypot(ground[i][0] - ground[i - 1][0], ground[i][1] - ground[i - 1][1]));
+  const total = cum[cum.length - 1] || 1;
+  const nodes: [number, number, number][] = ground.map((g, i) => {
+    if (i === 0) return s;
+    if (i === ground.length - 1) return e;
+    const t = cum[i] / total;
+    return [
+      g[0] + sOff[0] + (eOff[0] - sOff[0]) * t,
+      s[1] + (e[1] - s[1]) * t,
+      g[1] + sOff[2] + (eOff[2] - sOff[2]) * t,
+    ];
+  });
+  const pts: [number, number, number][] = [];
+  for (let i = 1; i < nodes.length; i++) {
+    const a = nodes[i - 1];
+    const b = nodes[i];
+    const span = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
+    const sag = Math.min(1.2, span * 0.03);
+    const segs = 24;
+    for (let k = i === 1 ? 0 : 1; k <= segs; k++) {
+      const t = k / segs;
+      pts.push([
+        a[0] + (b[0] - a[0]) * t,
+        a[1] + (b[1] - a[1]) * t - sag * 4 * t * (1 - t),
+        a[2] + (b[2] - a[2]) * t,
+      ]);
+    }
+  }
+  return pts;
 }
 
 function Placer({
@@ -882,7 +1028,8 @@ export default function Scene3DViewer() {
   const [placementRotation, setPlacementRotation] = useState(0); // radians
   const [connectMode, setConnectMode] = useState(false);
   const [connectFirst, setConnectFirst] = useState<string | null>(null);
-  const [connections, setConnections] = useState<{ id: string; a: string; b: string; type?: string }[]>([]);
+  type LineRecord = { id: string; a: string; b: string; type?: string; waypoints?: Waypoint[] };
+  const [connections, setConnections] = useState<LineRecord[]>([]);
   const [lineType, setLineType] = useState<string>(DEFAULT_LINE_TYPE);
   const [wireType, setWireType] = useState<string>(DEFAULT_WIRE_TYPE);
   const [wiringSection, setWiringSection] = useState<"cables" | "lines" | "wires" | null>("cables");
@@ -1040,19 +1187,23 @@ export default function Scene3DViewer() {
     setEVParts((prev) => prev.filter((q) => q.id !== id));
     setEVWires((prev) => prev.filter((w) => w.a !== id && w.b !== id));
   };
-  const handleEVWireClick = (id: string) => {
-    if (!evWireFirst) return setEVWireFirst(id);
-    if (evWireFirst === id) return setEVWireFirst(null);
+  const handleEVWireClick = (id: string, wps: Waypoint[] = cableDraft) => {
+    endpointClickAt.current = performance.now();
+    if (!evWireFirst) { setCableDraft([]); return setEVWireFirst(id); }
+    if (evWireFirst === id) { setCableDraft([]); return setEVWireFirst(null); }
     const a = evWireFirst;
     setEVWires((prev) =>
-      prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
+      !wps.length && prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
         ? prev
-        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType }]
+        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType, waypoints: wps.length ? wps : undefined }]
     );
     setEVWireFirst(null);
+    setCableDraft([]);
   };
 
   const wireEnd = (id: string): [number, number, number] | null => {
+    const pt = parsePt(id);
+    if (pt) return [pt[0], 0.1, pt[1]];
     const part = sceneId === "electriccar" ? evParts.find((q) => q.id === id) : undefined;
     if (part) return terminalPoint(part);
     const item = addedItems.find((i) => i.id === id);
@@ -1062,7 +1213,9 @@ export default function Scene3DViewer() {
   const anyWireLength = (w: EVWireRecord) => {
     const a = wireEnd(w.a);
     const b = wireEnd(w.b);
-    return a && b ? wireCurveLength(a, b) : 0;
+    if (!a || !b) return 0;
+    if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b)) return routedWireCurve(a, b, w.waypoints ?? []).getLength();
+    return wireCurveLength(a, b);
   };
   const wireLabel = (w: EVWireRecord) =>
     wireTypeOf(w.wireType)?.label ?? (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
@@ -1073,23 +1226,29 @@ export default function Scene3DViewer() {
     setEVWireFirst(null);
     setMoveMode(false);
     setCableMode(false);
+    setCableFirst(null);
+    setCableDraft([]);
     setPendingAdd(null);
     setPendingEV(null);
   };
-  const handleItemClickForConnect = (id: string) => {
+  const handleItemClickForConnect = (id: string, wps: Waypoint[] = cableDraft) => {
     if (!connectMode) return;
+    endpointClickAt.current = performance.now();
     if (!connectFirst) {
       setConnectFirst(id);
+      setCableDraft([]);
       return;
     }
     if (connectFirst === id) {
       setConnectFirst(null);
+      setCableDraft([]);
       return;
     }
     const a = connectFirst;
     const b = id;
     setConnections((prev) => {
       if (
+        !wps.length &&
         prev.some(
           (c) => (c.a === a && c.b === b) || (c.a === b && c.b === a)
         )
@@ -1097,10 +1256,11 @@ export default function Scene3DViewer() {
         return prev;
       return [
         ...prev,
-        { id: `${a}::${b}::${Date.now()}`, a, b, type: lineType },
+        { id: `${a}::${b}::${Date.now()}`, a, b, type: lineType, waypoints: wps.length ? wps : undefined },
       ];
     });
     setConnectFirst(null);
+    setCableDraft([]);
   };
   const phaseLocalsFor = (type: AddableType): [number, number, number][] | null => {
     if (type === "puitmast") return PUITMAST_PHASE_LOCAL;
@@ -1147,6 +1307,13 @@ export default function Scene3DViewer() {
         point: rotateLocal(cableExitLocal(i.type), i.position, i.rotationY),
       });
     });
+    // Loose (unconnected) cable ends
+    cables.forEach((c) => {
+      [c.a, c.b].forEach((id) => {
+        const p = parsePt(id);
+        if (p && !list.some((e) => e.id === id)) list.push({ id, name: "Loose end", point: [p[0], 0, p[1]] });
+      });
+    });
     // Cable joints: an existing cable's midpoint can host a new branch cable
     cables.forEach((c, idx) => {
       const a = list.find((e) => e.id === c.a);
@@ -1168,7 +1335,7 @@ export default function Scene3DViewer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addedItems, sceneId, cables]);
 
-  const handleCableClick = (endId: string) => {
+  const handleCableClick = (endId: string, wps: Waypoint[] = cableDraft) => {
     if (!cableMode) return;
     endpointClickAt.current = performance.now();
     if (!cableFirst) {
@@ -1192,7 +1359,7 @@ export default function Scene3DViewer() {
         conduit: cableConduit,
         voltage: 400 as CableVoltage,
         powerKw: 30,
-        waypoints: cableDraft.length ? cableDraft : undefined,
+        waypoints: wps.length ? wps : undefined,
       },
     ]);
     setCableFirst(null);
@@ -1231,34 +1398,98 @@ export default function Scene3DViewer() {
     if (!a || !b) return 0;
     return cableRouteLength(a.point, b.point, 0.7, c.waypoints);
   };
+  const cableLoose = (c: CableRecord) => !!(parsePt(c.a) || parsePt(c.b));
   const cableCurrentOf = (c: CableRecord) =>
-    c.voltage === 400
+    cableLoose(c)
+      ? 0
+      : c.voltage === 400
       ? (c.powerKw * 1000) / (Math.sqrt(3) * 400 * PF)
       : (c.powerKw * 1000) / (230 * PF);
   const selectedCable = cables.find((c) => c.id === selectedCableId) ?? null;
-  const addDraftPoint = useMemo(
-    () => (p: Waypoint) => setCableDraft((d) => [...d, p]),
-    []
-  );
+
+  // --- Aerial line geometry (posts or loose ends) ---------------------------
+  const linePhases = (c: LineRecord): [[number, number, number][], [number, number, number][]] | null => {
+    const ia = addedItems.find((i) => i.id === c.a);
+    const ib = addedItems.find((i) => i.id === c.b);
+    let pa = ia ? worldPhasePoints(ia) : null;
+    let pb = ib ? worldPhasePoints(ib) : null;
+    const loose = (pt: GroundPt, ref: [number, number, number][] | null) => {
+      const r = ref && ref.length ? ref : DEFAULT_LINE_PHASES;
+      const cc = centroid(r);
+      return r.map(([x, , z]) => [pt[0] + x - cc[0], 8, pt[1] + z - cc[2]] as [number, number, number]);
+    };
+    const ptA = parsePt(c.a);
+    const ptB = parsePt(c.b);
+    if (!pa && ptA) pa = loose(ptA, pb);
+    if (!pb && ptB) pb = loose(ptB, pa);
+    if (!pa || !pb) return null;
+    const n = Math.min(pa.length, pb.length);
+    if (n === 0) return null;
+    return [pa.slice(0, n), pb.slice(0, n)];
+  };
+  const linePaths = (c: LineRecord) => {
+    const ph = linePhases(c);
+    if (!ph) return null;
+    const [pa, pb] = ph;
+    const ca = centroid(pa);
+    const cb = centroid(pb);
+    return pa.map((s, i) => {
+      const e = pb[i];
+      const sOff: [number, number, number] = [s[0] - ca[0], 0, s[2] - ca[2]];
+      const eOff: [number, number, number] = [e[0] - cb[0], 0, e[2] - cb[2]];
+      return linePhasePath(s, e, sOff, eOff, c.waypoints ?? []);
+    });
+  };
+  const lineLengthOf = (c: LineRecord) => {
+    const p = linePaths(c)?.[0];
+    if (!p) return 0;
+    let len = 0;
+    for (let i = 1; i < p.length; i++) len += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1], p[i][2] - p[i - 1][2]);
+    return len;
+  };
+
+  // --- Shared routing for cables, lines and wires -----------------------------
+  const routingKind: "cable" | "line" | "wire" | null =
+    pendingAdd || pendingEV ? null : cableMode ? "cable" : connectMode ? "line" : evWireMode ? "wire" : null;
+  const routeFirst =
+    routingKind === "cable" ? cableFirst : routingKind === "line" ? connectFirst : routingKind === "wire" ? evWireFirst : null;
+  const finishRoute = (endId: string, wps: Waypoint[] = cableDraft) => {
+    if (routingKind === "cable") handleCableClick(endId, wps);
+    else if (routingKind === "line") handleItemClickForConnect(endId, wps);
+    else if (routingKind === "wire") handleEVWireClick(endId, wps);
+  };
+  const cancelRoute = () => {
+    setCableFirst(null);
+    setConnectFirst(null);
+    setEVWireFirst(null);
+    setCableDraft([]);
+  };
+  const routeStartPoint = (id: string): [number, number, number] | null => {
+    const pt = parsePt(id);
+    if (pt) return [pt[0], 0, pt[1]];
+    if (routingKind === "cable") return cableEndpoints.find((e) => e.id === id)?.point ?? null;
+    if (routingKind === "line") return addedItems.find((i) => i.id === id)?.position ?? null;
+    return wireEnd(id);
+  };
   useEffect(() => {
-    if (!selectedCableId) setEditRoute(false);
-  }, [selectedCableId]);
-  useEffect(() => {
-    if (!cableMode || !cableFirst) return;
+    if (!routingKind || !routeFirst) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
       if (e.key === "Escape") {
-        setCableFirst(null);
-        setCableDraft([]);
+        cancelRoute();
       } else if (e.key === "Backspace") {
         e.preventDefault();
         setCableDraft((d) => d.slice(0, -1));
+      } else if (e.key === "Enter" && cableDraft.length) {
+        e.preventDefault();
+        const last = cableDraft[cableDraft.length - 1];
+        finishRoute(makePt(last), cableDraft.slice(0, -1));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cableMode, cableFirst]);
+  });
   const updateCable = (id: string, patch: Partial<CableRecord>) =>
     setCables((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 
@@ -1448,6 +1679,25 @@ export default function Scene3DViewer() {
               const b = wireEnd(w.b);
               if (!a || !b) return null;
               const wt = wireTypeOf(w.wireType);
+              const selectWire = () => {
+                setPartLabel(null);
+                setPartLabelPos(null);
+                setPropsTarget(wireLabel(w));
+                setPropsOwnerId(w.id);
+              };
+              if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b))
+                return (
+                  <RoutedWire
+                    key={w.id}
+                    from={a}
+                    to={b}
+                    waypoints={w.waypoints ?? []}
+                    crossSection={w.crossSection}
+                    color={wt?.color ?? "#e5e7eb"}
+                    selected={propsOwnerId === w.id}
+                    onSelect={selectWire}
+                  />
+                );
               return (
                 <EVWire
                   key={w.id}
@@ -1573,13 +1823,8 @@ export default function Scene3DViewer() {
             })}
             {/* Aerial line connections between placed posts */}
             {connections.map((c) => {
-              const a = addedItems.find((i) => i.id === c.a);
-              const b = addedItems.find((i) => i.id === c.b);
-              if (!a || !b) return null;
-              const pa = worldPhasePoints(a);
-              const pb = worldPhasePoints(b);
-              const n = Math.min(pa.length, pb.length);
-              if (n === 0) return null;
+              const paths = linePaths(c);
+              if (!paths) return null;
               const lt = lineTypeOf(c.type);
               const lineSelected = selectedLineId === c.id;
               return (
@@ -1592,34 +1837,14 @@ export default function Scene3DViewer() {
                     setWiringSection("lines");
                   }}
                 >
-                  {Array.from({ length: n }).map((_, i) => {
-                    const s = pa[i];
-                    const e = pb[i];
-                    const segs = 24;
-                    const span = Math.hypot(
-                      e[0] - s[0],
-                      e[1] - s[1],
-                      e[2] - s[2]
-                    );
-                    const sag = Math.min(1.2, span * 0.03);
-                    const pts: [number, number, number][] = [];
-                    for (let k = 0; k <= segs; k++) {
-                      const t = k / segs;
-                      const x = s[0] + (e[0] - s[0]) * t;
-                      const y = s[1] + (e[1] - s[1]) * t - sag * 4 * t * (1 - t);
-                      const z = s[2] + (e[2] - s[2]) * t;
-                      pts.push([x, y, z]);
-                    }
-                    return (
-                      <CatmullRomLine
-                        key={i}
-                        points={pts}
-                        color={lineSelected ? "#facc15" : lt.color}
-                        lineWidth={lineSelected ? lt.lineWidth + 1.5 : lt.lineWidth}
-                        segments={40}
-                      />
-                    );
-                  })}
+                  {paths.map((pts, i) => (
+                    <Line
+                      key={i}
+                      points={pts}
+                      color={lineSelected ? "#facc15" : lt.color}
+                      lineWidth={lineSelected ? lt.lineWidth + 1.5 : lt.lineWidth}
+                    />
+                  ))}
                 </group>
               );
             })}
@@ -1721,10 +1946,16 @@ export default function Scene3DViewer() {
             }}
           />
           <CableRouter
-            active={cableMode && cableFirst !== null}
-            start={cableEndpoints.find((e) => e.id === cableFirst)?.point ?? null}
+            active={routingKind !== null}
+            start={routeFirst ? routeStartPoint(routeFirst) : null}
             draft={cableDraft}
-            onAdd={addDraftPoint}
+            onAdd={(p) => {
+              if (!routeFirst) finishRoute(makePt(p));
+              else setCableDraft((d) => [...d, p]);
+            }}
+            onFinish={(p) => {
+              if (routeFirst) finishRoute(makePt(p));
+            }}
             skipRef={endpointClickAt}
           />
           {editRoute && selectedCable && (() => {
@@ -1738,6 +1969,47 @@ export default function Scene3DViewer() {
                 to={b.point}
                 waypoints={selectedCable.waypoints ?? []}
                 onChange={(w) => updateCable(id, { waypoints: w.length ? w : undefined })}
+                onFromMove={parsePt(selectedCable.a) ? (p) => updateCable(id, { a: makePt(p) }) : undefined}
+                onToMove={parsePt(selectedCable.b) ? (p) => updateCable(id, { b: makePt(p) }) : undefined}
+                controlsRef={controlsRef}
+              />
+            );
+          })()}
+          {selectedLineId && routingKind === null && (() => {
+            const c = connections.find((x) => x.id === selectedLineId);
+            if (!c) return null;
+            const ph = linePhases(c);
+            if (!ph) return null;
+            const id = c.id;
+            const upd = (patch: Partial<LineRecord>) =>
+              setConnections((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+            return (
+              <CableRouteEditor
+                from={centroid(ph[0])}
+                to={centroid(ph[1])}
+                waypoints={c.waypoints ?? []}
+                onChange={(w) => upd({ waypoints: w.length ? w : undefined })}
+                onFromMove={parsePt(c.a) ? (p) => upd({ a: makePt(p) }) : undefined}
+                onToMove={parsePt(c.b) ? (p) => upd({ b: makePt(p) }) : undefined}
+                controlsRef={controlsRef}
+              />
+            );
+          })()}
+          {evPropWire && routingKind === null && (() => {
+            const a = wireEnd(evPropWire.a);
+            const b = wireEnd(evPropWire.b);
+            if (!a || !b) return null;
+            const id = evPropWire.id;
+            const upd = (patch: Partial<EVWireRecord>) =>
+              setEVWires((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+            return (
+              <CableRouteEditor
+                from={a}
+                to={b}
+                waypoints={evPropWire.waypoints ?? []}
+                onChange={(w) => upd({ waypoints: w.length ? w : undefined })}
+                onFromMove={parsePt(evPropWire.a) ? (p) => upd({ a: makePt(p) }) : undefined}
+                onToMove={parsePt(evPropWire.b) ? (p) => upd({ b: makePt(p) }) : undefined}
                 controlsRef={controlsRef}
               />
             );
@@ -2403,20 +2675,17 @@ export default function Scene3DViewer() {
                     </div>
                   ))}
                   <button
-                    disabled={addedItems.filter((i) => i.type === "puitmast" || i.type === "puitmast20").length < 2}
                     onClick={() => { const on = !connectMode; stopAllModes(); setConnectMode(on); }}
                     className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50 ${connectMode ? "border-blue-300/60 bg-blue-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
                   >
                     <Link2 className="h-3.5 w-3.5" />
                     {connectMode ? "Connecting…" : "Connect posts"}
                   </button>
-                  <p className="mt-1 text-[10px] text-neutral-600">Add at least two posts from the Add menu, then click two posts.</p>
+                  <p className="mt-1 text-[10px] text-neutral-600">Click a post or the ground to start, click the ground for corners, then click a post — or double-click to end the line anywhere.</p>
                   {connections.length > 0 && (
                     <ul className="mt-2 flex flex-col rounded-lg border border-white/40 bg-white/30">
                       {connections.map((c, i) => {
-                        const a = addedItems.find((x) => x.id === c.a);
-                        const b = addedItems.find((x) => x.id === c.b);
-                        const span = a && b ? Math.hypot(a.position[0] - b.position[0], a.position[2] - b.position[2]) : 0;
+                        const span = lineLengthOf(c);
                         const sag = Math.min(1.2, span * 0.03);
                         const sel = selectedLineId === c.id;
                         const lt = lineTypeOf(c.type);
@@ -2438,6 +2707,17 @@ export default function Scene3DViewer() {
                               <div className="mt-1 text-[10px] text-neutral-700">
                                 Length {span.toFixed(1)} m · sag {sag.toFixed(2)} m · {lt.voltage >= 1000 ? `${lt.voltage / 1000} kV` : `${lt.voltage} V`} · {lt.crossSection} mm²
                               </div>
+                            )}
+                            {sel && c.waypoints?.length ? (
+                              <button
+                                onClick={() => setConnections((prev) => prev.map((x) => (x.id === c.id ? { ...x, waypoints: undefined } : x)))}
+                                className="mt-1 rounded border border-white/60 bg-white/50 px-2 py-0.5 text-[10px] font-semibold text-neutral-800 hover:bg-white/80"
+                              >
+                                Reset route
+                              </button>
+                            ) : null}
+                            {false && (
+                              <div />
                             )}
                           </li>
                         );
@@ -2472,7 +2752,7 @@ export default function Scene3DViewer() {
                     <Cable className="h-3.5 w-3.5" />
                     {evWireMode ? "Wiring…" : "Wire objects"}
                   </button>
-                  <p className="mt-1 text-[10px] text-neutral-600">Click two objects to wire them. Click a wire to see its data or delete it.</p>
+                  <p className="mt-1 text-[10px] text-neutral-600">Click an object or the ground to start, click the ground for corners, then click an object — or double-click to end anywhere. Click a wire to edit it.</p>
                 </div>
               )}
             </DraggablePanel>
@@ -2518,8 +2798,8 @@ export default function Scene3DViewer() {
           <span>
             {wireTypeOf(wireType)?.label}:{" "}
             {evWireFirst
-              ? "click a second object to finish the wire"
-              : "click an object to start a wire"}
+              ? `corners ${cableDraft.length} — click an object, or double-click to end here · Backspace undo, Enter finish, Esc cancel`
+              : "click an object or the ground to start a wire"}
           </span>
           <button
             onClick={() => { setEVWireMode(false); setEVWireFirst(null); }}
@@ -2925,10 +3205,10 @@ export default function Scene3DViewer() {
           <Link2 className="h-3.5 w-3.5" />
           <span>
             {cableFirst
-              ? `Click the ground to add corners (${cableDraft.length}), then click the end unit — Backspace undo, Esc cancel · 4×${cableSize} mm²${
+              ? `Click the ground to add corners (${cableDraft.length}), then click the end unit or double-click to end here — Backspace undo, Enter finish, Esc cancel · 4×${cableSize} mm²${
                   cableConduit !== "none" ? ` in ${cableConduit} conduit` : ""
                 }`
-              : "Click the first unit (substation / panel)"}
+              : "Click the first unit (substation / panel) or the ground to start"}
           </span>
           <button
             onClick={() => {
@@ -2950,8 +3230,8 @@ export default function Scene3DViewer() {
           <span>
             {lineTypeOf(lineType).label}:{" "}
             {connectFirst
-              ? "click a second post to connect"
-              : "click the first post to connect"}
+              ? `corners ${cableDraft.length} — click a post, or double-click to end here · Backspace undo, Enter finish, Esc cancel`
+              : "click a post or the ground to start a line"}
           </span>
           <button
             onClick={() => {
@@ -3121,6 +3401,15 @@ export default function Scene3DViewer() {
                     ))}
                   </div>
                 </div>
+                <div className="text-[10px] text-neutral-600">Drag the orange corners on the ground to reroute, "+" to add a corner, right-click a corner to remove it.</div>
+                {evPropWire.waypoints?.length ? (
+                  <button
+                    onClick={() => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, waypoints: undefined } : w)))}
+                    className="w-full rounded-lg border border-white/60 bg-white/45 px-3 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-white/70"
+                  >
+                    Reset route
+                  </button>
+                ) : null}
                 <button
                   onClick={() => { setEVWires((prev) => prev.filter((w) => w.id !== evPropWire.id)); setPropsTarget(null); setPropsOwnerId(null); }}
                   className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-500/35"
