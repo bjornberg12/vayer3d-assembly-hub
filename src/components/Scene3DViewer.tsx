@@ -929,6 +929,7 @@ export default function Scene3DViewer() {
       />
       <Canvas
         shadows
+        gl={{ logarithmicDepthBuffer: true }}
         camera={{ position: [14, 11, 16], fov: 50, near: 0.000001, far: 1_000_000_000 }}
         style={{
           background: night
