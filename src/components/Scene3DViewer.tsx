@@ -2549,14 +2549,13 @@ export default function Scene3DViewer() {
                     </div>
                   ))}
                   <button
-                    disabled={addedItems.filter((i) => i.type === "puitmast" || i.type === "puitmast20").length < 2}
                     onClick={() => { const on = !connectMode; stopAllModes(); setConnectMode(on); }}
                     className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50 ${connectMode ? "border-blue-300/60 bg-blue-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
                   >
                     <Link2 className="h-3.5 w-3.5" />
                     {connectMode ? "Connecting…" : "Connect posts"}
                   </button>
-                  <p className="mt-1 text-[10px] text-neutral-600">Add at least two posts from the Add menu, then click two posts.</p>
+                  <p className="mt-1 text-[10px] text-neutral-600">Click a post or the ground to start, click the ground for corners, then click a post — or double-click to end the line anywhere.</p>
                   {connections.length > 0 && (
                     <ul className="mt-2 flex flex-col rounded-lg border border-white/40 bg-white/30">
                       {connections.map((c, i) => {
@@ -2618,7 +2617,7 @@ export default function Scene3DViewer() {
                     <Cable className="h-3.5 w-3.5" />
                     {evWireMode ? "Wiring…" : "Wire objects"}
                   </button>
-                  <p className="mt-1 text-[10px] text-neutral-600">Click two objects to wire them. Click a wire to see its data or delete it.</p>
+                  <p className="mt-1 text-[10px] text-neutral-600">Click an object or the ground to start, click the ground for corners, then click an object — or double-click to end anywhere. Click a wire to edit it.</p>
                 </div>
               )}
             </DraggablePanel>
@@ -2664,8 +2663,8 @@ export default function Scene3DViewer() {
           <span>
             {wireTypeOf(wireType)?.label}:{" "}
             {evWireFirst
-              ? "click a second object to finish the wire"
-              : "click an object to start a wire"}
+              ? `corners ${cableDraft.length} — click an object, or double-click to end here · Backspace undo, Enter finish, Esc cancel`
+              : "click an object or the ground to start a wire"}
           </span>
           <button
             onClick={() => { setEVWireMode(false); setEVWireFirst(null); }}
@@ -3071,10 +3070,10 @@ export default function Scene3DViewer() {
           <Link2 className="h-3.5 w-3.5" />
           <span>
             {cableFirst
-              ? `Click the ground to add corners (${cableDraft.length}), then click the end unit — Backspace undo, Esc cancel · 4×${cableSize} mm²${
+              ? `Click the ground to add corners (${cableDraft.length}), then click the end unit or double-click to end here — Backspace undo, Enter finish, Esc cancel · 4×${cableSize} mm²${
                   cableConduit !== "none" ? ` in ${cableConduit} conduit` : ""
                 }`
-              : "Click the first unit (substation / panel)"}
+              : "Click the first unit (substation / panel) or the ground to start"}
           </span>
           <button
             onClick={() => {
@@ -3096,8 +3095,8 @@ export default function Scene3DViewer() {
           <span>
             {lineTypeOf(lineType).label}:{" "}
             {connectFirst
-              ? "click a second post to connect"
-              : "click the first post to connect"}
+              ? `corners ${cableDraft.length} — click a post, or double-click to end here · Backspace undo, Enter finish, Esc cancel`
+              : "click a post or the ground to start a line"}
           </span>
           <button
             onClick={() => {
