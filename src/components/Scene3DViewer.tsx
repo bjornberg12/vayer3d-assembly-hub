@@ -55,14 +55,11 @@ import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 // thread so labels behave identically in development and production builds.
 configureTextBuilder({ useWorker: false });
 
-type SceneId = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "electriccar";
+type SceneId = "blank" | "electriccar";
 
 const SCENES: { id: SceneId; name: string; subtitle: string; footprintM: number }[] = [
-  { id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole assembly", footprintM: 20 },
-  { id: "puitmast20", name: "Puitmast -20kV", subtitle: "20 kV overhead line mast", footprintM: 95 },
-  { id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel", footprintM: 10 },
-  { id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation", footprintM: 20 },
-  { id: "electriccar", name: "Electric car", subtitle: "Blank scene", footprintM: 20 },
+  { id: "blank", name: "New blank scene", subtitle: "Empty ground", footprintM: 20 },
+  { id: "electriccar", name: "Electric car", subtitle: "EV electrical parts", footprintM: 20 },
 ];
 
 type ViewId = "front" | "top" | "side" | "iso";
@@ -840,14 +837,7 @@ function PartLabel3D({
 }
 
 export default function Scene3DViewer() {
-  const [sceneId, setSceneId] = useState<SceneId>("puitmast");
-  const [step, setStep] = useState(1);
-  const [assemblyVisible, setAssemblyVisible] = useState(false);
-  const [propsTarget, setPropsTarget] = useState<string | null>(null);
-  const [propsOwnerId, setPropsOwnerId] = useState<string | null>(null);
-  const [sceneCleared, setSceneCleared] = useState(false);
-  // Per-placed-object assembly: id -> current step (absent = fully assembled)
-  const [itemAssembly, setItemAssembly] = useState<Record<string, number>>({});
+  const [sceneId, setSceneId] = useState<SceneId>("blank");
   const [menuOpen, setMenuOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
@@ -856,7 +846,7 @@ export default function Scene3DViewer() {
   const [partLabel, setPartLabel] = useState<string | null>(null);
   const [partLabelPos, setPartLabelPos] = useState<[number, number, number] | null>(null);
   const [groundOpen, setGroundOpen] = useState(false);
-  const [groundMode, setGroundMode] = useState<"off" | "default" | "custom">("default");
+  const [groundMode, setGroundMode] = useState<"off" | "default" | "custom">("off");
   const [customGroundUrl, setCustomGroundUrl] = useState<string | null>(null);
   const [customGroundWidthM, setCustomGroundWidthM] = useState<number>(30);
   const [weatherOpen, setWeatherOpen] = useState(false);
@@ -1013,11 +1003,6 @@ export default function Scene3DViewer() {
       return next;
     });
     setFeederPanelKey((cur) => (cur === id ? null : cur));
-    setItemAssembly((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
   };
   const setItemRotation = (id: string, rotationY: number) =>
     setAddedItems((prev) =>
@@ -1152,14 +1137,6 @@ export default function Scene3DViewer() {
   type CableEnd = { id: string; name: string; point: [number, number, number] };
   const cableEndpoints: CableEnd[] = useMemo(() => {
     const list: CableEnd[] = [];
-    if (sceneId === "jaotuskilp" || sceneId === "alajaam") {
-      const t: AddableType = sceneId;
-      list.push({
-        id: "scene",
-        name: sceneId === "alajaam" ? "Alajaam (scene)" : "Jaotuskilp (scene)",
-        point: rotateLocal(cableExitLocal(t), [0, 0, 0], 0),
-      });
-    }
     addedItems.forEach((i, idx) => {
       if (!CABLE_ENDPOINT_TYPES.includes(i.type)) return;
       list.push({
@@ -1288,51 +1265,8 @@ export default function Scene3DViewer() {
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
 
-  const stepLabels =
-    sceneId === "puitmast"
-      ? ASSEMBLY_STEPS
-      : sceneId === "puitmast20"
-      ? MAST_20KV_STEPS
-      : sceneId === "jaotuskilp"
-      ? PANEL_STEPS
-      : sceneId === "alajaam"
-      ? SUBSTATION_STEPS
-      : null;
-  const maxStep = stepLabels?.length ?? 0;
-  // With assembly hidden the scene shows the finished model, unless it was cleared by Reset.
-  const shownStep = assemblyVisible ? step : sceneCleared ? 0 : maxStep;
-
-  const stepsForType = (t: AddableType) =>
-    t === "puitmast"
-      ? ASSEMBLY_STEPS
-      : t === "puitmast20"
-      ? MAST_20KV_STEPS
-      : t === "jaotuskilp"
-      ? PANEL_STEPS
-      : SUBSTATION_STEPS;
-
-  // Object whose properties panel is open (null = fixed scene model)
-  const propsItem = propsOwnerId
-    ? addedItems.find((i) => i.id === propsOwnerId) ?? null
-    : null;
-  const objLabels = propsItem ? stepsForType(propsItem.type) : null;
-  const objStep = propsOwnerId ? itemAssembly[propsOwnerId] : undefined;
-  const objName = propsItem
-    ? SCENES.find((s) => s.id === (propsItem.type as SceneId))?.name ?? "Object"
-    : "Object";
-  const objAssemblyOn = objStep !== undefined;
-  const setObjStep = (fn: (s: number) => number) => {
-    if (!propsOwnerId) return;
-    setItemAssembly((prev) => ({
-      ...prev,
-      [propsOwnerId]: fn(prev[propsOwnerId] ?? 0),
-    }));
-  };
-
   const selectScene = (id: SceneId) => {
     setSceneId(id);
-    setStep(1);
-    setSceneCleared(false);
     setMenuOpen(false);
   };
 
@@ -1348,10 +1282,7 @@ export default function Scene3DViewer() {
   const clearRuler = () => setRulerPoints([]);
 
   const resetAll = () => {
-    setSceneId("puitmast");
-    setStep(0);
-    setSceneCleared(true);
-    setItemAssembly({});
+    setSceneId("blank");
     setAddedItems([]);
     setConnections([]);
     setConnectMode(false);
@@ -1378,7 +1309,6 @@ export default function Scene3DViewer() {
     setRulerPoints([]);
     setPartLabel(null);
     setPropsTarget(null);
-    setAssemblyVisible(false);
     setPartLabelPos(null);
     setViewId("iso");
     setCameraReset((n) => n + 1);
@@ -1478,27 +1408,6 @@ export default function Scene3DViewer() {
             }}
             enabled={!rulerActive}
           >
-            {sceneId === "puitmast" && <ElectricalPost step={shownStep} />}
-            {sceneId === "puitmast20" && <WoodenMast20kV step={shownStep} />}
-            {sceneId === "jaotuskilp" && (
-              <group>
-                <DistributionPanel step={shownStep} />
-                {shownStep >= PANEL_STEPS.length && (
-                  <>
-                    <FeederBlocks feeders={feedersOf("scene")} />
-                    <Html position={[0, 1.5, 0]} center>
-                      <button
-                        onClick={() => openFeeders("scene")}
-                        className="whitespace-nowrap rounded-full border border-white/60 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-amber-400/90"
-                      >
-                        Feeders ({feedersOf("scene").length})
-                      </button>
-                    </Html>
-                  </>
-                )}
-              </group>
-            )}
-            {sceneId === "alajaam" && <Substation step={shownStep} />}
             {sceneId === "electriccar" && (
               <group>
                 <EVChassisGhost />
@@ -1557,8 +1466,7 @@ export default function Scene3DViewer() {
             })}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
-              const itemStep =
-                itemAssembly[item.id] ?? stepsForType(item.type).length;
+              const itemStep = 999; // assembly removed: always fully built
               return (
                 <group
                   key={item.id}
@@ -1951,21 +1859,6 @@ export default function Scene3DViewer() {
                     <span>Off</span>
                     <span className="text-xs font-normal text-neutral-600">
                       Hide ground image
-                    </span>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    onClick={() => setGroundMode("default")}
-                    className={`flex w-full flex-col items-start gap-0.5 px-4 py-2.5 text-left text-sm transition ${
-                      groundMode === "default"
-                        ? "bg-white/70 font-semibold text-neutral-900"
-                        : "text-neutral-800 hover:bg-white/50"
-                    }`}
-                  >
-                    <span>Aerial parking (default)</span>
-                    <span className="text-xs font-normal text-neutral-600">
-                      Auto-scales to the active scene
                     </span>
                   </button>
                 </li>
@@ -3233,50 +3126,7 @@ export default function Scene3DViewer() {
                   Delete wire
                 </button>
               </div>
-            ) : propsOwnerId ? (
-              objLabels ? (
-                <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-white/60 bg-white/55 px-3 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:bg-white/70">
-                  <input
-                    type="checkbox"
-                    className="h-3.5 w-3.5 accent-amber-500"
-                    checked={objAssemblyOn}
-                    onChange={(e) => {
-                      setItemAssembly((prev) => {
-                        const next = { ...prev };
-                        if (e.target.checked) next[propsOwnerId] = 1;
-                        else delete next[propsOwnerId];
-                        return next;
-                      });
-                    }}
-                  />
-                  Show assembly (this object)
-                </label>
-              ) : (
-                <div className="text-xs text-neutral-500">
-                  This object has no assembly instructions.
-                </div>
-              )
-            ) : stepLabels ? (
-              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-white/60 bg-white/55 px-3 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:bg-white/70">
-                <input
-                  type="checkbox"
-                  className="h-3.5 w-3.5 accent-amber-500"
-                  checked={assemblyVisible}
-                  onChange={(e) => {
-                    setAssemblyVisible(e.target.checked);
-                    if (e.target.checked) {
-                      setSceneCleared(false);
-                      if (step === 0) setStep(1);
-                    }
-                  }}
-                />
-                Show assembly
-              </label>
-            ) : (
-              <div className="text-xs text-neutral-500">
-                This scene has no assembly instructions.
-              </div>
-            )}
+            ) : null}
             {evPropPart || evPropWire ? null : propsOwnerId ? (
               <button
                 onClick={() => {
@@ -3308,60 +3158,6 @@ export default function Scene3DViewer() {
         </DraggablePanel>
       )}
 
-      {/* Step controls — for the selected object, or for the fixed scene model */}
-      {objAssemblyOn && objLabels && propsItem ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
-          <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
-            {objStep === 0
-              ? `${objName} — press Forward to start assembly`
-              : `${objName} — step ${objStep} / ${objLabels.length} — ${
-                  objLabels[(objStep ?? 1) - 1]
-                }`}
-          </div>
-          <div className="pointer-events-auto flex items-center gap-3">
-            <button
-              onClick={() => setObjStep((s) => Math.max(0, s - 1))}
-              disabled={objStep === 0}
-              className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ← Back
-            </button>
-            <button
-              onClick={() =>
-                setObjStep((s) => Math.min(objLabels.length, s + 1))
-              }
-              disabled={objStep === objLabels.length}
-              className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Forward →
-            </button>
-          </div>
-        </div>
-      ) : stepLabels && assemblyVisible ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 flex flex-col items-center gap-3">
-          <div className="pointer-events-auto rounded-xl border border-white/40 bg-white/30 px-4 py-2 text-sm font-medium text-neutral-800 shadow-lg backdrop-blur-md">
-            {step === 0
-              ? "Empty scene — press Forward to start assembly"
-              : `Step ${step} / ${maxStep} — ${stepLabels[step - 1]}`}
-          </div>
-          <div className="pointer-events-auto flex items-center gap-3">
-            <button
-              onClick={() => setStep((s) => Math.max(0, s - 1))}
-              disabled={step === 0}
-              className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              ← Back
-            </button>
-            <button
-              onClick={() => setStep((s) => Math.min(maxStep, s + 1))}
-              disabled={step === maxStep}
-              className="rounded-xl border border-white/40 bg-white/25 px-6 py-2.5 text-sm font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-white/40 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Forward →
-            </button>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
