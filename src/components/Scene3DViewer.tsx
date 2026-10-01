@@ -1394,7 +1394,7 @@ export default function Scene3DViewer() {
           />
           <GroundPlane />
           {showGround && (
-            <AerialGround url={groundUrl || undefined} realWidthM={realWidth} />
+            <AerialGround url={groundUrl as string} realWidthM={realWidth} />
           )}
           <WeatherEffects weather={weather} />
           <PartLabelProvider
