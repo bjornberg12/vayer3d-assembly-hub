@@ -29,6 +29,8 @@ import {
 
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider, PartOwner } from "./PartLabel";
+import { BasePropsEditor } from "./BasePropsEditor";
+import { initPropsFor, type ObjectProps } from "@/ModelLibrary";
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
   defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireLength,
@@ -584,6 +586,13 @@ export default function Scene3DViewer() {
   const [evWireFirst, setEVWireFirst] = useState<string | null>(null);
   const evPropPart = propsOwnerId ? evParts.find((q) => q.id === propsOwnerId) ?? null : null;
   const evPropWire = propsOwnerId ? evWires.find((w) => w.id === propsOwnerId) ?? null : null;
+
+  // --- Shared basic properties (every model) --------------------------------
+  const [objectProps, setObjectProps] = useState<Record<string, ObjectProps>>({});
+  const propsKey = propsOwnerId ?? `scene:${sceneId}`;
+  const propsModelId =
+    addedItems.find((i) => i.id === propsOwnerId)?.type ?? evPropPart?.type ?? sceneId;
+  const currentProps = objectProps[propsKey] ?? initPropsFor(propsModelId);
   const updateEVParam = (id: string, key: string, value: number) =>
     setEVParts((prev) => prev.map((q) => (q.id === id ? { ...q, params: { ...q.params, [key]: value } } : q)));
   const removeEVPart = (id: string) => {
@@ -844,6 +853,7 @@ export default function Scene3DViewer() {
     setSelectedCableId(null);
     setFeeders({});
     setFeederPanelKey(null);
+    setObjectProps({});
     setEVParts([]);
     setEVWires([]);
     setEVWireMode(false);
@@ -2453,6 +2463,19 @@ export default function Scene3DViewer() {
               </div>
               <div className="text-sm text-neutral-800">{activeScene.name}</div>
             </div>
+            {!evPropWire && (
+              <BasePropsEditor
+                props={currentProps}
+                onChange={(next) =>
+                  setObjectProps((prev) => ({ ...prev, [propsKey]: next }))
+                }
+              />
+            )}
+            {evPropPart && EV_DEFS[evPropPart.type].params.length > 0 && (
+              <div className="text-[11px] uppercase tracking-wide text-neutral-500">
+                Model-specific
+              </div>
+            )}
             {evPropPart ? (
               <div className="space-y-2">
                 {EV_DEFS[evPropPart.type].params.map((d) => (
