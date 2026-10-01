@@ -2550,9 +2550,10 @@ export default function Scene3DViewer() {
               </div>
             ) : propsOwnerId ? (
               objLabels ? (
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-white/60 bg-white/55 px-3 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:bg-white/70">
                   <input
                     type="checkbox"
+                    className="h-3.5 w-3.5 accent-amber-500"
                     checked={objAssemblyOn}
                     onChange={(e) => {
                       setItemAssembly((prev) => {
@@ -2571,9 +2572,10 @@ export default function Scene3DViewer() {
                 </div>
               )
             ) : stepLabels ? (
-              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-white/60 bg-white/55 px-3 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:bg-white/70">
                 <input
                   type="checkbox"
+                  className="h-3.5 w-3.5 accent-amber-500"
                   checked={assemblyVisible}
                   onChange={(e) => {
                     setAssemblyVisible(e.target.checked);
