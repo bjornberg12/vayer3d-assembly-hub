@@ -2290,7 +2290,78 @@ export default function Scene3DViewer() {
               </div>
               <div className="text-sm text-neutral-800">{activeScene.name}</div>
             </div>
-            {propsOwnerId ? (
+            {evPropPart ? (
+              <div className="space-y-2">
+                {EV_DEFS[evPropPart.type].params.map((d) => (
+                  <label key={d.key} className="block text-xs text-neutral-800">
+                    <span className="flex justify-between">
+                      <span>{d.label}</span>
+                      <span className="font-mono font-semibold">
+                        {evPropPart.params[d.key]} {d.unit}
+                      </span>
+                    </span>
+                    <input
+                      type="range"
+                      min={d.min}
+                      max={d.max}
+                      step={d.step}
+                      value={evPropPart.params[d.key]}
+                      onChange={(e) => updateEVParam(evPropPart.id, d.key, Number(e.target.value))}
+                      className="w-full accent-orange-500"
+                    />
+                  </label>
+                ))}
+                <label className="block text-xs text-neutral-800">
+                  Rotation {Math.round((evPropPart.rotationY * 180) / Math.PI)}°
+                  <input
+                    type="range" min={0} max={360} step={15}
+                    value={Math.round((evPropPart.rotationY * 180) / Math.PI)}
+                    onChange={(e) => setEVParts((prev) => prev.map((q) => q.id === evPropPart.id ? { ...q, rotationY: (Number(e.target.value) * Math.PI) / 180 } : q))}
+                    className="w-full accent-orange-500"
+                  />
+                </label>
+                <div className="text-[11px] text-neutral-600">
+                  Wired to: {evWires.filter((w) => w.a === evPropPart.id || w.b === evPropPart.id).length} connection(s)
+                </div>
+                <button
+                  onClick={() => { setEVWireMode(true); setEVWireFirst(evPropPart.id); setMoveMode(false); setPropsTarget(null); setPropsOwnerId(null); }}
+                  className="w-full rounded-lg border border-orange-400/60 bg-orange-500/20 px-3 py-1.5 text-xs font-semibold text-orange-800 transition hover:bg-orange-500/30"
+                >
+                  Wire from this part
+                </button>
+                <button
+                  onClick={() => { removeEVPart(evPropPart.id); setPropsTarget(null); setPropsOwnerId(null); setPartLabel(null); setPartLabelPos(null); }}
+                  className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-500/30"
+                >
+                  Delete component
+                </button>
+              </div>
+            ) : evPropWire ? (
+              <div className="space-y-2 text-xs text-neutral-800">
+                <div>Type: <strong>{isHVWire(evPropWire, evParts) ? "High voltage (orange)" : "Low voltage 12 V"}</strong></div>
+                <div>Length: <strong>{wireLength(evPropWire, evParts).toFixed(2)} m</strong></div>
+                <div>
+                  Cross-section (mm²)
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {WIRE_SECTIONS.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setEVWires((prev) => prev.map((w) => w.id === evPropWire.id ? { ...w, crossSection: s } : w))}
+                        className={`rounded-md border px-2 py-0.5 font-semibold ${evPropWire.crossSection === s ? "border-orange-400 bg-orange-500/80 text-white" : "border-white/50 bg-white/50"}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setEVWires((prev) => prev.filter((w) => w.id !== evPropWire.id)); setPropsTarget(null); setPropsOwnerId(null); }}
+                  className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-500/30"
+                >
+                  Delete wire
+                </button>
+              </div>
+            ) : propsOwnerId ? (
               objLabels ? (
                 <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
                   <input
