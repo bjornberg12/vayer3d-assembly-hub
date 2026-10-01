@@ -874,7 +874,7 @@ export default function Scene3DViewer() {
   };
 
   const wireEnd = (id: string): [number, number, number] | null => {
-    const part = evParts.find((q) => q.id === id);
+    const part = sceneId === "electriccar" ? evParts.find((q) => q.id === id) : undefined;
     if (part) return terminalPoint(part);
     const item = addedItems.find((i) => i.id === id);
     if (item) return [item.position[0], 1.2, item.position[2]];
@@ -2106,125 +2106,6 @@ export default function Scene3DViewer() {
             </DraggablePanel>
           )}
         </div>
-        <button
-          onClick={resetAll}
-          aria-label="Reset scene"
-          className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
-        >
-          <RefreshCcw className="h-5 w-5" />
-          <span className="text-sm font-medium">Reset</span>
-        </button>
-        <button
-          onClick={() => {
-            setRulerActive((a) => !a);
-            setMenuOpen(false);
-            setViewsOpen(false);
-          }}
-          aria-label="Toggle ruler"
-          className={`flex h-11 items-center gap-1.5 rounded-xl border px-3 shadow-lg backdrop-blur-md transition ${
-            rulerActive
-              ? "border-red-300/60 bg-red-500/80 text-white hover:bg-red-500/90"
-              : "border-white/40 bg-white/30 text-neutral-900 hover:bg-white/50"
-          }`}
-        >
-          <RulerIcon className="h-5 w-5" />
-          <span className="text-sm font-medium">Ruler</span>
-        </button>
-        {(rulerActive || rulerPoints.length > 0) && (
-          <button
-            onClick={clearRuler}
-            aria-label="Clear ruler"
-            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        )}
-      </div>
-
-      {evWireMode && (
-        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-orange-300/60 bg-orange-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
-          <span>
-            {wireTypeOf(wireType)?.label}:{" "}
-            {evWireFirst
-              ? "click a second object to finish the wire"
-              : "click an object to start a wire"}
-          </span>
-          <button
-            onClick={() => { setEVWireMode(false); setEVWireFirst(null); }}
-            aria-label="Stop wiring"
-            className="rounded-md p-0.5 transition hover:bg-black/10"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
-      {(pendingAdd || pendingEV) && (
-        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
-          <span>
-            Click ground to place{" "}
-            <strong>
-              {pendingEV ? EV_DEFS[pendingEV].name : ADDABLES.find((a) => a.type === pendingAdd)?.name}
-            </strong>
-          </span>
-          <span className="flex items-center gap-1 rounded-md bg-white/50 px-2 py-0.5 text-[11px] text-neutral-700">
-            <RotateCw className="h-3 w-3" />
-            {Math.round(((placementRotation * 180) / Math.PI) % 360)}° · press{" "}
-            <kbd className="rounded border border-neutral-400/60 bg-white/70 px-1 font-mono text-[10px]">
-              R
-            </kbd>{" "}
-            to rotate
-          </span>
-          <button
-            onClick={() => { setPendingAdd(null); setPendingEV(null); }}
-            aria-label="Cancel placement"
-            className="rounded-md p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-neutral-900"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
-      {moveMode && !pendingAdd && (
-        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-purple-300/60 bg-purple-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
-          <Move className="h-3.5 w-3.5" />
-          <span>Drag a highlighted component to move it on the plane</span>
-          <button
-            onClick={() => setMoveMode(false)}
-            aria-label="Exit move mode"
-            className="rounded-md p-0.5 transition hover:bg-white/20"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
-
-      {feederPanelKey && (
-        <DraggablePanel
-          key={feederPanelKey}
-          initialX={typeof window !== "undefined" ? Math.max(12, window.innerWidth - 660) : 24}
-          initialY={120}
-          width={330}
-          title="Panel feeders"
-          onClose={() => setFeederPanelKey(null)}
-        >
-          <div className="px-4 py-3 text-xs text-neutral-800">
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <div className="font-semibold">
-                {panelName(feederPanelKey)}
-                <div className="text-[10px] font-normal text-neutral-600">
-                  {feedersOf(feederPanelKey).filter((f) => f.direction === "in").length} incoming ·{" "}
-                  {feedersOf(feederPanelKey).filter((f) => f.direction === "out").length} outgoing
-                </div>
-              </div>
-              <button
-                onClick={() => setFeederPanelKey(null)}
-                aria-label="Close panel feeders"
-                className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-        </div>
         <div className="relative">
           <button
             onClick={() => {
@@ -2456,6 +2337,125 @@ export default function Scene3DViewer() {
               )}
             </DraggablePanel>
           ); })()}
+        </div>
+        <button
+          onClick={resetAll}
+          aria-label="Reset scene"
+          className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+        >
+          <RefreshCcw className="h-5 w-5" />
+          <span className="text-sm font-medium">Reset</span>
+        </button>
+        <button
+          onClick={() => {
+            setRulerActive((a) => !a);
+            setMenuOpen(false);
+            setViewsOpen(false);
+          }}
+          aria-label="Toggle ruler"
+          className={`flex h-11 items-center gap-1.5 rounded-xl border px-3 shadow-lg backdrop-blur-md transition ${
+            rulerActive
+              ? "border-red-300/60 bg-red-500/80 text-white hover:bg-red-500/90"
+              : "border-white/40 bg-white/30 text-neutral-900 hover:bg-white/50"
+          }`}
+        >
+          <RulerIcon className="h-5 w-5" />
+          <span className="text-sm font-medium">Ruler</span>
+        </button>
+        {(rulerActive || rulerPoints.length > 0) && (
+          <button
+            onClick={clearRuler}
+            aria-label="Clear ruler"
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
+      </div>
+
+      {evWireMode && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-orange-300/60 bg-orange-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <span>
+            {wireTypeOf(wireType)?.label}:{" "}
+            {evWireFirst
+              ? "click a second object to finish the wire"
+              : "click an object to start a wire"}
+          </span>
+          <button
+            onClick={() => { setEVWireMode(false); setEVWireFirst(null); }}
+            aria-label="Stop wiring"
+            className="rounded-md p-0.5 transition hover:bg-black/10"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {(pendingAdd || pendingEV) && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
+          <span>
+            Click ground to place{" "}
+            <strong>
+              {pendingEV ? EV_DEFS[pendingEV].name : ADDABLES.find((a) => a.type === pendingAdd)?.name}
+            </strong>
+          </span>
+          <span className="flex items-center gap-1 rounded-md bg-white/50 px-2 py-0.5 text-[11px] text-neutral-700">
+            <RotateCw className="h-3 w-3" />
+            {Math.round(((placementRotation * 180) / Math.PI) % 360)}° · press{" "}
+            <kbd className="rounded border border-neutral-400/60 bg-white/70 px-1 font-mono text-[10px]">
+              R
+            </kbd>{" "}
+            to rotate
+          </span>
+          <button
+            onClick={() => { setPendingAdd(null); setPendingEV(null); }}
+            aria-label="Cancel placement"
+            className="rounded-md p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-neutral-900"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {moveMode && !pendingAdd && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-purple-300/60 bg-purple-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <Move className="h-3.5 w-3.5" />
+          <span>Drag a highlighted component to move it on the plane</span>
+          <button
+            onClick={() => setMoveMode(false)}
+            aria-label="Exit move mode"
+            className="rounded-md p-0.5 transition hover:bg-white/20"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {feederPanelKey && (
+        <DraggablePanel
+          key={feederPanelKey}
+          initialX={typeof window !== "undefined" ? Math.max(12, window.innerWidth - 660) : 24}
+          initialY={120}
+          width={330}
+          title="Panel feeders"
+          onClose={() => setFeederPanelKey(null)}
+        >
+          <div className="px-4 py-3 text-xs text-neutral-800">
+            <div className="mb-2 flex items-start justify-between gap-2">
+              <div className="font-semibold">
+                {panelName(feederPanelKey)}
+                <div className="text-[10px] font-normal text-neutral-600">
+                  {feedersOf(feederPanelKey).filter((f) => f.direction === "in").length} incoming ·{" "}
+                  {feedersOf(feederPanelKey).filter((f) => f.direction === "out").length} outgoing
+                </div>
+              </div>
+              <button
+                onClick={() => setFeederPanelKey(null)}
+                aria-label="Close panel feeders"
+                className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
         </div>
 
             <div className="grid grid-cols-2 gap-1">
