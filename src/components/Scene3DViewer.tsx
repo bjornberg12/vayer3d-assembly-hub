@@ -1867,10 +1867,16 @@ export default function Scene3DViewer() {
             }}
           />
           <CableRouter
-            active={cableMode && cableFirst !== null}
-            start={cableEndpoints.find((e) => e.id === cableFirst)?.point ?? null}
+            active={routingKind !== null}
+            start={routeFirst ? routeStartPoint(routeFirst) : null}
             draft={cableDraft}
-            onAdd={addDraftPoint}
+            onAdd={(p) => {
+              if (!routeFirst) finishRoute(makePt(p));
+              else setCableDraft((d) => [...d, p]);
+            }}
+            onFinish={(p) => {
+              if (routeFirst) finishRoute(makePt(p));
+            }}
             skipRef={endpointClickAt}
           />
           {editRoute && selectedCable && (() => {
@@ -1884,6 +1890,47 @@ export default function Scene3DViewer() {
                 to={b.point}
                 waypoints={selectedCable.waypoints ?? []}
                 onChange={(w) => updateCable(id, { waypoints: w.length ? w : undefined })}
+                onFromMove={parsePt(selectedCable.a) ? (p) => updateCable(id, { a: makePt(p) }) : undefined}
+                onToMove={parsePt(selectedCable.b) ? (p) => updateCable(id, { b: makePt(p) }) : undefined}
+                controlsRef={controlsRef}
+              />
+            );
+          })()}
+          {selectedLineId && routingKind === null && (() => {
+            const c = connections.find((x) => x.id === selectedLineId);
+            if (!c) return null;
+            const ph = linePhases(c);
+            if (!ph) return null;
+            const id = c.id;
+            const upd = (patch: Partial<LineRecord>) =>
+              setConnections((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+            return (
+              <CableRouteEditor
+                from={centroid(ph[0])}
+                to={centroid(ph[1])}
+                waypoints={c.waypoints ?? []}
+                onChange={(w) => upd({ waypoints: w.length ? w : undefined })}
+                onFromMove={parsePt(c.a) ? (p) => upd({ a: makePt(p) }) : undefined}
+                onToMove={parsePt(c.b) ? (p) => upd({ b: makePt(p) }) : undefined}
+                controlsRef={controlsRef}
+              />
+            );
+          })()}
+          {evPropWire && routingKind === null && (() => {
+            const a = wireEnd(evPropWire.a);
+            const b = wireEnd(evPropWire.b);
+            if (!a || !b) return null;
+            const id = evPropWire.id;
+            const upd = (patch: Partial<EVWireRecord>) =>
+              setEVWires((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+            return (
+              <CableRouteEditor
+                from={a}
+                to={b}
+                waypoints={evPropWire.waypoints ?? []}
+                onChange={(w) => upd({ waypoints: w.length ? w : undefined })}
+                onFromMove={parsePt(evPropWire.a) ? (p) => upd({ a: makePt(p) }) : undefined}
+                onToMove={parsePt(evPropWire.b) ? (p) => upd({ b: makePt(p) }) : undefined}
                 controlsRef={controlsRef}
               />
             );
