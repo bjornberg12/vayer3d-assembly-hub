@@ -109,11 +109,15 @@ function ContinuousCursorZoom({
   resetNonce: number;
 }) {
   const { camera, gl } = useThree();
-  const remainingTravel = useRef(new THREE.Vector3());
+  const remainingCameraTravel = useRef(new THREE.Vector3());
+  const remainingTargetTravel = useRef(new THREE.Vector3());
   const cursorRay = useRef(new THREE.Vector3());
+  const nextCameraPosition = useRef(new THREE.Vector3());
+  const desiredTarget = useRef(new THREE.Vector3());
 
   useEffect(() => {
-    remainingTravel.current.set(0, 0, 0);
+    remainingCameraTravel.current.set(0, 0, 0);
+    remainingTargetTravel.current.set(0, 0, 0);
   }, [resetNonce]);
 
   useEffect(() => {
@@ -143,11 +147,27 @@ function ContinuousCursorZoom({
         .normalize();
 
       // OrbitControls normally scales movement by the shrinking distance to
-      // its target. Keeping the camera-target spacing stable turns zoom into
-      // continuous travel and prevents it from asymptotically stalling.
+      // its target. The minimum travel keeps close-up zoom moving, while the
+      // target follows the cursor ray at a shrinking radius for tight orbits.
       const orbitDistance = Math.max(camera.position.distanceTo(controls.target), 0.05);
       const travel = -normalizedDelta * Math.max(orbitDistance * 0.00075, 0.00005);
-      remainingTravel.current.addScaledVector(cursorRay.current, travel);
+      const cameraTravel = cursorRay.current.clone().multiplyScalar(travel);
+      remainingCameraTravel.current.add(cameraTravel);
+
+      if (travel > 0) {
+        const nextRadius = Math.max(orbitDistance - travel * 0.85, 0.002);
+        nextCameraPosition.current.copy(camera.position).add(cameraTravel);
+        desiredTarget.current
+          .copy(nextCameraPosition.current)
+          .addScaledVector(cursorRay.current, nextRadius);
+        remainingTargetTravel.current.add(
+          desiredTarget.current.sub(controls.target),
+        );
+      } else {
+        // Keep the current focus while backing away so the orbit radius grows
+        // naturally and reversing wheel direction does not snap the view.
+        remainingTargetTravel.current.addScaledVector(cameraTravel, 0.08);
+      }
     };
 
     canvas.addEventListener("wheel", handleWheel, { passive: false, capture: true });
@@ -156,14 +176,17 @@ function ContinuousCursorZoom({
 
   useFrame((_, delta) => {
     const controls = controlsRef.current;
-    const remaining = remainingTravel.current;
-    if (!controls || remaining.lengthSq() < 1e-12) return;
+    const cameraRemaining = remainingCameraTravel.current;
+    const targetRemaining = remainingTargetTravel.current;
+    if (!controls || (cameraRemaining.lengthSq() < 1e-12 && targetRemaining.lengthSq() < 1e-12)) return;
 
     const smoothing = 1 - Math.exp(-14 * Math.min(delta, 0.1));
-    const movement = remaining.clone().multiplyScalar(smoothing);
-    camera.position.add(movement);
-    controls.target.add(movement);
-    remaining.sub(movement);
+    const cameraMovement = cameraRemaining.clone().multiplyScalar(smoothing);
+    const targetMovement = targetRemaining.clone().multiplyScalar(smoothing);
+    camera.position.add(cameraMovement);
+    controls.target.add(targetMovement);
+    cameraRemaining.sub(cameraMovement);
+    targetRemaining.sub(targetMovement);
     controls.update();
   });
 
