@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { X } from "lucide-react";
 
 interface DraggablePanelProps {
   initialX: number;
@@ -73,7 +74,7 @@ export function DraggablePanel({
 
   return (
     <div
-      className="fixed z-20 overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md"
+      className="fixed z-20 flex max-h-[50dvh] flex-col overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md"
       style={{ left: pos.x, top: pos.y, width }}
       onPointerEnter={cancelClose}
       onPointerLeave={scheduleClose}
@@ -90,9 +91,22 @@ export function DraggablePanel({
         title="Drag to move"
       >
         <span>{title}</span>
-        <span className="text-neutral-500">⋮⋮</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-neutral-500" aria-hidden="true">⋮⋮</span>
+          <button
+            type="button"
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onClose}
+            aria-label={`Close ${title}`}
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg text-neutral-600 transition hover:bg-white/60 hover:text-neutral-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-500/50"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
       </div>
-      {children}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {children}
+      </div>
     </div>
   );
 }

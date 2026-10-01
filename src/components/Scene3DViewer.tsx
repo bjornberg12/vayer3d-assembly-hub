@@ -1622,7 +1622,7 @@ export default function Scene3DViewer() {
           </button>
           {addOpen && (
             <DraggablePanel initialX={290} initialY={64} title="Add component" width={288} onClose={() => setAddOpen(false)}>
-              <div className="flex max-h-[70vh] flex-col overflow-y-auto pr-0.5">
+              <div className="flex flex-col pr-0.5">
                 <ul className="flex flex-col">
                   {ADDABLES.map((a) => (
                     <li key={a.type}>
@@ -1907,6 +1907,7 @@ export default function Scene3DViewer() {
           initialY={120}
           width={330}
           title="Panel feeders"
+          onClose={() => setFeederPanelKey(null)}
         >
           <div className="px-4 py-3 text-xs text-neutral-800">
             <div className="mb-2 flex items-start justify-between gap-2">
@@ -2154,6 +2155,7 @@ export default function Scene3DViewer() {
           initialY={120}
           width={296}
           title="Cable data"
+          onClose={() => setSelectedCableId(null)}
         >
           <div className="px-4 py-3 text-xs text-neutral-800">
             <div className="mb-2 flex items-start justify-between gap-2">
@@ -2448,6 +2450,10 @@ export default function Scene3DViewer() {
           initialY={300}
           title="Properties"
           width={320}
+          onClose={() => {
+            setPropsTarget(null);
+            setPropsOwnerId(null);
+          }}
         >
           <div className="space-y-3 px-4 pb-3 pt-2">
             <div>
