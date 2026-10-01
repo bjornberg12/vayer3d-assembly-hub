@@ -1217,7 +1217,7 @@ export default function Scene3DViewer() {
 
   const wireEnd = (id: string): [number, number, number] | null => {
     const pt = parsePt(id);
-    if (pt) return [pt[0], 0.1, pt[1]];
+    if (pt) return pt;
     const part = sceneId === "electriccar" ? evParts.find((q) => q.id === id) : undefined;
     if (part) return terminalPoint(part);
     const item = addedItems.find((i) => i.id === id);
@@ -1325,7 +1325,7 @@ export default function Scene3DViewer() {
     cables.forEach((c) => {
       [c.a, c.b].forEach((id) => {
         const p = parsePt(id);
-        if (p && !list.some((e) => e.id === id)) list.push({ id, name: "Loose end", point: [p[0], 0, p[1]] });
+        if (p && !list.some((e) => e.id === id)) list.push({ id, name: "Loose end", point: p });
       });
     });
     // Cable joints: an existing cable's midpoint can host a new branch cable
@@ -1427,10 +1427,10 @@ export default function Scene3DViewer() {
     const ib = addedItems.find((i) => i.id === c.b);
     let pa = ia ? worldPhasePoints(ia) : null;
     let pb = ib ? worldPhasePoints(ib) : null;
-    const loose = (pt: GroundPt, ref: [number, number, number][] | null) => {
+    const loose = (pt: [number, number, number], ref: [number, number, number][] | null) => {
       const r = ref && ref.length ? ref : DEFAULT_LINE_PHASES;
       const cc = centroid(r);
-      return r.map(([x, , z]) => [pt[0] + x - cc[0], 8, pt[1] + z - cc[2]] as [number, number, number]);
+      return r.map(([x, , z]) => [pt[0] + x - cc[0], pt[1] || 8, pt[2] + z - cc[2]] as [number, number, number]);
     };
     const ptA = parsePt(c.a);
     const ptB = parsePt(c.b);
@@ -1480,7 +1480,7 @@ export default function Scene3DViewer() {
   };
   const routeStartPoint = (id: string): [number, number, number] | null => {
     const pt = parsePt(id);
-    if (pt) return [pt[0], 0, pt[1]];
+    if (pt) return pt;
     if (routingKind === "cable") return cableEndpoints.find((e) => e.id === id)?.point ?? null;
     if (routingKind === "line") return addedItems.find((i) => i.id === id)?.position ?? null;
     return wireEnd(id);
@@ -1986,6 +1986,7 @@ export default function Scene3DViewer() {
                 onFromMove={parsePt(selectedCable.a) ? (p) => updateCable(id, { a: makePt(p) }) : undefined}
                 onToMove={parsePt(selectedCable.b) ? (p) => updateCable(id, { b: makePt(p) }) : undefined}
                 controlsRef={controlsRef}
+                defaultY={-0.7}
               />
             );
           })()}
@@ -2006,6 +2007,7 @@ export default function Scene3DViewer() {
                 onFromMove={parsePt(c.a) ? (p) => upd({ a: makePt(p) }) : undefined}
                 onToMove={parsePt(c.b) ? (p) => upd({ b: makePt(p) }) : undefined}
                 controlsRef={controlsRef}
+                defaultY={(centroid(ph[0])[1] + centroid(ph[1])[1]) / 2}
               />
             );
           })()}
@@ -2025,6 +2027,7 @@ export default function Scene3DViewer() {
                 onFromMove={parsePt(evPropWire.a) ? (p) => upd({ a: makePt(p) }) : undefined}
                 onToMove={parsePt(evPropWire.b) ? (p) => upd({ b: makePt(p) }) : undefined}
                 controlsRef={controlsRef}
+                defaultY={0.15}
               />
             );
           })()}
