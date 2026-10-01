@@ -2559,9 +2559,7 @@ export default function Scene3DViewer() {
                   {connections.length > 0 && (
                     <ul className="mt-2 flex flex-col rounded-lg border border-white/40 bg-white/30">
                       {connections.map((c, i) => {
-                        const a = addedItems.find((x) => x.id === c.a);
-                        const b = addedItems.find((x) => x.id === c.b);
-                        const span = a && b ? Math.hypot(a.position[0] - b.position[0], a.position[2] - b.position[2]) : 0;
+                        const span = lineLengthOf(c);
                         const sag = Math.min(1.2, span * 0.03);
                         const sel = selectedLineId === c.id;
                         const lt = lineTypeOf(c.type);
@@ -2583,6 +2581,17 @@ export default function Scene3DViewer() {
                               <div className="mt-1 text-[10px] text-neutral-700">
                                 Length {span.toFixed(1)} m · sag {sag.toFixed(2)} m · {lt.voltage >= 1000 ? `${lt.voltage / 1000} kV` : `${lt.voltage} V`} · {lt.crossSection} mm²
                               </div>
+                            )}
+                            {sel && c.waypoints?.length ? (
+                              <button
+                                onClick={() => setConnections((prev) => prev.map((x) => (x.id === c.id ? { ...x, waypoints: undefined } : x)))}
+                                className="mt-1 rounded border border-white/60 bg-white/50 px-2 py-0.5 text-[10px] font-semibold text-neutral-800 hover:bg-white/80"
+                              >
+                                Reset route
+                              </button>
+                            ) : null}
+                            {false && (
+                              <div />
                             )}
                           </li>
                         );
