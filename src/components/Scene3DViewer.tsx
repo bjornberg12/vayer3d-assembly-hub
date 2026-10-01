@@ -1719,13 +1719,8 @@ export default function Scene3DViewer() {
             })}
             {/* Aerial line connections between placed posts */}
             {connections.map((c) => {
-              const a = addedItems.find((i) => i.id === c.a);
-              const b = addedItems.find((i) => i.id === c.b);
-              if (!a || !b) return null;
-              const pa = worldPhasePoints(a);
-              const pb = worldPhasePoints(b);
-              const n = Math.min(pa.length, pb.length);
-              if (n === 0) return null;
+              const paths = linePaths(c);
+              if (!paths) return null;
               const lt = lineTypeOf(c.type);
               const lineSelected = selectedLineId === c.id;
               return (
@@ -1738,34 +1733,14 @@ export default function Scene3DViewer() {
                     setWiringSection("lines");
                   }}
                 >
-                  {Array.from({ length: n }).map((_, i) => {
-                    const s = pa[i];
-                    const e = pb[i];
-                    const segs = 24;
-                    const span = Math.hypot(
-                      e[0] - s[0],
-                      e[1] - s[1],
-                      e[2] - s[2]
-                    );
-                    const sag = Math.min(1.2, span * 0.03);
-                    const pts: [number, number, number][] = [];
-                    for (let k = 0; k <= segs; k++) {
-                      const t = k / segs;
-                      const x = s[0] + (e[0] - s[0]) * t;
-                      const y = s[1] + (e[1] - s[1]) * t - sag * 4 * t * (1 - t);
-                      const z = s[2] + (e[2] - s[2]) * t;
-                      pts.push([x, y, z]);
-                    }
-                    return (
-                      <CatmullRomLine
-                        key={i}
-                        points={pts}
-                        color={lineSelected ? "#facc15" : lt.color}
-                        lineWidth={lineSelected ? lt.lineWidth + 1.5 : lt.lineWidth}
-                        segments={40}
-                      />
-                    );
-                  })}
+                  {paths.map((pts, i) => (
+                    <Line
+                      key={i}
+                      points={pts}
+                      color={lineSelected ? "#facc15" : lt.color}
+                      lineWidth={lineSelected ? lt.lineWidth + 1.5 : lt.lineWidth}
+                    />
+                  ))}
                 </group>
               );
             })}
