@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
+import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine, TransformControls } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed, Cable, ChevronDown } from "lucide-react";
 import * as THREE from "three";
@@ -23,6 +23,7 @@ import {
   CONDUITS,
   cableRouteLength,
   cableRoutePointAt,
+  waypointXYZ,
   type Waypoint,
   type CableSizeId,
   type ConduitId,
@@ -581,19 +582,24 @@ function groundHit(e: MouseEvent, dom: HTMLElement, camera: THREE.Camera): Groun
   return [Math.round(hit.x * 100) / 100, Math.round(hit.z * 100) / 100];
 }
 
-/** Loose (unconnected) connection ends are stored as "pt:x,z" ids. */
+/** Loose connection ends. Legacy "pt:x,z" values remain readable. */
 const PT_PREFIX = "pt:";
-const makePt = (p: GroundPt) => `${PT_PREFIX}${p[0]},${p[1]}`;
-const parsePt = (id?: string | null): GroundPt | null => {
+const makePt = (p: Waypoint) => {
+  const q = waypointXYZ(p, 0);
+  return `${PT_PREFIX}${q[0]},${q[1]},${q[2]}`;
+};
+const parsePt = (id?: string | null): [number, number, number] | null => {
   if (!id || !id.startsWith(PT_PREFIX)) return null;
-  const [x, z] = id.slice(PT_PREFIX.length).split(",").map(Number);
-  return Number.isFinite(x) && Number.isFinite(z) ? [x, z] : null;
+  const values = id.slice(PT_PREFIX.length).split(",").map(Number);
+  const [x, yOrZ, z] = values;
+  if (values.length === 2 && Number.isFinite(x) && Number.isFinite(yOrZ)) return [x, 0, yOrZ];
+  return Number.isFinite(x) && Number.isFinite(yOrZ) && Number.isFinite(z) ? [x, yOrZ, z] : null;
 };
 
 /** Wire curve through optional ground waypoints (wires run just above ground). */
 function routedWireCurve(a: [number, number, number], b: [number, number, number], wps: Waypoint[]) {
   return new THREE.CatmullRomCurve3(
-    [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], 0.15, w[1])), new THREE.Vector3(...b)],
+    [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(...waypointXYZ(w, 0.15))), new THREE.Vector3(...b)],
     false,
     "centripetal"
   );
@@ -719,6 +725,7 @@ function CableRouteEditor({
   onFromMove,
   onToMove,
   controlsRef,
+  defaultY,
 }: {
   from: [number, number, number];
   to: [number, number, number];
@@ -727,65 +734,55 @@ function CableRouteEditor({
   onFromMove?: (p: Waypoint) => void;
   onToMove?: (p: Waypoint) => void;
   controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+  defaultY: number;
 }) {
-  const { camera, gl } = useThree();
   // index into waypoints; -1 = loose start, -2 = loose end
-  const [drag, setDrag] = useState<number | null>(null);
-  const wpRef = useRef(waypoints);
-  wpRef.current = waypoints;
-  const cbRef = useRef({ onChange, onFromMove, onToMove });
-  cbRef.current = { onChange, onFromMove, onToMove };
+  const [selected, setSelected] = useState<number | null>(null);
+  const anchor = useMemo(() => new THREE.Object3D(), []);
+  const points = waypoints.map((w) => waypointXYZ(w, defaultY));
+  const selectedPosition = selected === -1 ? from : selected === -2 ? to : selected === null ? null : points[selected];
   useEffect(() => {
-    if (drag === null) return;
-    if (controlsRef.current) controlsRef.current.enabled = false;
-    const dom = gl.domElement;
-    const move = (e: PointerEvent) => {
-      const p = groundHit(e, dom, camera);
-      if (!p) return;
-      if (drag === -1) return cbRef.current.onFromMove?.(p);
-      if (drag === -2) return cbRef.current.onToMove?.(p);
-      const next = wpRef.current.slice();
-      next[drag] = p;
-      cbRef.current.onChange(next);
-    };
-    const up = () => setDrag(null);
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    dom.style.cursor = "grabbing";
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-      dom.style.cursor = "";
-      if (controlsRef.current) controlsRef.current.enabled = true;
-    };
-  }, [drag, camera, gl, controlsRef]);
-
-  const chain: GroundPt[] = [[from[0], from[2]], ...waypoints, [to[0], to[2]]];
+    if (selectedPosition) anchor.position.set(...selectedPosition);
+  }, [anchor, selectedPosition?.[0], selectedPosition?.[1], selectedPosition?.[2]]);
+  const moveSelected = () => {
+    if (selected === null) return;
+    const p: [number, number, number] = [anchor.position.x, anchor.position.y, anchor.position.z];
+    if (selected === -1) return onFromMove?.(p);
+    if (selected === -2) return onToMove?.(p);
+    const next = points.slice();
+    next[selected] = p;
+    onChange(next);
+  };
+  const setCameraEnabled = (enabled: boolean) => {
+    if (controlsRef.current) controlsRef.current.enabled = enabled;
+  };
+  const chain: [number, number, number][] = [from, ...points, to];
   const hoverOn = (e: { stopPropagation: () => void }) => {
     e.stopPropagation();
     document.body.style.cursor = "grab";
   };
   const hoverOff = () => { document.body.style.cursor = ""; };
   const endHandle = (p: [number, number, number], idx: -1 | -2) => (
-    <mesh
-      key={`e${idx}`}
-      position={[p[0], 0.1, p[2]]}
+    <group key={`e${idx}`} position={p}>
+      <mesh
       onPointerOver={hoverOn}
       onPointerOut={hoverOff}
       onClick={(e) => e.stopPropagation()}
       onPointerDown={(e) => {
         e.stopPropagation();
-        if (e.nativeEvent.button === 0) setDrag(idx);
+        if (e.nativeEvent.button === 0) setSelected(idx);
       }}
     >
-      <cylinderGeometry args={[0.2, 0.2, 0.12, 20]} />
-      <meshStandardMaterial color={drag === idx ? "#ffffff" : "#ef4444"} emissive="#ef4444" emissiveIntensity={0.35} />
-    </mesh>
+        <cylinderGeometry args={[0.1, 0.1, 0.06, 20]} />
+        <meshStandardMaterial color={selected === idx ? "#ffffff" : "#ef4444"} emissive="#ef4444" emissiveIntensity={0.35} />
+      </mesh>
+      <mesh visible={false}><sphereGeometry args={[0.22, 8, 8]} /><meshBasicMaterial /></mesh>
+    </group>
   );
   return (
     <group>
       <Line
-        points={chain.map((c) => [c[0], 0.03, c[1]] as [number, number, number])}
+        points={chain}
         color="#f59e0b"
         lineWidth={1.5}
         dashed
@@ -794,10 +791,10 @@ function CableRouteEditor({
       />
       {onFromMove && endHandle(from, -1)}
       {onToMove && endHandle(to, -2)}
-      {waypoints.map((w, i) => (
-        <mesh
+      {points.map((w, i) => (
+        <group
           key={`c${i}`}
-          position={[w[0], 0.08, w[1]]}
+          position={w}
           onPointerOver={hoverOn}
           onPointerOut={hoverOff}
           onClick={(e) => e.stopPropagation()}
@@ -806,24 +803,29 @@ function CableRouteEditor({
             const ne = e.nativeEvent;
             if (ne.button === 2 || ne.altKey) {
               onChange(waypoints.filter((_, j) => j !== i));
+              setSelected(null);
               return;
             }
-            if (ne.button === 0) setDrag(i);
+            if (ne.button === 0) setSelected(i);
           }}
           onContextMenu={(e) => e.stopPropagation()}
         >
-          <sphereGeometry args={[0.18, 20, 14]} />
-          <meshStandardMaterial color={drag === i ? "#ffffff" : "#f59e0b"} emissive="#f59e0b" emissiveIntensity={0.4} />
-        </mesh>
+          <mesh>
+            <sphereGeometry args={[0.09, 20, 14]} />
+            <meshStandardMaterial color={selected === i ? "#ffffff" : "#f59e0b"} emissive="#f59e0b" emissiveIntensity={0.4} />
+          </mesh>
+          <mesh visible={false}><sphereGeometry args={[0.22, 8, 8]} /><meshBasicMaterial /></mesh>
+        </group>
       ))}
       {chain.slice(1).map((c, i) => {
         const p = chain[i];
         const mx = (p[0] + c[0]) / 2;
-        const mz = (p[1] + c[1]) / 2;
+        const my = (p[1] + c[1]) / 2;
+        const mz = (p[2] + c[2]) / 2;
         return (
           <mesh
             key={`m${i}`}
-            position={[mx, 0.06, mz]}
+            position={[mx, my, mz]}
             onPointerOver={hoverOn}
             onPointerOut={hoverOff}
             onClick={(e) => e.stopPropagation()}
@@ -831,16 +833,27 @@ function CableRouteEditor({
               e.stopPropagation();
               if (e.nativeEvent.button !== 0) return;
               const next = waypoints.slice();
-              next.splice(i, 0, [mx, mz]);
+              next.splice(i, 0, [mx, my, mz]);
               onChange(next);
-              setDrag(i);
+              setSelected(i);
             }}
           >
-            <sphereGeometry args={[0.1, 14, 10]} />
+            <sphereGeometry args={[0.05, 14, 10]} />
             <meshStandardMaterial color="#ffffff" transparent opacity={0.8} />
           </mesh>
         );
       })}
+      {selectedPosition && (
+        <TransformControls
+          object={anchor}
+          mode="translate"
+          size={0.7}
+          space="world"
+          onObjectChange={moveSelected}
+          onMouseDown={() => setCameraEnabled(false)}
+          onMouseUp={() => setCameraEnabled(true)}
+        />
+      )}
     </group>
   );
 }
@@ -864,7 +877,8 @@ function linePhasePath(
   wps: Waypoint[]
 ): [number, number, number][] {
   // Support nodes: ground distance drives height/offset interpolation
-  const ground: GroundPt[] = [[s[0] - sOff[0], s[2] - sOff[2]], ...wps, [e[0] - eOff[0], e[2] - eOff[2]]];
+  const route = wps.map((w) => waypointXYZ(w, Number.NaN));
+  const ground: GroundPt[] = [[s[0] - sOff[0], s[2] - sOff[2]], ...route.map((w) => [w[0], w[2]] as GroundPt), [e[0] - eOff[0], e[2] - eOff[2]]];
   const cum = [0];
   for (let i = 1; i < ground.length; i++)
     cum.push(cum[i - 1] + Math.hypot(ground[i][0] - ground[i - 1][0], ground[i][1] - ground[i - 1][1]));
@@ -875,7 +889,7 @@ function linePhasePath(
     const t = cum[i] / total;
     return [
       g[0] + sOff[0] + (eOff[0] - sOff[0]) * t,
-      s[1] + (e[1] - s[1]) * t,
+       Number.isFinite(route[i - 1]?.[1]) ? route[i - 1][1] : s[1] + (e[1] - s[1]) * t,
       g[1] + sOff[2] + (eOff[2] - sOff[2]) * t,
     ];
   });

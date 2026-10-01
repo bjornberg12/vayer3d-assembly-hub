@@ -80,7 +80,12 @@ function filletPolyline(corners: THREE.Vector3[], radius: number, seg = 10): THR
   return out;
 }
 
-export type Waypoint = [number, number];
+/** Route point. Legacy routes may still contain [x, z]; new routes use [x, y, z]. */
+export type Waypoint = [number, number] | [number, number, number];
+
+export function waypointXYZ(w: Waypoint, defaultY: number): [number, number, number] {
+  return w.length === 3 ? w : [w[0], defaultY, w[1]];
+}
 
 function routePoints(
   from: [number, number, number],
@@ -90,7 +95,7 @@ function routePoints(
 ): THREE.Vector3[] {
   const a = new THREE.Vector3(...from);
   const b = new THREE.Vector3(...to);
-  const wps = (waypoints ?? []).map((w) => new THREE.Vector3(w[0], -depth, w[1]));
+  const wps = (waypoints ?? []).map((w) => new THREE.Vector3(...waypointXYZ(w, -depth)));
   const aDown = new THREE.Vector3(a.x, -depth, a.z);
   const bDown = new THREE.Vector3(b.x, -depth, b.z);
   const firstTarget = wps[0] ?? bDown;
