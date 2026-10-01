@@ -2447,8 +2447,9 @@ export default function Scene3DViewer() {
           initialX={24}
           initialY={300}
           title="Properties"
+          width={320}
         >
-          <div className="w-64 space-y-3">
+          <div className="space-y-3 px-4 pb-3 pt-2">
             <div>
               <div className="text-[11px] uppercase tracking-wide text-neutral-500">
                 Part
