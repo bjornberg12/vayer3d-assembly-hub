@@ -1,7 +1,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed, Cable, ChevronDown } from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -33,7 +33,8 @@ import { BasePropsEditor } from "./BasePropsEditor";
 import { initPropsFor, type ObjectProps } from "@/ModelLibrary";
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
-  defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireLength,
+  defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireCurveLength,
+  LINE_TYPES, WIRE_TYPES, DEFAULT_LINE_TYPE, DEFAULT_WIRE_TYPE, lineTypeOf, wireTypeOf,
   type EVPartRecord, type EVType, type EVWireRecord,
 } from "@/ModelLibrary";
 import { DraggablePanel } from "./DraggablePanel";
@@ -702,7 +703,11 @@ export default function Scene3DViewer() {
   const [placementRotation, setPlacementRotation] = useState(0); // radians
   const [connectMode, setConnectMode] = useState(false);
   const [connectFirst, setConnectFirst] = useState<string | null>(null);
-  const [connections, setConnections] = useState<{ id: string; a: string; b: string }[]>([]);
+  const [connections, setConnections] = useState<{ id: string; a: string; b: string; type?: string }[]>([]);
+  const [lineType, setLineType] = useState<string>(DEFAULT_LINE_TYPE);
+  const [wireType, setWireType] = useState<string>(DEFAULT_WIRE_TYPE);
+  const [wiringSection, setWiringSection] = useState<"cables" | "lines" | "wires" | null>("cables");
+  const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [moveMode, setMoveMode] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [cableMode, setCableMode] = useState(false);
@@ -808,6 +813,7 @@ export default function Scene3DViewer() {
   const removeItem = (id: string) => {
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
     setConnections((prev) => prev.filter((c) => c.a !== id && c.b !== id));
+    setEVWires((prev) => prev.filter((w) => w.a !== id && w.b !== id));
     setCables((prev) => prev.filter((c) => c.a !== id && c.b !== id));
     setFeeders((prev) => {
       const next = { ...prev };
@@ -862,11 +868,35 @@ export default function Scene3DViewer() {
     setEVWires((prev) =>
       prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
         ? prev
-        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: 35 }]
+        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType }]
     );
     setEVWireFirst(null);
   };
 
+  const wireEnd = (id: string): [number, number, number] | null => {
+    const part = evParts.find((q) => q.id === id);
+    if (part) return terminalPoint(part);
+    const item = addedItems.find((i) => i.id === id);
+    if (item) return [item.position[0], 1.2, item.position[2]];
+    return null;
+  };
+  const anyWireLength = (w: EVWireRecord) => {
+    const a = wireEnd(w.a);
+    const b = wireEnd(w.b);
+    return a && b ? wireCurveLength(a, b) : 0;
+  };
+  const wireLabel = (w: EVWireRecord) =>
+    wireTypeOf(w.wireType)?.label ?? (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
+  const stopAllModes = () => {
+    setConnectMode(false);
+    setConnectFirst(null);
+    setEVWireMode(false);
+    setEVWireFirst(null);
+    setMoveMode(false);
+    setCableMode(false);
+    setPendingAdd(null);
+    setPendingEV(null);
+  };
   const handleItemClickForConnect = (id: string) => {
     if (!connectMode) return;
     if (!connectFirst) {
@@ -888,7 +918,7 @@ export default function Scene3DViewer() {
         return prev;
       return [
         ...prev,
-        { id: `${a}::${b}::${Date.now()}`, a, b },
+        { id: `${a}::${b}::${Date.now()}`, a, b, type: lineType },
       ];
     });
     setConnectFirst(null);
@@ -1278,29 +1308,31 @@ export default function Scene3DViewer() {
                     )}
                   </group>
                 ))}
-                {evWires.map((w) => {
-                  const a = evParts.find((q) => q.id === w.a);
-                  const b = evParts.find((q) => q.id === w.b);
-                  if (!a || !b) return null;
-                  return (
-                    <EVWire
-                      key={w.id}
-                      from={terminalPoint(a)}
-                      to={terminalPoint(b)}
-                      hv={isHVWire(w, evParts)}
-                      crossSection={w.crossSection}
-                      selected={propsOwnerId === w.id}
-                      onSelect={() => {
-                        setPartLabel(null);
-                        setPartLabelPos(null);
-                        setPropsTarget(isHVWire(w, evParts) ? "HV cable" : "12 V wire");
-                        setPropsOwnerId(w.id);
-                      }}
-                    />
-                  );
-                })}
               </group>
             )}
+            {evWires.map((w) => {
+              const a = wireEnd(w.a);
+              const b = wireEnd(w.b);
+              if (!a || !b) return null;
+              const wt = wireTypeOf(w.wireType);
+              return (
+                <EVWire
+                  key={w.id}
+                  from={a}
+                  to={b}
+                  hv={isHVWire(w, evParts)}
+                  crossSection={w.crossSection}
+                  color={wt?.color}
+                  selected={propsOwnerId === w.id}
+                  onSelect={() => {
+                    setPartLabel(null);
+                    setPartLabelPos(null);
+                    setPropsTarget(wireLabel(w));
+                    setPropsOwnerId(w.id);
+                  }}
+                />
+              );
+            })}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
               const itemStep =
@@ -1343,10 +1375,15 @@ export default function Scene3DViewer() {
                     <Substation step={itemStep} />
                   )}
                   {/* Invisible proxy for connect / move mode */}
-                  {(connectMode || moveMode) && (
+                  {(connectMode || moveMode || evWireMode) && (
                     <mesh
                       position={[0, 5, 0]}
                       onClick={(e) => {
+                        if (evWireMode) {
+                          e.stopPropagation();
+                          handleEVWireClick(item.id);
+                          return;
+                        }
                         if (!connectMode) return;
                         e.stopPropagation();
                         handleItemClickForConnect(item.id);
@@ -1362,8 +1399,10 @@ export default function Scene3DViewer() {
                         color={
                           draggingId === item.id
                             ? "#f59e0b"
-                            : isSelected
+                            : isSelected || evWireFirst === item.id
                             ? "#22c55e"
+                            : evWireMode
+                            ? "#f97316"
                             : moveMode
                             ? "#a855f7"
                             : "#3b82f6"
@@ -1409,8 +1448,18 @@ export default function Scene3DViewer() {
               const pb = worldPhasePoints(b);
               const n = Math.min(pa.length, pb.length);
               if (n === 0) return null;
+              const lt = lineTypeOf(c.type);
+              const lineSelected = selectedLineId === c.id;
               return (
-                <group key={c.id}>
+                <group
+                  key={c.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedLineId(c.id);
+                    setCablesOpen(true);
+                    setWiringSection("lines");
+                  }}
+                >
                   {Array.from({ length: n }).map((_, i) => {
                     const s = pa[i];
                     const e = pb[i];
@@ -1433,8 +1482,8 @@ export default function Scene3DViewer() {
                       <CatmullRomLine
                         key={i}
                         points={pts}
-                        color="#1a1a1a"
-                        lineWidth={2}
+                        color={lineSelected ? "#facc15" : lt.color}
+                        lineWidth={lineSelected ? lt.lineWidth + 1.5 : lt.lineWidth}
                         segments={40}
                       />
                     );
@@ -1942,12 +1991,6 @@ export default function Scene3DViewer() {
                     </ul>
                     <div className="flex gap-2 border-t border-white/40 px-3 py-2">
                       <button
-                        onClick={() => { setEVWireMode((m) => !m); setEVWireFirst(null); setMoveMode(false); setPendingEV(null); setAddOpen(false); }}
-                        className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${evWireMode ? "border-orange-300/60 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
-                      >
-                        {evWireMode ? "Wiring…" : "Wire parts"}
-                      </button>
-                      <button
                         onClick={() => { setMoveMode((m) => !m); setEVWireMode(false); setPendingEV(null); setPendingAdd(null); }}
                         className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${moveMode ? "border-purple-300/60 bg-purple-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
                       >
@@ -1968,23 +2011,6 @@ export default function Scene3DViewer() {
               {addedItems.length > 0 && (
                 <>
                   <div className="flex items-center justify-between gap-2 border-t border-white/40 px-3 py-2">
-                    <button
-                      onClick={() => {
-                        setConnectMode((m) => !m);
-                        setConnectFirst(null);
-                        setPendingAdd(null);
-                        setMoveMode(false);
-                        setCableMode(false);
-                      }}
-                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
-                        connectMode
-                          ? "border-blue-300/60 bg-blue-500/80 text-white hover:bg-blue-500/90"
-                          : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
-                      }`}
-                    >
-                      <Link2 className="h-3.5 w-3.5" />
-                      {connectMode ? "Connecting…" : "Connect posts"}
-                    </button>
                     <button
                       onClick={() => {
                         setMoveMode((m) => !m);
