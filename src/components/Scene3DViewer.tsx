@@ -1391,34 +1391,98 @@ export default function Scene3DViewer() {
     if (!a || !b) return 0;
     return cableRouteLength(a.point, b.point, 0.7, c.waypoints);
   };
+  const cableLoose = (c: CableRecord) => !!(parsePt(c.a) || parsePt(c.b));
   const cableCurrentOf = (c: CableRecord) =>
-    c.voltage === 400
+    cableLoose(c)
+      ? 0
+      : c.voltage === 400
       ? (c.powerKw * 1000) / (Math.sqrt(3) * 400 * PF)
       : (c.powerKw * 1000) / (230 * PF);
   const selectedCable = cables.find((c) => c.id === selectedCableId) ?? null;
-  const addDraftPoint = useMemo(
-    () => (p: Waypoint) => setCableDraft((d) => [...d, p]),
-    []
-  );
+
+  // --- Aerial line geometry (posts or loose ends) ---------------------------
+  const linePhases = (c: LineRecord): [[number, number, number][], [number, number, number][]] | null => {
+    const ia = addedItems.find((i) => i.id === c.a);
+    const ib = addedItems.find((i) => i.id === c.b);
+    let pa = ia ? worldPhasePoints(ia) : null;
+    let pb = ib ? worldPhasePoints(ib) : null;
+    const loose = (pt: GroundPt, ref: [number, number, number][] | null) => {
+      const r = ref && ref.length ? ref : DEFAULT_LINE_PHASES;
+      const cc = centroid(r);
+      return r.map(([x, , z]) => [pt[0] + x - cc[0], 8, pt[1] + z - cc[2]] as [number, number, number]);
+    };
+    const ptA = parsePt(c.a);
+    const ptB = parsePt(c.b);
+    if (!pa && ptA) pa = loose(ptA, pb);
+    if (!pb && ptB) pb = loose(ptB, pa);
+    if (!pa || !pb) return null;
+    const n = Math.min(pa.length, pb.length);
+    if (n === 0) return null;
+    return [pa.slice(0, n), pb.slice(0, n)];
+  };
+  const linePaths = (c: LineRecord) => {
+    const ph = linePhases(c);
+    if (!ph) return null;
+    const [pa, pb] = ph;
+    const ca = centroid(pa);
+    const cb = centroid(pb);
+    return pa.map((s, i) => {
+      const e = pb[i];
+      const sOff: [number, number, number] = [s[0] - ca[0], 0, s[2] - ca[2]];
+      const eOff: [number, number, number] = [e[0] - cb[0], 0, e[2] - cb[2]];
+      return linePhasePath(s, e, sOff, eOff, c.waypoints ?? []);
+    });
+  };
+  const lineLengthOf = (c: LineRecord) => {
+    const p = linePaths(c)?.[0];
+    if (!p) return 0;
+    let len = 0;
+    for (let i = 1; i < p.length; i++) len += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1], p[i][2] - p[i - 1][2]);
+    return len;
+  };
+
+  // --- Shared routing for cables, lines and wires -----------------------------
+  const routingKind: "cable" | "line" | "wire" | null =
+    pendingAdd || pendingEV ? null : cableMode ? "cable" : connectMode ? "line" : evWireMode ? "wire" : null;
+  const routeFirst =
+    routingKind === "cable" ? cableFirst : routingKind === "line" ? connectFirst : routingKind === "wire" ? evWireFirst : null;
+  const finishRoute = (endId: string, wps: Waypoint[] = cableDraft) => {
+    if (routingKind === "cable") handleCableClick(endId, wps);
+    else if (routingKind === "line") handleItemClickForConnect(endId, wps);
+    else if (routingKind === "wire") handleEVWireClick(endId, wps);
+  };
+  const cancelRoute = () => {
+    setCableFirst(null);
+    setConnectFirst(null);
+    setEVWireFirst(null);
+    setCableDraft([]);
+  };
+  const routeStartPoint = (id: string): [number, number, number] | null => {
+    const pt = parsePt(id);
+    if (pt) return [pt[0], 0, pt[1]];
+    if (routingKind === "cable") return cableEndpoints.find((e) => e.id === id)?.point ?? null;
+    if (routingKind === "line") return addedItems.find((i) => i.id === id)?.position ?? null;
+    return wireEnd(id);
+  };
   useEffect(() => {
-    if (!selectedCableId) setEditRoute(false);
-  }, [selectedCableId]);
-  useEffect(() => {
-    if (!cableMode || !cableFirst) return;
+    if (!routingKind || !routeFirst) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
       if (e.key === "Escape") {
-        setCableFirst(null);
-        setCableDraft([]);
+        cancelRoute();
       } else if (e.key === "Backspace") {
         e.preventDefault();
         setCableDraft((d) => d.slice(0, -1));
+      } else if (e.key === "Enter" && cableDraft.length) {
+        e.preventDefault();
+        const last = cableDraft[cableDraft.length - 1];
+        finishRoute(makePt(last), cableDraft.slice(0, -1));
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [cableMode, cableFirst]);
+  });
   const updateCable = (id: string, patch: Partial<CableRecord>) =>
     setCables((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 
