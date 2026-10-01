@@ -844,6 +844,11 @@ export default function Scene3DViewer() {
     setSelectedCableId(null);
     setFeeders({});
     setFeederPanelKey(null);
+    setEVParts([]);
+    setEVWires([]);
+    setEVWireMode(false);
+    setEVWireFirst(null);
+    setPendingEV(null);
 
 
     setMoveMode(false);
