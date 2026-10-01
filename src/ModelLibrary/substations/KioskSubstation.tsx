@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Line } from "@react-three/drei";
-import { Part } from "./PartLabel";
+import { Part } from "@/components/PartLabel";
 
 // Compact kiosk substation 10kV/0,4kV — scaled from the reference photo.
 // Overall: 3.5 m wide, 2.5 m tall (incl. roof), ~2.2 m deep.

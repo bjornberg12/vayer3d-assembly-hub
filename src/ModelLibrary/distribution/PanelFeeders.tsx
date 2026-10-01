@@ -1,4 +1,4 @@
-import { Part } from "./PartLabel";
+import { Part } from "@/components/PartLabel";
 
 // ---------------------------------------------------------------------------
 // Distribution panel feeders (incoming / outgoing) with a chosen breaker

@@ -5,10 +5,10 @@ import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, 
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
-import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "./ElectricalPost";
-import { DistributionPanel, PANEL_STEPS } from "./DistributionPanel";
-import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "./WoodenMast20kV";
-import { Substation, SUBSTATION_STEPS } from "./Substation";
+import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "@/ModelLibrary";
+import { DistributionPanel, PANEL_STEPS } from "@/ModelLibrary";
+import { WoodenMast20kV, MAST_20KV_STEPS, PUITMAST20_PHASE_LOCAL } from "@/ModelLibrary";
+import { Substation, SUBSTATION_STEPS } from "@/ModelLibrary";
 import {
   BREAKERS,
   FeederBlocks,
@@ -16,7 +16,7 @@ import {
   makeFeeder,
   type Feeder,
   type FeederDirection,
-} from "./PanelFeeders";
+} from "@/ModelLibrary";
 import {
   UndergroundCable,
   CABLE_SIZES,
@@ -24,7 +24,7 @@ import {
   cableRouteLength,
   type CableSizeId,
   type ConduitId,
-} from "./UndergroundCable";
+} from "@/ModelLibrary";
 
 
 import { AerialGround } from "./AerialGround";
@@ -33,7 +33,7 @@ import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
   defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireLength,
   type EVPartRecord, type EVType, type EVWireRecord,
-} from "./EVComponents";
+} from "@/ModelLibrary";
 import { DraggablePanel } from "./DraggablePanel";
 import {
   WeatherEffects,

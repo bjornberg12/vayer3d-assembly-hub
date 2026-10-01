@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import * as THREE from "three";
-import { Part, PartOwner } from "./PartLabel";
+import { Part, PartOwner } from "@/components/PartLabel";
 
 export type EVType =
   | "battery"
