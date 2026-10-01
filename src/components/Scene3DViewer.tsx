@@ -2144,9 +2144,10 @@ export default function Scene3DViewer() {
       {evWireMode && (
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-orange-300/60 bg-orange-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
           <span>
+            {wireTypeOf(wireType)?.label}:{" "}
             {evWireFirst
-              ? `Click a second component to wire from ${EV_DEFS[evParts.find((q) => q.id === evWireFirst)?.type ?? "battery"].name}`
-              : "Click a component to start a wire"}
+              ? "click a second object to finish the wire"
+              : "click an object to start a wire"}
           </span>
           <button
             onClick={() => { setEVWireMode(false); setEVWireFirst(null); }}
@@ -2233,14 +2234,30 @@ export default function Scene3DViewer() {
               setViewsOpen(false);
               setGroundOpen(false);
             }}
-            aria-label="Open cables menu"
+            aria-label="Open wiring menu"
             className="flex h-11 items-center gap-1.5 rounded-xl border border-white/40 bg-white/30 px-3 text-neutral-900 shadow-lg backdrop-blur-md transition hover:bg-white/50"
           >
-            <Link2 className="h-5 w-5" />
-            <span className="text-sm font-medium">Cables</span>
+            <Cable className="h-5 w-5" />
+            <span className="text-sm font-medium">Wiring</span>
           </button>
-          {cablesOpen && (
-            <DraggablePanel initialX={410} initialY={64} title="Cables" width={288} onClose={() => setCablesOpen(false)}>
+          {cablesOpen && (() => {
+            const SectionHeader = ({ id, label, hint }: { id: "cables" | "lines" | "wires"; label: string; hint: string }) => (
+              <button
+                onClick={() => setWiringSection((s) => (s === id ? null : id))}
+                className="flex w-full items-center justify-between border-t border-white/40 px-4 py-2 text-left transition first:border-t-0 hover:bg-white/40"
+              >
+                <span className="flex flex-col">
+                  <span className="text-sm font-semibold text-neutral-900">{label}</span>
+                  <span className="text-[10px] text-neutral-600">{hint}</span>
+                </span>
+                <ChevronDown className={`h-4 w-4 text-neutral-600 transition ${wiringSection === id ? "rotate-180" : ""}`} />
+              </button>
+            );
+            return (
+            <DraggablePanel initialX={410} initialY={64} title="Wiring" width={300} onClose={() => setCablesOpen(false)}>
+              <SectionHeader id="cables" label="Cables" hint="Underground LV cables" />
+              {wiringSection === "cables" && (
+              <>
               <div className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
                 Underground LV cable
               </div>
@@ -2343,8 +2360,102 @@ export default function Scene3DViewer() {
                   </ul>
                 )}
               </div>
+              </>
+              )}
+              <SectionHeader id="lines" label="Lines" hint="Aerial line cables" />
+              {wiringSection === "lines" && (
+                <div className="px-4 pb-3">
+                  {(["LV aerial bundled (AMKA)", "20 kV bare conductor"] as const).map((g) => (
+                    <div key={g} className="mb-2">
+                      <div className="mb-1 text-[11px] text-neutral-600">{g}</div>
+                      <div className="grid grid-cols-2 gap-1">
+                        {LINE_TYPES.filter((t) => t.group === g).map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => setLineType(t.id)}
+                            className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${lineType === t.id ? "border-blue-300/70 bg-blue-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
+                          >
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    disabled={addedItems.filter((i) => i.type === "puitmast" || i.type === "puitmast20").length < 2}
+                    onClick={() => { const on = !connectMode; stopAllModes(); setConnectMode(on); }}
+                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50 ${connectMode ? "border-blue-300/60 bg-blue-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    {connectMode ? "Connecting…" : "Connect posts"}
+                  </button>
+                  <p className="mt-1 text-[10px] text-neutral-600">Add at least two posts from the Add menu, then click two posts.</p>
+                  {connections.length > 0 && (
+                    <ul className="mt-2 flex flex-col rounded-lg border border-white/40 bg-white/30">
+                      {connections.map((c, i) => {
+                        const a = addedItems.find((x) => x.id === c.a);
+                        const b = addedItems.find((x) => x.id === c.b);
+                        const span = a && b ? Math.hypot(a.position[0] - b.position[0], a.position[2] - b.position[2]) : 0;
+                        const sag = Math.min(1.2, span * 0.03);
+                        const sel = selectedLineId === c.id;
+                        const lt = lineTypeOf(c.type);
+                        return (
+                          <li key={c.id} className={`px-2 py-1.5 text-[11px] text-neutral-800 ${sel ? "bg-amber-200/60" : ""}`}>
+                            <div className="flex items-center justify-between gap-2">
+                              <button className="truncate text-left font-medium" onClick={() => setSelectedLineId(sel ? null : c.id)}>
+                                {i + 1}. {lt.label}
+                              </button>
+                              <button
+                                onClick={() => { setConnections((prev) => prev.filter((x) => x.id !== c.id)); if (sel) setSelectedLineId(null); }}
+                                aria-label="Remove line"
+                                className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            {sel && (
+                              <div className="mt-1 text-[10px] text-neutral-700">
+                                Length {span.toFixed(1)} m · sag {sag.toFixed(2)} m · {lt.voltage >= 1000 ? `${lt.voltage / 1000} kV` : `${lt.voltage} V`} · {lt.crossSection} mm²
+                              </div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <SectionHeader id="wires" label="Wires" hint="DC and installation cables" />
+              {wiringSection === "wires" && (
+                <div className="px-4 pb-3">
+                  {(["Installation cable", "DC single-core"] as const).map((g) => (
+                    <div key={g} className="mb-2">
+                      <div className="mb-1 text-[11px] text-neutral-600">{g}{g === "DC single-core" ? " (mm²)" : ""}</div>
+                      <div className="grid grid-cols-4 gap-1">
+                        {WIRE_TYPES.filter((t) => t.group === g).map((t) => (
+                          <button
+                            key={t.id}
+                            onClick={() => setWireType(t.id)}
+                            className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
+                          >
+                            {t.label.replace("DC ", "").replace(" mm²", "")}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => { const on = !evWireMode; stopAllModes(); setEVWireMode(on); }}
+                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${evWireMode ? "border-orange-300/60 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
+                  >
+                    <Cable className="h-3.5 w-3.5" />
+                    {evWireMode ? "Wiring…" : "Wire objects"}
+                  </button>
+                  <p className="mt-1 text-[10px] text-neutral-600">Click two objects to wire them. Click a wire to see its data or delete it.</p>
+                </div>
+              )}
             </DraggablePanel>
-          )}
+          ); })()}
         </div>
 
             <div className="grid grid-cols-2 gap-1">
@@ -2674,9 +2785,10 @@ export default function Scene3DViewer() {
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-blue-300/60 bg-blue-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
           <Link2 className="h-3.5 w-3.5" />
           <span>
+            {lineTypeOf(lineType).label}:{" "}
             {connectFirst
-              ? "Click a second post to connect"
-              : "Click the first post to connect"}
+              ? "click a second post to connect"
+              : "click the first post to connect"}
           </span>
           <button
             onClick={() => {
@@ -2829,18 +2941,19 @@ export default function Scene3DViewer() {
               </div>
             ) : evPropWire ? (
               <div className="space-y-2 text-xs text-neutral-800">
-                <div>Type: <strong>{isHVWire(evPropWire, evParts) ? "High voltage (orange)" : "Low voltage 12 V"}</strong></div>
-                <div>Length: <strong>{wireLength(evPropWire, evParts).toFixed(2)} m</strong></div>
+                <div>Type: <strong>{wireLabel(evPropWire)}</strong></div>
+                <div>Length: <strong>{anyWireLength(evPropWire).toFixed(2)} m</strong></div>
+                <div>Colour: <strong>{wireTypeOf(evPropWire.wireType)?.colorName ?? (isHVWire(evPropWire, evParts) ? "Orange" : "Black")}</strong></div>
                 <div>
-                  Cross-section (mm²)
+                  Wire type
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {WIRE_SECTIONS.map((s) => (
+                    {WIRE_TYPES.map((t) => (
                       <button
-                        key={s}
-                        onClick={() => setEVWires((prev) => prev.map((w) => w.id === evPropWire.id ? { ...w, crossSection: s } : w))}
-                        className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold shadow-sm transition ${evPropWire.crossSection === s ? "border-orange-500 bg-orange-500/80 text-white" : "border-white/60 bg-white/55 text-neutral-800 hover:bg-white/75"}`}
+                        key={t.id}
+                        onClick={() => setEVWires((prev) => prev.map((w) => w.id === evPropWire.id ? { ...w, wireType: t.id, crossSection: t.crossSection } : w))}
+                        className={`rounded-lg border px-2 py-1 text-[11px] font-semibold shadow-sm transition ${evPropWire.wireType === t.id ? "border-orange-500 bg-orange-500/80 text-white" : "border-white/60 bg-white/55 text-neutral-800 hover:bg-white/75"}`}
                       >
-                        {s}
+                        {t.label}
                       </button>
                     ))}
                   </div>
