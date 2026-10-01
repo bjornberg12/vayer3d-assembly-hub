@@ -2447,21 +2447,22 @@ export default function Scene3DViewer() {
           initialX={24}
           initialY={300}
           title="Properties"
+          width={320}
         >
-          <div className="w-64 space-y-3">
+          <div className="space-y-3 px-4 pb-3 pt-2">
             <div>
-              <div className="text-[11px] uppercase tracking-wide text-neutral-500">
+              <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
                 Part
               </div>
-              <div className="text-sm font-semibold text-neutral-900">
+              <div className="pt-1 text-sm font-semibold text-neutral-900">
                 {propsTarget}
               </div>
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-wide text-neutral-500">
+              <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
                 Scene
               </div>
-              <div className="text-sm text-neutral-800">{activeScene.name}</div>
+              <div className="pt-1 text-sm text-neutral-800">{activeScene.name}</div>
             </div>
             {!evPropWire && (
               <BasePropsEditor
@@ -2472,7 +2473,7 @@ export default function Scene3DViewer() {
               />
             )}
             {evPropPart && EV_DEFS[evPropPart.type].params.length > 0 && (
-              <div className="text-[11px] uppercase tracking-wide text-neutral-500">
+              <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
                 Model-specific
               </div>
             )}
@@ -2511,13 +2512,13 @@ export default function Scene3DViewer() {
                 </div>
                 <button
                   onClick={() => { setEVWireMode(true); setEVWireFirst(evPropPart.id); setMoveMode(false); setPropsTarget(null); setPropsOwnerId(null); }}
-                  className="w-full rounded-lg border border-orange-400/60 bg-orange-500/20 px-3 py-1.5 text-xs font-semibold text-orange-800 transition hover:bg-orange-500/30"
+                  className="w-full rounded-lg border border-orange-400/60 bg-orange-500/25 px-3 py-2 text-xs font-semibold text-orange-800 transition hover:bg-orange-500/35"
                 >
                   Wire from this part
                 </button>
                 <button
                   onClick={() => { removeEVPart(evPropPart.id); setPropsTarget(null); setPropsOwnerId(null); setPartLabel(null); setPartLabelPos(null); }}
-                  className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-500/30"
+                  className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-500/35"
                 >
                   Delete component
                 </button>
@@ -2533,7 +2534,7 @@ export default function Scene3DViewer() {
                       <button
                         key={s}
                         onClick={() => setEVWires((prev) => prev.map((w) => w.id === evPropWire.id ? { ...w, crossSection: s } : w))}
-                        className={`rounded-md border px-2 py-0.5 font-semibold ${evPropWire.crossSection === s ? "border-orange-400 bg-orange-500/80 text-white" : "border-white/50 bg-white/50"}`}
+                        className={`rounded-lg border px-2.5 py-1 text-[11px] font-semibold shadow-sm transition ${evPropWire.crossSection === s ? "border-orange-500 bg-orange-500/80 text-white" : "border-white/60 bg-white/55 text-neutral-800 hover:bg-white/75"}`}
                       >
                         {s}
                       </button>
@@ -2542,16 +2543,17 @@ export default function Scene3DViewer() {
                 </div>
                 <button
                   onClick={() => { setEVWires((prev) => prev.filter((w) => w.id !== evPropWire.id)); setPropsTarget(null); setPropsOwnerId(null); }}
-                  className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-500/30"
+                  className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-500/35"
                 >
                   Delete wire
                 </button>
               </div>
             ) : propsOwnerId ? (
               objLabels ? (
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-white/60 bg-white/55 px-3 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:bg-white/70">
                   <input
                     type="checkbox"
+                    className="h-3.5 w-3.5 accent-amber-500"
                     checked={objAssemblyOn}
                     onChange={(e) => {
                       setItemAssembly((prev) => {
@@ -2570,9 +2572,10 @@ export default function Scene3DViewer() {
                 </div>
               )
             ) : stepLabels ? (
-              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-white/50 bg-white/50 px-3 py-2 text-sm font-medium text-neutral-900">
+              <label className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-white/60 bg-white/55 px-3 py-2.5 text-sm font-medium text-neutral-900 shadow-sm transition hover:bg-white/70">
                 <input
                   type="checkbox"
+                  className="h-3.5 w-3.5 accent-amber-500"
                   checked={assemblyVisible}
                   onChange={(e) => {
                     setAssemblyVisible(e.target.checked);
@@ -2598,7 +2601,7 @@ export default function Scene3DViewer() {
                   setPartLabel(null);
                   setPartLabelPos(null);
                 }}
-                className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-500/30"
+                className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-500/35"
               >
                 Delete object
               </button>
@@ -2612,7 +2615,7 @@ export default function Scene3DViewer() {
                 setPropsTarget(null);
                 setPropsOwnerId(null);
               }}
-              className="w-full rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-800 transition hover:bg-white/60"
+              className="w-full rounded-lg border border-white/60 bg-white/45 px-3 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-white/70"
             >
               Close
             </button>

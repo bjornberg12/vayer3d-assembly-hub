@@ -7,6 +7,9 @@ import {
   type ObjectProps,
 } from "@/ModelLibrary";
 
+const INPUT_CLASS =
+  "w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 text-xs text-neutral-900 shadow-sm outline-none transition placeholder:text-neutral-400 focus:border-amber-400/80 focus:ring-2 focus:ring-amber-400/30";
+
 /** Editor for the shared basic properties every model has. */
 export function BasePropsEditor({
   props,
@@ -26,18 +29,23 @@ export function BasePropsEditor({
     });
 
   return (
-    <div className="space-y-1.5">
-      <div className="text-[11px] uppercase tracking-wide text-neutral-500">
+    <div className="space-y-2">
+      <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
         Basic properties
       </div>
       {BASE_PROPERTIES.filter((d) => props.active.includes(d.id)).map((d) => (
-        <div key={d.id} className="flex items-center gap-1.5 text-xs text-neutral-800">
-          <span className="w-24 shrink-0 truncate">{d.label}</span>
+        <div
+          key={d.id}
+          className="grid grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-2 text-xs text-neutral-800"
+        >
+          <span className="truncate text-[11px]" title={d.label}>
+            {d.label}
+          </span>
           {d.type === "text" ? (
             <input
               value={String(props.values[d.id] ?? "")}
               onChange={(e) => set(d.id, e.target.value)}
-              className="min-w-0 flex-1 rounded-md border border-white/60 bg-white/60 px-1.5 py-0.5"
+              className={INPUT_CLASS}
             />
           ) : (
             <input
@@ -47,35 +55,46 @@ export function BasePropsEditor({
               step={d.step}
               value={Number(props.values[d.id] ?? 0)}
               onChange={(e) => set(d.id, Number(e.target.value))}
-              className="min-w-0 flex-1 rounded-md border border-white/60 bg-white/60 px-1.5 py-0.5 font-mono"
+              className={`${INPUT_CLASS} font-mono`}
             />
           )}
-          {d.unit && <span className="w-6 text-[10px] text-neutral-500">{d.unit}</span>}
-          {d.id === "nominalVoltage" && (
-            <button
-              onClick={() =>
-                set(VOLTAGE_KIND_KEY, props.values[VOLTAGE_KIND_KEY] === "DC" ? "AC" : "DC")
-              }
-              className="rounded-md border border-white/60 bg-amber-400/70 px-1.5 py-0.5 text-[10px] font-bold"
-              title="Toggle AC / DC"
-            >
-              {props.values[VOLTAGE_KIND_KEY] === "DC" ? "DC" : "AC"}
-            </button>
-          )}
-          {d.id !== "name" && (
-            <button
-              onClick={() => toggle(d.id, false)}
-              aria-label={`Hide ${d.label}`}
-              className="rounded p-0.5 text-neutral-500 hover:bg-black/10"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
+          <span className="flex items-center justify-end gap-1">
+            {d.unit && (
+              <span className="text-[10px] text-neutral-500">{d.unit}</span>
+            )}
+            {d.id === "nominalVoltage" && (
+              <span className="flex overflow-hidden rounded-md border border-white/60 shadow-sm">
+                {(["AC", "DC"] as const).map((k) => (
+                  <button
+                    key={k}
+                    onClick={() => set(VOLTAGE_KIND_KEY, k)}
+                    className={`px-1.5 py-0.5 text-[9px] font-bold transition ${
+                      props.values[VOLTAGE_KIND_KEY] === k
+                        ? "bg-amber-400/80 text-neutral-900"
+                        : "bg-white/55 text-neutral-500 hover:bg-white/80"
+                    }`}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </span>
+            )}
+            {d.id !== "name" && (
+              <button
+                onClick={() => toggle(d.id, false)}
+                aria-label={`Hide ${d.label}`}
+                title={`Hide ${d.label}`}
+                className="grid h-4 w-4 place-items-center rounded-full text-neutral-500 transition hover:bg-black/10 hover:text-neutral-900"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
+          </span>
         </div>
       ))}
       {inactive.length > 0 &&
         (picking ? (
-          <div className="flex flex-wrap gap-1 rounded-lg border border-white/50 bg-white/40 p-1.5">
+          <div className="flex flex-wrap gap-1.5 rounded-lg border border-white/50 bg-white/40 p-2">
             {inactive.map((d) => (
               <button
                 key={d.id}
@@ -83,19 +102,22 @@ export function BasePropsEditor({
                   toggle(d.id, true);
                   if (inactive.length === 1) setPicking(false);
                 }}
-                className="rounded-md border border-white/60 bg-white/60 px-1.5 py-0.5 text-[11px] hover:bg-amber-300/70"
+                className="rounded-lg border border-white/60 bg-white/60 px-2 py-1 text-[11px] font-medium text-neutral-800 shadow-sm transition hover:bg-amber-300/60"
               >
                 + {d.label}
               </button>
             ))}
-            <button onClick={() => setPicking(false)} className="px-1 text-[11px] text-neutral-500">
+            <button
+              onClick={() => setPicking(false)}
+              className="rounded-lg px-2 py-1 text-[11px] font-semibold text-neutral-600 underline-offset-2 hover:underline"
+            >
               Done
             </button>
           </div>
         ) : (
           <button
             onClick={() => setPicking(true)}
-            className="w-full rounded-lg border border-dashed border-neutral-400/70 px-2 py-1 text-[11px] font-semibold text-neutral-700 hover:bg-white/40"
+            className="w-full rounded-lg border border-dashed border-neutral-400/70 bg-white/25 px-2 py-1.5 text-[11px] font-semibold text-neutral-700 transition hover:bg-white/45"
           >
             + Add property
           </button>
