@@ -1028,7 +1028,8 @@ export default function Scene3DViewer() {
   const [placementRotation, setPlacementRotation] = useState(0); // radians
   const [connectMode, setConnectMode] = useState(false);
   const [connectFirst, setConnectFirst] = useState<string | null>(null);
-  const [connections, setConnections] = useState<{ id: string; a: string; b: string; type?: string }[]>([]);
+  type LineRecord = { id: string; a: string; b: string; type?: string; waypoints?: Waypoint[] };
+  const [connections, setConnections] = useState<LineRecord[]>([]);
   const [lineType, setLineType] = useState<string>(DEFAULT_LINE_TYPE);
   const [wireType, setWireType] = useState<string>(DEFAULT_WIRE_TYPE);
   const [wiringSection, setWiringSection] = useState<"cables" | "lines" | "wires" | null>("cables");
@@ -1186,19 +1187,23 @@ export default function Scene3DViewer() {
     setEVParts((prev) => prev.filter((q) => q.id !== id));
     setEVWires((prev) => prev.filter((w) => w.a !== id && w.b !== id));
   };
-  const handleEVWireClick = (id: string) => {
-    if (!evWireFirst) return setEVWireFirst(id);
-    if (evWireFirst === id) return setEVWireFirst(null);
+  const handleEVWireClick = (id: string, wps: Waypoint[] = cableDraft) => {
+    endpointClickAt.current = performance.now();
+    if (!evWireFirst) { setCableDraft([]); return setEVWireFirst(id); }
+    if (evWireFirst === id) { setCableDraft([]); return setEVWireFirst(null); }
     const a = evWireFirst;
     setEVWires((prev) =>
-      prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
+      !wps.length && prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
         ? prev
-        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType }]
+        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType, waypoints: wps.length ? wps : undefined }]
     );
     setEVWireFirst(null);
+    setCableDraft([]);
   };
 
   const wireEnd = (id: string): [number, number, number] | null => {
+    const pt = parsePt(id);
+    if (pt) return [pt[0], 0.1, pt[1]];
     const part = sceneId === "electriccar" ? evParts.find((q) => q.id === id) : undefined;
     if (part) return terminalPoint(part);
     const item = addedItems.find((i) => i.id === id);
@@ -1208,7 +1213,9 @@ export default function Scene3DViewer() {
   const anyWireLength = (w: EVWireRecord) => {
     const a = wireEnd(w.a);
     const b = wireEnd(w.b);
-    return a && b ? wireCurveLength(a, b) : 0;
+    if (!a || !b) return 0;
+    if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b)) return routedWireCurve(a, b, w.waypoints ?? []).getLength();
+    return wireCurveLength(a, b);
   };
   const wireLabel = (w: EVWireRecord) =>
     wireTypeOf(w.wireType)?.label ?? (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
@@ -1219,23 +1226,29 @@ export default function Scene3DViewer() {
     setEVWireFirst(null);
     setMoveMode(false);
     setCableMode(false);
+    setCableFirst(null);
+    setCableDraft([]);
     setPendingAdd(null);
     setPendingEV(null);
   };
-  const handleItemClickForConnect = (id: string) => {
+  const handleItemClickForConnect = (id: string, wps: Waypoint[] = cableDraft) => {
     if (!connectMode) return;
+    endpointClickAt.current = performance.now();
     if (!connectFirst) {
       setConnectFirst(id);
+      setCableDraft([]);
       return;
     }
     if (connectFirst === id) {
       setConnectFirst(null);
+      setCableDraft([]);
       return;
     }
     const a = connectFirst;
     const b = id;
     setConnections((prev) => {
       if (
+        !wps.length &&
         prev.some(
           (c) => (c.a === a && c.b === b) || (c.a === b && c.b === a)
         )
@@ -1243,10 +1256,11 @@ export default function Scene3DViewer() {
         return prev;
       return [
         ...prev,
-        { id: `${a}::${b}::${Date.now()}`, a, b, type: lineType },
+        { id: `${a}::${b}::${Date.now()}`, a, b, type: lineType, waypoints: wps.length ? wps : undefined },
       ];
     });
     setConnectFirst(null);
+    setCableDraft([]);
   };
   const phaseLocalsFor = (type: AddableType): [number, number, number][] | null => {
     if (type === "puitmast") return PUITMAST_PHASE_LOCAL;
