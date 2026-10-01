@@ -1670,7 +1670,7 @@ export default function Scene3DViewer() {
                 ))}
 
             {/* Cable proxy for the fixed scene model at the origin */}
-            {cableMode && (sceneId === "jaotuskilp" || sceneId === "alajaam") && (
+            {false && cableMode && (
               <mesh
                 position={[0, 1.4, 0]}
                 onClick={(e) => {
