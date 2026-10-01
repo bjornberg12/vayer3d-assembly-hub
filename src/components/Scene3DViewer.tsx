@@ -29,6 +29,11 @@ import {
 
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider, PartOwner } from "./PartLabel";
+import {
+  EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
+  defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireLength,
+  type EVPartRecord, type EVType, type EVWireRecord,
+} from "./EVComponents";
 import { DraggablePanel } from "./DraggablePanel";
 import {
   WeatherEffects,
@@ -562,10 +567,40 @@ export default function Scene3DViewer() {
     setAddedItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, rotationY } : i))
     );
-  const setItemPosition = (id: string, position: [number, number, number]) =>
+  const setItemPosition = (id: string, position: [number, number, number]) => {
     setAddedItems((prev) =>
       prev.map((i) => (i.id === id ? { ...i, position } : i))
     );
+    setEVParts((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, position } : q))
+    );
+  };
+
+  // --- Electric car internals ------------------------------------------------
+  const [evParts, setEVParts] = useState<EVPartRecord[]>(() => defaultEVLayout().parts);
+  const [evWires, setEVWires] = useState<EVWireRecord[]>(() => defaultEVLayout().wires);
+  const [pendingEV, setPendingEV] = useState<EVType | null>(null);
+  const [evWireMode, setEVWireMode] = useState(false);
+  const [evWireFirst, setEVWireFirst] = useState<string | null>(null);
+  const evPropPart = propsOwnerId ? evParts.find((q) => q.id === propsOwnerId) ?? null : null;
+  const evPropWire = propsOwnerId ? evWires.find((w) => w.id === propsOwnerId) ?? null : null;
+  const updateEVParam = (id: string, key: string, value: number) =>
+    setEVParts((prev) => prev.map((q) => (q.id === id ? { ...q, params: { ...q.params, [key]: value } } : q)));
+  const removeEVPart = (id: string) => {
+    setEVParts((prev) => prev.filter((q) => q.id !== id));
+    setEVWires((prev) => prev.filter((w) => w.a !== id && w.b !== id));
+  };
+  const handleEVWireClick = (id: string) => {
+    if (!evWireFirst) return setEVWireFirst(id);
+    if (evWireFirst === id) return setEVWireFirst(null);
+    const a = evWireFirst;
+    setEVWires((prev) =>
+      prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
+        ? prev
+        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: 35 }]
+    );
+    setEVWireFirst(null);
+  };
 
   const handleItemClickForConnect = (id: string) => {
     if (!connectMode) return;
@@ -809,6 +844,11 @@ export default function Scene3DViewer() {
     setSelectedCableId(null);
     setFeeders({});
     setFeederPanelKey(null);
+    setEVParts([]);
+    setEVWires([]);
+    setEVWireMode(false);
+    setEVWireFirst(null);
+    setPendingEV(null);
 
 
     setMoveMode(false);
@@ -940,7 +980,60 @@ export default function Scene3DViewer() {
               </group>
             )}
             {sceneId === "alajaam" && <Substation step={shownStep} />}
-            {sceneId === "electriccar" && null}
+            {sceneId === "electriccar" && (
+              <group>
+                <EVChassisGhost />
+                {evParts.map((part) => (
+                  <group key={part.id}>
+                    <EVPart part={part} />
+                    {(evWireMode || moveMode) && (
+                      <mesh
+                        position={[part.position[0], 0.5, part.position[2]]}
+                        onClick={(e) => {
+                          if (!evWireMode) return;
+                          e.stopPropagation();
+                          handleEVWireClick(part.id);
+                        }}
+                        onPointerDown={(e) => {
+                          if (!moveMode || e.button !== 0) return;
+                          e.stopPropagation();
+                          setDraggingId(part.id);
+                        }}
+                      >
+                        <sphereGeometry args={[0.2, 16, 16]} />
+                        <meshBasicMaterial
+                          color={evWireFirst === part.id || draggingId === part.id ? "#f59e0b" : moveMode ? "#a855f7" : "#f97316"}
+                          transparent
+                          opacity={0.35}
+                          depthTest={false}
+                        />
+                      </mesh>
+                    )}
+                  </group>
+                ))}
+                {evWires.map((w) => {
+                  const a = evParts.find((q) => q.id === w.a);
+                  const b = evParts.find((q) => q.id === w.b);
+                  if (!a || !b) return null;
+                  return (
+                    <EVWire
+                      key={w.id}
+                      from={terminalPoint(a)}
+                      to={terminalPoint(b)}
+                      hv={isHVWire(w, evParts)}
+                      crossSection={w.crossSection}
+                      selected={propsOwnerId === w.id}
+                      onSelect={() => {
+                        setPartLabel(null);
+                        setPartLabelPos(null);
+                        setPropsTarget(isHVWire(w, evParts) ? "HV cable" : "12 V wire");
+                        setPropsOwnerId(w.id);
+                      }}
+                    />
+                  );
+                })}
+              </group>
+            )}
             {addedItems.map((item) => {
               const isSelected = connectMode && connectFirst === item.id;
               const itemStep =
@@ -1164,9 +1257,12 @@ export default function Scene3DViewer() {
           <CameraRig view={activeView} controlsRef={controlsRef} resetNonce={cameraReset} />
           <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
           <Placer
-            active={pendingAdd !== null}
+            active={pendingAdd !== null || pendingEV !== null}
             onPlace={(p) => {
-              if (pendingAdd) {
+              if (pendingEV) {
+                setEVParts((prev) => [...prev, makeEVPart(pendingEV, p)]);
+                setPendingEV(null);
+              } else if (pendingAdd) {
                 placeItem(pendingAdd, p);
                 setPendingAdd(null);
               }
@@ -1535,6 +1631,56 @@ export default function Scene3DViewer() {
                     </li>
                   ))}
                 </ul>
+                {sceneId === "electriccar" && (
+                  <>
+                    <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
+                      Electric car parts ({evParts.length} placed · {evWires.length} wires)
+                    </div>
+                    <ul className="flex flex-col">
+                      {EV_TYPES.map((t) => (
+                        <li key={t}>
+                          <button
+                            onClick={() => {
+                              setPendingEV(t);
+                              setPendingAdd(null);
+                              setAddOpen(false);
+                              setEVWireMode(false);
+                              setMoveMode(false);
+                            }}
+                            className="flex w-full items-center justify-between gap-2 px-4 py-2 text-left text-sm text-neutral-800 transition hover:bg-white/50"
+                          >
+                            <span className="flex flex-col">
+                              <span className="font-medium">{EV_DEFS[t].name}</span>
+                              <span className="text-xs font-normal text-neutral-600">{EV_DEFS[t].subtitle}</span>
+                            </span>
+                            <Plus className="h-4 w-4 text-neutral-600" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex gap-2 border-t border-white/40 px-3 py-2">
+                      <button
+                        onClick={() => { setEVWireMode((m) => !m); setEVWireFirst(null); setMoveMode(false); setPendingEV(null); setAddOpen(false); }}
+                        className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${evWireMode ? "border-orange-300/60 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
+                      >
+                        {evWireMode ? "Wiring…" : "Wire parts"}
+                      </button>
+                      <button
+                        onClick={() => { setMoveMode((m) => !m); setEVWireMode(false); setPendingEV(null); setPendingAdd(null); }}
+                        className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${moveMode ? "border-purple-300/60 bg-purple-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
+                      >
+                        {moveMode ? "Moving…" : "Move parts"}
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => { const d = defaultEVLayout(); setEVParts(d.parts); setEVWires(d.wires); }}
+                      className="mx-3 mb-2 rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-900 hover:bg-white/60"
+                    >
+                      Restore default drivetrain
+                    </button>
+                  </>
+                )}
+
 
 
               {addedItems.length > 0 && (
@@ -1687,12 +1833,29 @@ export default function Scene3DViewer() {
         )}
       </div>
 
-      {pendingAdd && (
+      {evWireMode && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-orange-300/60 bg-orange-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <span>
+            {evWireFirst
+              ? `Click a second component to wire from ${EV_DEFS[evParts.find((q) => q.id === evWireFirst)?.type ?? "battery"].name}`
+              : "Click a component to start a wire"}
+          </span>
+          <button
+            onClick={() => { setEVWireMode(false); setEVWireFirst(null); }}
+            aria-label="Stop wiring"
+            className="rounded-md p-0.5 transition hover:bg-black/10"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {(pendingAdd || pendingEV) && (
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
           <span>
             Click ground to place{" "}
             <strong>
-              {ADDABLES.find((a) => a.type === pendingAdd)?.name}
+              {pendingEV ? EV_DEFS[pendingEV].name : ADDABLES.find((a) => a.type === pendingAdd)?.name}
             </strong>
           </span>
           <span className="flex items-center gap-1 rounded-md bg-white/50 px-2 py-0.5 text-[11px] text-neutral-700">
@@ -1704,7 +1867,7 @@ export default function Scene3DViewer() {
             to rotate
           </span>
           <button
-            onClick={() => setPendingAdd(null)}
+            onClick={() => { setPendingAdd(null); setPendingEV(null); }}
             aria-label="Cancel placement"
             className="rounded-md p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-neutral-900"
           >
@@ -2403,7 +2566,7 @@ export default function Scene3DViewer() {
                 This scene has no assembly instructions.
               </div>
             )}
-            {propsOwnerId ? (
+            {evPropPart || evPropWire ? null : propsOwnerId ? (
               <button
                 onClick={() => {
                   removeItem(propsOwnerId);
