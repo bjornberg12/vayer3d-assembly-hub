@@ -117,13 +117,20 @@ function isVisibleInScene(obj: THREE.Object3D) {
 function pickCursorPoint(
   raycaster: THREE.Raycaster,
   scene: THREE.Scene,
+  camera: THREE.Camera,
   origin: THREE.Vector3,
   direction: THREE.Vector3,
 ): THREE.Vector3 | null {
   raycaster.set(origin, direction);
+  raycaster.camera = camera;
   raycaster.near = 0;
   raycaster.far = Infinity;
-  const hits = raycaster.intersectObjects(scene.children, true);
+  let hits: THREE.Intersection[] = [];
+  try {
+    hits = raycaster.intersectObjects(scene.children, true);
+  } catch {
+    hits = [];
+  }
   for (const h of hits) {
     const m = h.object as THREE.Mesh;
     if (!m.isMesh) continue;
@@ -199,7 +206,7 @@ function ContinuousCursorZoom({
       const camDest = camera.position.clone().add(remainingCameraTravel.current);
       const targetDest = controls.target.clone().add(remainingTargetTravel.current);
 
-      const hit = pickCursorPoint(raycaster.current, scene, camDest, ray);
+      const hit = pickCursorPoint(raycaster.current, scene, camera, camDest, ray);
       let hitDistance: number;
       if (hit) {
         hitDistance = hit.distanceTo(camDest);
@@ -259,7 +266,7 @@ function ContinuousCursorZoom({
 
       const forward = camera.getWorldDirection(new THREE.Vector3());
       cursorDirection(event, canvas, camera, dir);
-      const hit = pickCursorPoint(raycaster.current, scene, camera.position, dir);
+      const hit = pickCursorPoint(raycaster.current, scene, camera, camera.position, dir);
       if (hit && hit.clone().sub(camera.position).dot(forward) > 1e-6) {
         grabPoint.copy(hit);
       } else {
