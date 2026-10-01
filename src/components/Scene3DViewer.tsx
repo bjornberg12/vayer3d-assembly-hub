@@ -1,4 +1,4 @@
-import { Canvas, useThree } from "@react-three/fiber";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed } from "lucide-react";
@@ -98,6 +98,75 @@ function CameraRig({
     }
     camera.updateProjectionMatrix();
   }, [view, camera, controlsRef, resetNonce]);
+  return null;
+}
+
+function ContinuousCursorZoom({
+  controlsRef,
+  resetNonce,
+}: {
+  controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+  resetNonce: number;
+}) {
+  const { camera, gl } = useThree();
+  const remainingTravel = useRef(new THREE.Vector3());
+  const cursorRay = useRef(new THREE.Vector3());
+
+  useEffect(() => {
+    remainingTravel.current.set(0, 0, 0);
+  }, [resetNonce]);
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      const controls = controlsRef.current;
+      if (!controls?.enabled) return;
+
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+
+      const deltaModeScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1;
+      const normalizedDelta = THREE.MathUtils.clamp(event.deltaY * deltaModeScale, -240, 240);
+      const pointer = new THREE.Vector3(
+        ((event.clientX - rect.left) / rect.width) * 2 - 1,
+        -((event.clientY - rect.top) / rect.height) * 2 + 1,
+        0.5,
+      );
+
+      cursorRay.current
+        .copy(pointer)
+        .unproject(camera)
+        .sub(camera.position)
+        .normalize();
+
+      // OrbitControls normally scales movement by the shrinking distance to
+      // its target. Keeping the camera-target spacing stable turns zoom into
+      // continuous travel and prevents it from asymptotically stalling.
+      const orbitDistance = Math.max(camera.position.distanceTo(controls.target), 0.05);
+      const travel = -normalizedDelta * Math.max(orbitDistance * 0.0003, 0.00002);
+      remainingTravel.current.addScaledVector(cursorRay.current, travel);
+    };
+
+    canvas.addEventListener("wheel", handleWheel, { passive: false, capture: true });
+    return () => canvas.removeEventListener("wheel", handleWheel, { capture: true });
+  }, [camera, controlsRef, gl]);
+
+  useFrame((_, delta) => {
+    const controls = controlsRef.current;
+    const remaining = remainingTravel.current;
+    if (!controls || remaining.lengthSq() < 1e-12) return;
+
+    const smoothing = 1 - Math.exp(-14 * Math.min(delta, 0.1));
+    const movement = remaining.clone().multiplyScalar(smoothing);
+    camera.position.add(movement);
+    controls.target.add(movement);
+    remaining.sub(movement);
+    controls.update();
+  });
+
   return null;
 }
 
@@ -1260,7 +1329,7 @@ export default function Scene3DViewer() {
             ref={controlsRef}
             enableDamping
             dampingFactor={0.08}
-            zoomSpeed={0.6}
+            enableZoom={false}
             minDistance={0.000001}
             maxDistance={Infinity}
             maxPolarAngle={Math.PI / 2 - 0.02}
@@ -1272,6 +1341,7 @@ export default function Scene3DViewer() {
               RIGHT: THREE.MOUSE.DOLLY,
             }}
           />
+          <ContinuousCursorZoom controlsRef={controlsRef} resetNonce={cameraReset} />
           <CameraRig view={activeView} controlsRef={controlsRef} resetNonce={cameraReset} />
           <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
           <Placer
