@@ -1307,6 +1307,13 @@ export default function Scene3DViewer() {
         point: rotateLocal(cableExitLocal(i.type), i.position, i.rotationY),
       });
     });
+    // Loose (unconnected) cable ends
+    cables.forEach((c) => {
+      [c.a, c.b].forEach((id) => {
+        const p = parsePt(id);
+        if (p && !list.some((e) => e.id === id)) list.push({ id, name: "Loose end", point: [p[0], 0, p[1]] });
+      });
+    });
     // Cable joints: an existing cable's midpoint can host a new branch cable
     cables.forEach((c, idx) => {
       const a = list.find((e) => e.id === c.a);
@@ -1328,7 +1335,7 @@ export default function Scene3DViewer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addedItems, sceneId, cables]);
 
-  const handleCableClick = (endId: string) => {
+  const handleCableClick = (endId: string, wps: Waypoint[] = cableDraft) => {
     if (!cableMode) return;
     endpointClickAt.current = performance.now();
     if (!cableFirst) {
@@ -1352,7 +1359,7 @@ export default function Scene3DViewer() {
         conduit: cableConduit,
         voltage: 400 as CableVoltage,
         powerKw: 30,
-        waypoints: cableDraft.length ? cableDraft : undefined,
+        waypoints: wps.length ? wps : undefined,
       },
     ]);
     setCableFirst(null);
