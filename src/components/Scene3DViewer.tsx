@@ -1594,6 +1594,25 @@ export default function Scene3DViewer() {
               const b = wireEnd(w.b);
               if (!a || !b) return null;
               const wt = wireTypeOf(w.wireType);
+              const selectWire = () => {
+                setPartLabel(null);
+                setPartLabelPos(null);
+                setPropsTarget(wireLabel(w));
+                setPropsOwnerId(w.id);
+              };
+              if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b))
+                return (
+                  <RoutedWire
+                    key={w.id}
+                    from={a}
+                    to={b}
+                    waypoints={w.waypoints ?? []}
+                    crossSection={w.crossSection}
+                    color={wt?.color ?? "#e5e7eb"}
+                    selected={propsOwnerId === w.id}
+                    onSelect={selectWire}
+                  />
+                );
               return (
                 <EVWire
                   key={w.id}
