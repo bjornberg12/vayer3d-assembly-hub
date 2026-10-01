@@ -146,7 +146,7 @@ function ContinuousCursorZoom({
       // its target. Keeping the camera-target spacing stable turns zoom into
       // continuous travel and prevents it from asymptotically stalling.
       const orbitDistance = Math.max(camera.position.distanceTo(controls.target), 0.05);
-      const travel = -normalizedDelta * Math.max(orbitDistance * 0.0003, 0.00002);
+      const travel = -normalizedDelta * Math.max(orbitDistance * 0.00075, 0.00005);
       remainingTravel.current.addScaledVector(cursorRay.current, travel);
     };
 
