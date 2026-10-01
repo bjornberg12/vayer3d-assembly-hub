@@ -22,6 +22,8 @@ import {
   CABLE_SIZES,
   CONDUITS,
   cableRouteLength,
+  cableRoutePointAt,
+  type Waypoint,
   type CableSizeId,
   type ConduitId,
 } from "@/ModelLibrary";
@@ -568,6 +570,189 @@ function DragProxy({
   return null;
 }
 
+type GroundPt = [number, number];
+function groundHit(e: PointerEvent, dom: HTMLElement, camera: THREE.Camera): GroundPt | null {
+  const rect = dom.getBoundingClientRect();
+  const ndc = new THREE.Vector2(
+    ((e.clientX - rect.left) / rect.width) * 2 - 1,
+    -((e.clientY - rect.top) / rect.height) * 2 + 1
+  );
+  const rc = new THREE.Raycaster();
+  rc.setFromCamera(ndc, camera);
+  const hit = new THREE.Vector3();
+  if (!rc.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), hit)) return null;
+  return [Math.round(hit.x * 100) / 100, Math.round(hit.z * 100) / 100];
+}
+
+/** While routing a cable: ground clicks drop corner points; a dashed preview follows the cursor. */
+function CableRouter({
+  active,
+  start,
+  draft,
+  onAdd,
+  skipRef,
+}: {
+  active: boolean;
+  start: [number, number, number] | null;
+  draft: Waypoint[];
+  onAdd: (p: Waypoint) => void;
+  skipRef: React.MutableRefObject<number>;
+}) {
+  const { camera, gl } = useThree();
+  const [hover, setHover] = useState<GroundPt | null>(null);
+  useEffect(() => {
+    if (!active) {
+      setHover(null);
+      return;
+    }
+    const dom = gl.domElement;
+    let dx = 0, dy = 0;
+    const down = (e: PointerEvent) => { dx = e.clientX; dy = e.clientY; };
+    const move = (e: PointerEvent) => setHover(groundHit(e, dom, camera));
+    const up = (e: PointerEvent) => {
+      if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
+      if (Math.hypot(e.clientX - dx, e.clientY - dy) > 4) return;
+      const p = groundHit(e, dom, camera);
+      if (!p) return;
+      window.setTimeout(() => {
+        if (performance.now() - skipRef.current < 120) return;
+        onAdd(p);
+      }, 40);
+    };
+    dom.addEventListener("pointerdown", down);
+    dom.addEventListener("pointermove", move);
+    dom.addEventListener("pointerup", up);
+    return () => {
+      dom.removeEventListener("pointerdown", down);
+      dom.removeEventListener("pointermove", move);
+      dom.removeEventListener("pointerup", up);
+    };
+  }, [active, camera, gl, onAdd, skipRef]);
+  if (!active || !start) return null;
+  const pts: [number, number, number][] = [
+    [start[0], 0.03, start[2]],
+    ...draft.map((w) => [w[0], 0.03, w[1]] as [number, number, number]),
+    ...(hover ? [[hover[0], 0.03, hover[1]] as [number, number, number]] : []),
+  ];
+  return (
+    <group>
+      {pts.length > 1 && <Line points={pts} color="#f59e0b" lineWidth={2} dashed dashSize={0.3} gapSize={0.2} />}
+      {draft.map((w, i) => (
+        <mesh key={i} position={[w[0], 0.05, w[1]]} raycast={() => null}>
+          <sphereGeometry args={[0.12, 16, 12]} />
+          <meshBasicMaterial color="#f59e0b" />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Drag handles for every corner (and section midpoints) of a selected cable. */
+function CableRouteEditor({
+  from,
+  to,
+  waypoints,
+  onChange,
+  controlsRef,
+}: {
+  from: [number, number, number];
+  to: [number, number, number];
+  waypoints: Waypoint[];
+  onChange: (w: Waypoint[]) => void;
+  controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
+}) {
+  const { camera, gl } = useThree();
+  const [drag, setDrag] = useState<number | null>(null);
+  const wpRef = useRef(waypoints);
+  wpRef.current = waypoints;
+  useEffect(() => {
+    if (drag === null) return;
+    if (controlsRef.current) controlsRef.current.enabled = false;
+    const dom = gl.domElement;
+    const move = (e: PointerEvent) => {
+      const p = groundHit(e, dom, camera);
+      if (!p) return;
+      const next = wpRef.current.slice();
+      next[drag] = p;
+      onChange(next);
+    };
+    const up = () => setDrag(null);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    dom.style.cursor = "grabbing";
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      dom.style.cursor = "";
+      if (controlsRef.current) controlsRef.current.enabled = true;
+    };
+  }, [drag, camera, gl, controlsRef, onChange]);
+
+  const chain: GroundPt[] = [[from[0], from[2]], ...waypoints, [to[0], to[2]]];
+  const hoverOn = (e: { stopPropagation: () => void }) => {
+    e.stopPropagation();
+    document.body.style.cursor = "grab";
+  };
+  const hoverOff = () => { document.body.style.cursor = ""; };
+  return (
+    <group>
+      <Line
+        points={chain.map((c) => [c[0], 0.03, c[1]] as [number, number, number])}
+        color="#f59e0b"
+        lineWidth={1.5}
+        dashed
+        dashSize={0.25}
+        gapSize={0.15}
+      />
+      {waypoints.map((w, i) => (
+        <mesh
+          key={`c${i}`}
+          position={[w[0], 0.08, w[1]]}
+          onPointerOver={hoverOn}
+          onPointerOut={hoverOff}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            const ne = e.nativeEvent;
+            if (ne.button === 2 || ne.altKey) {
+              onChange(waypoints.filter((_, j) => j !== i));
+              return;
+            }
+            if (ne.button === 0) setDrag(i);
+          }}
+          onContextMenu={(e) => e.stopPropagation()}
+        >
+          <sphereGeometry args={[0.18, 20, 14]} />
+          <meshStandardMaterial color={drag === i ? "#ffffff" : "#f59e0b"} emissive="#f59e0b" emissiveIntensity={0.4} />
+        </mesh>
+      ))}
+      {chain.slice(1).map((c, i) => {
+        const p = chain[i];
+        const mx = (p[0] + c[0]) / 2;
+        const mz = (p[1] + c[1]) / 2;
+        return (
+          <mesh
+            key={`m${i}`}
+            position={[mx, 0.06, mz]}
+            onPointerOver={hoverOn}
+            onPointerOut={hoverOff}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              if (e.nativeEvent.button !== 0) return;
+              const next = waypoints.slice();
+              next.splice(i, 0, [mx, mz]);
+              onChange(next);
+              setDrag(i);
+            }}
+          >
+            <sphereGeometry args={[0.1, 14, 10]} />
+            <meshStandardMaterial color="#ffffff" transparent opacity={0.8} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 function Placer({
 
   active,
@@ -726,7 +911,12 @@ export default function Scene3DViewer() {
     /** Feeder assignments at each end (feeder id within that panel). */
     feederA?: string;
     feederB?: string;
+    /** Hand-placed route corners on the ground plane (x, z). */
+    waypoints?: Waypoint[];
   };
+  const [cableDraft, setCableDraft] = useState<Waypoint[]>([]);
+  const [editRoute, setEditRoute] = useState(false);
+  const endpointClickAt = useRef(0);
   const [cables, setCables] = useState<CableRecord[]>([]);
   const [selectedCableId, setSelectedCableId] = useState<string | null>(null);
 
@@ -984,11 +1174,13 @@ export default function Scene3DViewer() {
       list.push({
         id: `joint:${c.id}`,
         name: `Cable joint #${idx + 1} (4×${c.size} mm²)`,
-        point: [
-          (a.point[0] + b.point[0]) / 2,
-          -0.7,
-          (a.point[2] + b.point[2]) / 2,
-        ],
+        point: c.waypoints?.length
+          ? cableRoutePointAt(a.point, b.point, 0.7, c.waypoints, 0.5)
+          : [
+              (a.point[0] + b.point[0]) / 2,
+              -0.7,
+              (a.point[2] + b.point[2]) / 2,
+            ],
       });
     });
     return list;
@@ -997,12 +1189,15 @@ export default function Scene3DViewer() {
 
   const handleCableClick = (endId: string) => {
     if (!cableMode) return;
+    endpointClickAt.current = performance.now();
     if (!cableFirst) {
       setCableFirst(endId);
+      setCableDraft([]);
       return;
     }
     if (cableFirst === endId) {
       setCableFirst(null);
+      setCableDraft([]);
       return;
     }
     const a = cableFirst;
@@ -1016,9 +1211,11 @@ export default function Scene3DViewer() {
         conduit: cableConduit,
         voltage: 400 as CableVoltage,
         powerKw: 30,
+        waypoints: cableDraft.length ? cableDraft : undefined,
       },
     ]);
     setCableFirst(null);
+    setCableDraft([]);
 
   };
 
@@ -1051,13 +1248,36 @@ export default function Scene3DViewer() {
     const a = cableEndpoints.find((e) => e.id === c.a);
     const b = cableEndpoints.find((e) => e.id === c.b);
     if (!a || !b) return 0;
-    return cableRouteLength(a.point, b.point, 0.7);
+    return cableRouteLength(a.point, b.point, 0.7, c.waypoints);
   };
   const cableCurrentOf = (c: CableRecord) =>
     c.voltage === 400
       ? (c.powerKw * 1000) / (Math.sqrt(3) * 400 * PF)
       : (c.powerKw * 1000) / (230 * PF);
   const selectedCable = cables.find((c) => c.id === selectedCableId) ?? null;
+  const addDraftPoint = useMemo(
+    () => (p: Waypoint) => setCableDraft((d) => [...d, p]),
+    []
+  );
+  useEffect(() => {
+    if (!selectedCableId) setEditRoute(false);
+  }, [selectedCableId]);
+  useEffect(() => {
+    if (!cableMode || !cableFirst) return;
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
+      if (e.key === "Escape") {
+        setCableFirst(null);
+        setCableDraft([]);
+      } else if (e.key === "Backspace") {
+        e.preventDefault();
+        setCableDraft((d) => d.slice(0, -1));
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [cableMode, cableFirst]);
   const updateCable = (id: string, patch: Partial<CableRecord>) =>
     setCables((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
 
@@ -1502,6 +1722,7 @@ export default function Scene3DViewer() {
                   from={a.point}
                   to={b.point}
                   spec={{ size: c.size, conduit: c.conduit }}
+                  waypoints={c.waypoints}
                   selected={selectedCableId === c.id}
                   onSelect={() => {
                     if (cableMode) {
@@ -1587,6 +1808,28 @@ export default function Scene3DViewer() {
               }
             }}
           />
+          <CableRouter
+            active={cableMode && cableFirst !== null}
+            start={cableEndpoints.find((e) => e.id === cableFirst)?.point ?? null}
+            draft={cableDraft}
+            onAdd={addDraftPoint}
+            skipRef={endpointClickAt}
+          />
+          {editRoute && selectedCable && (() => {
+            const a = cableEndpoints.find((e) => e.id === selectedCable.a);
+            const b = cableEndpoints.find((e) => e.id === selectedCable.b);
+            if (!a || !b) return null;
+            const id = selectedCable.id;
+            return (
+              <CableRouteEditor
+                from={a.point}
+                to={b.point}
+                waypoints={selectedCable.waypoints ?? []}
+                onChange={(w) => updateCable(id, { waypoints: w.length ? w : undefined })}
+                controlsRef={controlsRef}
+              />
+            );
+          })()}
           <DragProxy
             dragging={draggingId !== null}
             setDragging={(v) => {
@@ -2620,6 +2863,29 @@ export default function Scene3DViewer() {
               </div>
             </dl>
 
+            <div className="mt-3 flex items-center gap-2 rounded-md bg-white/45 px-2 py-1.5 text-[11px]">
+              <label className="flex flex-1 cursor-pointer items-center gap-1.5 font-medium">
+                <input
+                  type="checkbox"
+                  checked={editRoute}
+                  onChange={(e) => setEditRoute(e.target.checked)}
+                />
+                Edit route
+              </label>
+              <button
+                onClick={() => updateCable(selectedCable.id, { waypoints: undefined })}
+                disabled={!selectedCable.waypoints?.length}
+                className="rounded-md border border-white/60 bg-white/70 px-2 py-0.5 text-[11px] transition hover:bg-white disabled:opacity-40"
+              >
+                Reset route
+              </button>
+            </div>
+            {editRoute && (
+              <div className="mt-1 text-[10px] text-neutral-600">
+                Drag orange corners to move them, drag white dots to add a corner, right-click (or Alt+click) a corner to remove it.
+              </div>
+            )}
+
             <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
               Feeder assignment
             </div>
@@ -2762,7 +3028,7 @@ export default function Scene3DViewer() {
           <Link2 className="h-3.5 w-3.5" />
           <span>
             {cableFirst
-              ? `Click the second unit — 4×${cableSize} mm²${
+              ? `Click the ground to add corners (${cableDraft.length}), then click the end unit — Backspace undo, Esc cancel · 4×${cableSize} mm²${
                   cableConduit !== "none" ? ` in ${cableConduit} conduit` : ""
                 }`
               : "Click the first unit (substation / panel)"}
