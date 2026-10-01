@@ -1516,24 +1516,25 @@ export default function Scene3DViewer() {
           </button>
           {addOpen && (
             <DraggablePanel initialX={290} initialY={64} title="Add component" width={288} onClose={() => setAddOpen(false)}>
-              <ul className="flex flex-col">
-                {ADDABLES.map((a) => (
-                  <li key={a.type}>
-                    <button
-                      onClick={() => startPlacing(a.type)}
-                      className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm text-neutral-800 transition hover:bg-white/50"
-                    >
-                      <span className="flex flex-col">
-                        <span className="font-medium">{a.name}</span>
-                        <span className="text-xs font-normal text-neutral-600">
-                          {a.subtitle}
+              <div className="flex max-h-[70vh] flex-col overflow-y-auto pr-0.5">
+                <ul className="flex flex-col">
+                  {ADDABLES.map((a) => (
+                    <li key={a.type}>
+                      <button
+                        onClick={() => startPlacing(a.type)}
+                        className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm text-neutral-800 transition hover:bg-white/50"
+                      >
+                        <span className="flex flex-col">
+                          <span className="font-medium">{a.name}</span>
+                          <span className="text-xs font-normal text-neutral-600">
+                            {a.subtitle}
+                          </span>
                         </span>
-                      </span>
-                      <Plus className="h-4 w-4 text-neutral-600" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                        <Plus className="h-4 w-4 text-neutral-600" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
 
 
               {addedItems.length > 0 && (
@@ -1646,7 +1647,8 @@ export default function Scene3DViewer() {
                     </button>
                   </div>
                 </>
-              )}
+                )}
+              </div>
             </DraggablePanel>
           )}
         </div>
