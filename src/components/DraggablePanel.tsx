@@ -6,8 +6,10 @@ interface DraggablePanelProps {
   initialY: number;
   title: string;
   width?: number;
-  /** Called when the cursor leaves the panel boundaries. */
+  /** Called when the user closes the panel via the X button. */
   onClose?: () => void;
+  /** When true, the panel also closes shortly after the cursor leaves it. */
+  closeOnLeave?: boolean;
   children: ReactNode;
 }
 
@@ -17,6 +19,7 @@ export function DraggablePanel({
   title,
   width = 288,
   onClose,
+  closeOnLeave = false,
   children,
 }: DraggablePanelProps) {
   const [pos, setPos] = useState({ x: initialX, y: initialY });
@@ -64,7 +67,7 @@ export function DraggablePanel({
   };
 
   const scheduleClose = () => {
-    if (!onClose || dragging.current) return;
+    if (!closeOnLeave || !onClose || dragging.current) return;
     cancelClose();
     leaveTimer.current = setTimeout(() => {
       leaveTimer.current = null;
