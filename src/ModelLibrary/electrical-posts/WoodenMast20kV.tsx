@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { CatmullRomLine } from "@react-three/drei";
-import { Part } from "./PartLabel";
+import { Part } from "@/components/PartLabel";
 
 // Scale (meters) — 20 kV overhead line wooden mast (Elektrilevi P339-20)
 const MAST_ABOVE = 11;

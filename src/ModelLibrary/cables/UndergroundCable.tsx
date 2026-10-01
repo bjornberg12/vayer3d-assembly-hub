@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import * as THREE from "three";
-import { Part } from "./PartLabel";
+import { Part } from "@/components/PartLabel";
 
 // ---------------------------------------------------------------------------
 // Low voltage underground cable (4-core: L1, L2, L3, PEN)
