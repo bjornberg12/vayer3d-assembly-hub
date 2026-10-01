@@ -1687,12 +1687,29 @@ export default function Scene3DViewer() {
         )}
       </div>
 
-      {pendingAdd && (
+      {evWireMode && (
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-orange-300/60 bg-orange-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
+          <span>
+            {evWireFirst
+              ? `Click a second component to wire from ${EV_DEFS[evParts.find((q) => q.id === evWireFirst)?.type ?? "battery"].name}`
+              : "Click a component to start a wire"}
+          </span>
+          <button
+            onClick={() => { setEVWireMode(false); setEVWireFirst(null); }}
+            aria-label="Stop wiring"
+            className="rounded-md p-0.5 transition hover:bg-black/10"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {(pendingAdd || pendingEV) && (
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
           <span>
             Click ground to place{" "}
             <strong>
-              {ADDABLES.find((a) => a.type === pendingAdd)?.name}
+              {pendingEV ? EV_DEFS[pendingEV].name : ADDABLES.find((a) => a.type === pendingAdd)?.name}
             </strong>
           </span>
           <span className="flex items-center gap-1 rounded-md bg-white/50 px-2 py-0.5 text-[11px] text-neutral-700">
@@ -2403,7 +2420,7 @@ export default function Scene3DViewer() {
                 This scene has no assembly instructions.
               </div>
             )}
-            {propsOwnerId ? (
+            {evPropPart || evPropWire ? null : propsOwnerId ? (
               <button
                 onClick={() => {
                   removeItem(propsOwnerId);
