@@ -101,6 +101,68 @@ function CameraRig({
   return null;
 }
 
+function isVisibleInScene(obj: THREE.Object3D) {
+  let o: THREE.Object3D | null = obj;
+  while (o) {
+    if (!o.visible) return false;
+    o = o.parent;
+  }
+  return true;
+}
+
+/**
+ * Find the world point under the cursor: nearest visible mesh, then the
+ * ground plane (y = 0), otherwise null.
+ */
+function pickCursorPoint(
+  raycaster: THREE.Raycaster,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  origin: THREE.Vector3,
+  direction: THREE.Vector3,
+): THREE.Vector3 | null {
+  raycaster.set(origin, direction);
+  raycaster.camera = camera;
+  raycaster.near = 0;
+  raycaster.far = Infinity;
+  let hits: THREE.Intersection[] = [];
+  try {
+    hits = raycaster.intersectObjects(scene.children, true);
+  } catch {
+    hits = [];
+  }
+  for (const h of hits) {
+    const m = h.object as THREE.Mesh;
+    if (!m.isMesh) continue;
+    if (h.distance <= 1e-7) continue;
+    if (!isVisibleInScene(m)) continue;
+    return h.point.clone();
+  }
+  const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const p = new THREE.Vector3();
+  if (raycaster.ray.intersectPlane(ground, p)) return p;
+  return null;
+}
+
+function cursorDirection(
+  event: { clientX: number; clientY: number },
+  canvas: HTMLCanvasElement,
+  camera: THREE.Camera,
+  out: THREE.Vector3,
+) {
+  const rect = canvas.getBoundingClientRect();
+  out
+    .set(
+      ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      -((event.clientY - rect.top) / rect.height) * 2 + 1,
+      0.5,
+    )
+    .unproject(camera)
+    .sub(camera.position)
+    .normalize();
+  return out;
+}
+
 function ContinuousCursorZoom({
   controlsRef,
   resetNonce,
@@ -108,18 +170,20 @@ function ContinuousCursorZoom({
   controlsRef: React.MutableRefObject<OrbitControlsImpl | null>;
   resetNonce: number;
 }) {
-  const { camera, gl } = useThree();
+  const { camera, gl, scene } = useThree();
   const remainingCameraTravel = useRef(new THREE.Vector3());
   const remainingTargetTravel = useRef(new THREE.Vector3());
-  const cursorRay = useRef(new THREE.Vector3());
-  const nextCameraPosition = useRef(new THREE.Vector3());
-  const desiredTarget = useRef(new THREE.Vector3());
+  const raycaster = useRef(new THREE.Raycaster());
 
   useEffect(() => {
     remainingCameraTravel.current.set(0, 0, 0);
     remainingTargetTravel.current.set(0, 0, 0);
   }, [resetNonce]);
 
+  // Wheel / trackpad zoom: travel along the cursor ray toward whatever is
+  // under the cursor, keeping the view direction fixed (no swinging). The
+  // orbit pivot is moved onto the view axis at the depth of that point, so
+  // the rotation radius shrinks as you get closer.
   useEffect(() => {
     const canvas = gl.domElement;
     const handleWheel = (event: WheelEvent) => {
@@ -128,57 +192,152 @@ function ContinuousCursorZoom({
 
       const controls = controlsRef.current;
       if (!controls?.enabled) return;
-
       const rect = canvas.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return;
 
       const deltaModeScale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 100 : 1;
-      const normalizedDelta = THREE.MathUtils.clamp(event.deltaY * deltaModeScale, -240, 240);
-      const pointer = new THREE.Vector3(
-        ((event.clientX - rect.left) / rect.width) * 2 - 1,
-        -((event.clientY - rect.top) / rect.height) * 2 + 1,
-        0.5,
-      );
+      const dy = THREE.MathUtils.clamp(event.deltaY * deltaModeScale, -240, 240);
+      if (dy === 0) return;
 
-      cursorRay.current
-        .copy(pointer)
-        .unproject(camera)
-        .sub(camera.position)
-        .normalize();
+      const ray = cursorDirection(event, canvas, camera, new THREE.Vector3());
+      const forward = camera.getWorldDirection(new THREE.Vector3());
 
-      // OrbitControls normally scales movement by the shrinking distance to
-      // its target. The minimum travel keeps close-up zoom moving, while the
-      // target follows the cursor ray at a shrinking radius for tight orbits.
-      const orbitDistance = Math.max(camera.position.distanceTo(controls.target), 0.05);
-      const travel = -normalizedDelta * Math.max(orbitDistance * 0.00075, 0.00005);
-      const cameraTravel = cursorRay.current.clone().multiplyScalar(travel);
-      remainingCameraTravel.current.add(cameraTravel);
+      // Work from where the camera is heading (pending travel included).
+      const camDest = camera.position.clone().add(remainingCameraTravel.current);
+      const targetDest = controls.target.clone().add(remainingTargetTravel.current);
 
-      if (travel > 0) {
-        const nextRadius = Math.max(orbitDistance - travel * 0.85, 0.002);
-        nextCameraPosition.current.copy(camera.position).add(cameraTravel);
-        desiredTarget.current
-          .copy(nextCameraPosition.current)
-          .addScaledVector(cursorRay.current, nextRadius);
-        remainingTargetTravel.current.add(
-          desiredTarget.current.sub(controls.target),
-        );
+      const hit = pickCursorPoint(raycaster.current, scene, camera, camDest, ray);
+      let hitDistance: number;
+      if (hit) {
+        hitDistance = hit.distanceTo(camDest);
       } else {
-        // Keep the current focus while backing away so the orbit radius grows
-        // naturally and reversing wheel direction does not snap the view.
-        remainingTargetTravel.current.addScaledVector(cameraTravel, 0.08);
+        const d = Math.max(targetDest.clone().sub(camDest).dot(forward), 0.01);
+        hitDistance = d / Math.max(ray.dot(forward), 0.05);
       }
+      hitDistance = Math.max(hitDistance, 0.0005);
+
+      const amount = Math.abs(dy) * 0.0025;
+      let step: number;
+      if (dy < 0) {
+        // Zoom in: fixed share of the way, with a minimum so it never stalls
+        // and can push through a surface to whatever lies behind it.
+        step = Math.max(hitDistance * (1 - Math.exp(-amount)), 0.002 * (Math.abs(dy) / 100));
+      } else {
+        step = -Math.max(hitDistance, 0.05) * (Math.exp(amount) - 1);
+      }
+
+      const newCam = camDest.clone().addScaledVector(ray, step);
+      const focusPoint = hit ?? camDest.clone().addScaledVector(ray, hitDistance);
+      let depth = focusPoint.clone().sub(newCam).dot(forward);
+      if (!(depth > 0.001)) depth = Math.max(Math.abs(step), 0.001);
+      const newTarget = newCam.clone().addScaledVector(forward, depth);
+
+      remainingCameraTravel.current.add(newCam.sub(camDest));
+      remainingTargetTravel.current.add(newTarget.sub(targetDest));
     };
 
     canvas.addEventListener("wheel", handleWheel, { passive: false, capture: true });
     return () => canvas.removeEventListener("wheel", handleWheel, { capture: true });
-  }, [camera, controlsRef, gl]);
+  }, [camera, controlsRef, gl, scene]);
+
+  // Middle-button drag: pan so the grabbed point sticks to the cursor.
+  useEffect(() => {
+    const canvas = gl.domElement;
+    let dragging = false;
+    let pointerId = -1;
+    const plane = new THREE.Plane();
+    const grabPoint = new THREE.Vector3();
+    const dir = new THREE.Vector3();
+    const hitOnPlane = new THREE.Vector3();
+
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 1) return;
+      const controls = controlsRef.current;
+      if (!controls?.enabled) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+
+      // Finish any pending zoom so the pan starts from a stable camera.
+      camera.position.add(remainingCameraTravel.current);
+      controls.target.add(remainingTargetTravel.current);
+      remainingCameraTravel.current.set(0, 0, 0);
+      remainingTargetTravel.current.set(0, 0, 0);
+      controls.update();
+
+      const forward = camera.getWorldDirection(new THREE.Vector3());
+      cursorDirection(event, canvas, camera, dir);
+      const hit = pickCursorPoint(raycaster.current, scene, camera, camera.position, dir);
+      if (hit && hit.clone().sub(camera.position).dot(forward) > 1e-6) {
+        grabPoint.copy(hit);
+      } else {
+        const depth = Math.max(controls.target.clone().sub(camera.position).dot(forward), 0.01);
+        grabPoint.copy(camera.position).addScaledVector(dir, depth / Math.max(dir.dot(forward), 0.05));
+      }
+      plane.setFromNormalAndCoplanarPoint(forward, grabPoint);
+
+      dragging = true;
+      pointerId = event.pointerId;
+      controls.enabled = false;
+      try {
+        canvas.setPointerCapture(event.pointerId);
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!dragging || event.pointerId !== pointerId) return;
+      const controls = controlsRef.current;
+      if (!controls) return;
+      cursorDirection(event, canvas, camera, dir);
+      const r = new THREE.Ray(camera.position.clone(), dir);
+      if (!r.intersectPlane(plane, hitOnPlane)) return;
+      const delta = grabPoint.clone().sub(hitOnPlane);
+      camera.position.add(delta);
+      controls.target.add(delta);
+      camera.updateMatrixWorld();
+    };
+
+    const endDrag = (event: PointerEvent) => {
+      if (!dragging || event.pointerId !== pointerId) return;
+      dragging = false;
+      const controls = controlsRef.current;
+      if (controls) {
+        controls.enabled = true;
+        controls.update();
+      }
+      try {
+        canvas.releasePointerCapture(event.pointerId);
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const blockMiddleDefault = (event: MouseEvent) => {
+      if (event.button === 1) event.preventDefault();
+    };
+
+    canvas.addEventListener("pointerdown", onPointerDown, { capture: true });
+    canvas.addEventListener("pointermove", onPointerMove);
+    canvas.addEventListener("pointerup", endDrag);
+    canvas.addEventListener("pointercancel", endDrag);
+    canvas.addEventListener("mousedown", blockMiddleDefault);
+    canvas.addEventListener("auxclick", blockMiddleDefault);
+    return () => {
+      canvas.removeEventListener("pointerdown", onPointerDown, { capture: true });
+      canvas.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("pointerup", endDrag);
+      canvas.removeEventListener("pointercancel", endDrag);
+      canvas.removeEventListener("mousedown", blockMiddleDefault);
+      canvas.removeEventListener("auxclick", blockMiddleDefault);
+    };
+  }, [camera, controlsRef, gl, scene]);
 
   useFrame((_, delta) => {
     const controls = controlsRef.current;
     const cameraRemaining = remainingCameraTravel.current;
     const targetRemaining = remainingTargetTravel.current;
-    if (!controls || (cameraRemaining.lengthSq() < 1e-12 && targetRemaining.lengthSq() < 1e-12)) return;
+    if (!controls || (cameraRemaining.lengthSq() < 1e-16 && targetRemaining.lengthSq() < 1e-16)) return;
 
     const smoothing = 1 - Math.exp(-14 * Math.min(delta, 0.1));
     const cameraMovement = cameraRemaining.clone().multiplyScalar(smoothing);
