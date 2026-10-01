@@ -8,6 +8,7 @@ import { MAST_20KV_STEPS } from "./electrical-posts/WoodenMast20kV";
 import { PANEL_STEPS } from "./distribution/DistributionPanel";
 import { SUBSTATION_STEPS } from "./substations/KioskSubstation";
 import { EV_DEFS, type EVType } from "./car-components/EVComponents";
+import { chargerDefaults } from "./chargers/EVCharger";
 import { initObjectProps, type BaseDefaults, type ObjectProps } from "./properties";
 
 export * from "./properties";
@@ -19,8 +20,9 @@ export * from "./substations/KioskSubstation";
 export * from "./cables/UndergroundCable";
 export * from "./cables/catalog";
 export * from "./car-components/EVComponents";
+export * from "./chargers/EVCharger";
 
-export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "car-components";
+export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "chargers" | "car-components";
 
 export type ModelCard = {
   id: string;
@@ -31,7 +33,7 @@ export type ModelCard = {
   base: BaseDefaults;
 };
 
-export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam", ModelCard> = {
+export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger", ModelCard> = {
   puitmast: {
     id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole", group: "electrical-posts",
     steps: ASSEMBLY_STEPS,
@@ -51,6 +53,10 @@ export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "
     id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation", group: "substations",
     steps: SUBSTATION_STEPS,
     base: { active: ["modelId", "mass", "material", "height", "width", "depth", "nominalVoltage", "ratedPower"], values: { modelId: "KAJ-10/0.4", mass: 9500, material: "Concrete / steel", height: 2.5, width: 3.5, depth: 2.2, nominalVoltage: 10000, voltageKind: "AC", ratedPower: 630, frequency: 50, phases: 3 } },
+  },
+  evcharger: {
+    id: "evcharger", name: "EV charger", subtitle: "Electric car charger", group: "chargers",
+    base: { active: ["modelId", "mass", "height", "width", "depth", "nominalVoltage", "ratedPower", "phases"], values: chargerDefaults("ac-wall") as BaseDefaults["values"] },
   },
 };
 

@@ -32,7 +32,7 @@ import {
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider, PartOwner } from "./PartLabel";
 import { BasePropsEditor } from "./BasePropsEditor";
-import { initPropsFor, type ObjectProps } from "@/ModelLibrary";
+import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
   defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireCurveLength,
@@ -1010,12 +1010,13 @@ export default function Scene3DViewer() {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cablesOpen, setCablesOpen] = useState(false);
-  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam";
+  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger";
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
     { type: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
     { type: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
+    { type: "evcharger", name: "EV charger", subtitle: "AC / DC car charger" },
   ];
   type AddedItem = {
     id: string;
@@ -1280,9 +1281,9 @@ export default function Scene3DViewer() {
   };
 
   // --- Underground LV cables -------------------------------------------------
-  const CABLE_ENDPOINT_TYPES: AddableType[] = ["jaotuskilp", "alajaam"];
+  const CABLE_ENDPOINT_TYPES: AddableType[] = ["jaotuskilp", "alajaam", "evcharger"];
   const cableExitLocal = (type: AddableType): [number, number, number] =>
-    type === "alajaam" ? [0.6, 0.05, 1.05] : [0.18, 0.03, 0.1];
+    type === "alajaam" ? [0.6, 0.05, 1.05] : type === "evcharger" ? [0, 0.03, 0] : [0.18, 0.03, 0.1];
   const rotateLocal = (
     local: [number, number, number],
     origin: [number, number, number],
@@ -1303,7 +1304,7 @@ export default function Scene3DViewer() {
       if (!CABLE_ENDPOINT_TYPES.includes(i.type)) return;
       list.push({
         id: i.id,
-        name: `${i.type === "alajaam" ? "Alajaam" : "Jaotuskilp"} #${idx + 1}`,
+        name: `${i.type === "alajaam" ? "Alajaam" : i.type === "evcharger" ? "EV charger" : "Jaotuskilp"} #${idx + 1}`,
         point: rotateLocal(cableExitLocal(i.type), i.position, i.rotationY),
       });
     });
@@ -1756,6 +1757,9 @@ export default function Scene3DViewer() {
                   {item.type === "alajaam" && (
                     <Substation step={itemStep} />
                   )}
+                  {item.type === "evcharger" && (
+                    <EVCharger kind={String(objectProps[item.id]?.values.chargerType ?? "ac-wall")} />
+                  )}
                   {/* Invisible proxy for connect / move mode */}
                   {(connectMode || moveMode || evWireMode) && (
                     <mesh
@@ -1798,7 +1802,7 @@ export default function Scene3DViewer() {
                   )}
                   {/* Cable connection proxy (panels & substations only) */}
                   {cableMode &&
-                    (item.type === "jaotuskilp" || item.type === "alajaam") && (
+                    CABLE_ENDPOINT_TYPES.includes(item.type) && (
                       <mesh
                         position={[0, 1.4, 0]}
                         onClick={(e) => {
@@ -3331,6 +3335,63 @@ export default function Scene3DViewer() {
                 }
               />
             )}
+            {propsModelId === "evcharger" && propsOwnerId && (() => {
+              const v = currentProps.values;
+              const setV = (patch: Record<string, string | number>) =>
+                setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...currentProps.values, ...patch } } }));
+              const feeding = cables.filter((c) => c.a === propsOwnerId || c.b === propsOwnerId);
+              const inKw = chargerInputKw(v);
+              const supplyKw = feeding.reduce((s, c) => s + c.powerKw, 0);
+              const tooSmall = feeding.length > 0 && supplyKw < inKw;
+              const breakerLow = Number(v.breaker) < Number(v.inputCurrent);
+              return (
+                <div className="space-y-2">
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Model-specific</div>
+                  <div className={`rounded-lg border px-2 py-1.5 text-[11px] ${feeding.length ? "border-green-500/50 bg-green-500/15 text-green-800" : "border-neutral-400/50 bg-white/40 text-neutral-700"}`}>
+                    Supply: <strong>{feeding.length ? `connected (${feeding.length} cable${feeding.length > 1 ? "s" : ""}, ${supplyKw} kW)` : "not connected"}</strong>
+                    <div>Draws from grid: <strong>{inKw.toFixed(1)} kW</strong></div>
+                    {tooSmall && <div className="font-semibold text-red-700">Feeding cable power is below the charger's input power.</div>}
+                    {breakerLow && <div className="font-semibold text-red-700">Breaker is smaller than the input current.</div>}
+                  </div>
+                  {CHARGER_PARAMS.map((d) => (
+                    <div key={d.key} className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2 text-xs text-neutral-800">
+                      <span className="text-[11px]">{d.label}</span>
+                      {d.kind === "select" ? (
+                        <select
+                          value={String(v[d.key] ?? "")}
+                          onChange={(e) =>
+                            d.key === "chargerType"
+                              ? setV({ ...chargerDefaults(e.target.value as ChargerKind), name: String(v.name ?? "EV charger") })
+                              : setV({ [d.key]: e.target.value })
+                          }
+                          className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+                        >
+                          {d.options.map((o) => (
+                            <option key={o} value={o}>{d.key === "chargerType" ? CHARGER_KIND_LABEL[o as ChargerKind] : o}</option>
+                          ))}
+                        </select>
+                      ) : d.kind === "toggle" ? (
+                        <button
+                          onClick={() => setV({ [d.key]: Number(v[d.key]) ? 0 : 1 })}
+                          className={`rounded-lg border px-2 py-1 text-[11px] font-semibold shadow-sm ${Number(v[d.key]) ? "border-amber-400 bg-amber-400/80 text-neutral-900" : "border-white/60 bg-white/55 text-neutral-600"}`}
+                        >
+                          {Number(v[d.key]) ? "On" : "Off"}
+                        </button>
+                      ) : (
+                        <input
+                          type="number" min={d.min} max={d.max} step={d.step}
+                          value={Number(v[d.key] ?? 0)}
+                          onChange={(e) => setV(d.key === "outputPower" ? { outputPower: Number(e.target.value), ratedPower: Number(e.target.value) } : { [d.key]: Number(e.target.value) })}
+                          className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+                        />
+                      )}
+                      <span className="text-[10px] text-neutral-500">{d.kind === "number" ? d.unit ?? "" : ""}</span>
+                    </div>
+                  ))}
+                  <div className="text-[10px] text-neutral-600">Feed it with an underground cable from a substation or distribution panel (Wiring → Cables), and connect the car's charge port with Wiring → Wires.</div>
+                </div>
+              );
+            })()}
             {evPropPart && EV_DEFS[evPropPart.type].params.length > 0 && (
               <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
                 Model-specific
