@@ -6,4 +6,4 @@
 - Wheel zoom travels along the cursor ray toward the raycast hit (min step, view direction preserved, pivot moved onto the view axis at hit depth) and middle-drag pan is custom grab-point panning; OrbitControls only rotates — distance-based dolly stalls and off-axis pivots swing the view.
 - All connection tools (underground cables, aerial lines, small wires) live in the Wiring menu; line and wire type catalogues live in `src/ModelLibrary/cables/catalog.ts` — one place to pick and extend cable types.
 
-- All connection kinds (underground cables, aerial lines, wires) share one router and one route editor: ends are object ids or loose 3D points, optional XYZ waypoints are smoothed at render time, and selected points use a shared transform gizmo — one data shape and interaction for routing, editing and free ends.
+- All connection kinds (underground cables, aerial lines, wires) share one router and one route editor: ends are object ids or loose "pt:x,z" ground points, and optional ground waypoints are smoothed at render time — one data shape for routing, editing and free ends.

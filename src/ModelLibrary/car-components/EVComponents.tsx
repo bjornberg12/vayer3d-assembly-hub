@@ -2,7 +2,6 @@ import { useMemo } from "react";
 import * as THREE from "three";
 import { Part, PartOwner } from "@/components/PartLabel";
 import type { BaseDefaults } from "../properties";
-import type { Waypoint } from "../cables/UndergroundCable";
 
 export type EVType =
   | "battery"
@@ -27,7 +26,7 @@ export type EVPartRecord = {
   params: Record<string, number>;
 };
 
-export type EVWireRecord = { id: string; a: string; b: string; crossSection: number; wireType?: string; waypoints?: Waypoint[] };
+export type EVWireRecord = { id: string; a: string; b: string; crossSection: number; wireType?: string; waypoints?: [number, number][] };
 
 type Def = {
   name: string;
