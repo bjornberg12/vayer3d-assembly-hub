@@ -26,7 +26,7 @@ export type EVPartRecord = {
   params: Record<string, number>;
 };
 
-export type EVWireRecord = { id: string; a: string; b: string; crossSection: number; wireType?: string };
+export type EVWireRecord = { id: string; a: string; b: string; crossSection: number; wireType?: string; waypoints?: [number, number][] };
 
 type Def = {
   name: string;
