@@ -80,29 +80,55 @@ function filletPolyline(corners: THREE.Vector3[], radius: number, seg = 10): THR
   return out;
 }
 
+export type Waypoint = [number, number];
+
 function routePoints(
   from: [number, number, number],
   to: [number, number, number],
-  depth: number
+  depth: number,
+  waypoints?: Waypoint[]
 ): THREE.Vector3[] {
   const a = new THREE.Vector3(...from);
   const b = new THREE.Vector3(...to);
+  const wps = (waypoints ?? []).map((w) => new THREE.Vector3(w[0], -depth, w[1]));
   const aDown = new THREE.Vector3(a.x, -depth, a.z);
   const bDown = new THREE.Vector3(b.x, -depth, b.z);
-  const dir = new THREE.Vector3().subVectors(bDown, aDown);
-  const len = dir.length() || 1;
-  dir.normalize();
+  const firstTarget = wps[0] ?? bDown;
+  const lastSource = wps[wps.length - 1] ?? aDown;
+  const dirA = new THREE.Vector3().subVectors(firstTarget, aDown);
+  const lenA = dirA.length() || 1;
+  dirA.normalize();
+  const dirB = new THREE.Vector3().subVectors(bDown, lastSource);
+  const lenB = dirB.length() || 1;
+  dirB.normalize();
 
   // Diagonal descent/ascent (~45°) with generously rounded corners.
-  const run = Math.min(depth, len * 0.35);
+  const runA = Math.min(depth, lenA * (wps.length ? 0.45 : 0.35));
+  const runB = Math.min(depth, lenB * (wps.length ? 0.45 : 0.35));
   const corners = [
     a.clone(),
-    aDown.clone().addScaledVector(dir, run),
-    bDown.clone().addScaledVector(dir, -run),
+    aDown.clone().addScaledVector(dirA, runA),
+    ...wps,
+    bDown.clone().addScaledVector(dirB, -runB),
     b.clone(),
   ];
-  const radius = Math.min(depth * 0.6, run * 0.9, len * 0.2);
-  return filletPolyline(corners, radius, 12);
+  let minSeg = Infinity;
+  for (let i = 1; i < corners.length; i++) minSeg = Math.min(minSeg, corners[i].distanceTo(corners[i - 1]));
+  const radius = Math.max(Math.min(depth * 0.6, minSeg * 0.9, wps.length ? 3 : lenA * 0.2), 0.05);
+  return filletPolyline(corners, wps.length ? Math.max(radius, depth * 0.6) : radius, 12);
+}
+
+/** Point at fraction t (0..1) along the routed cable. */
+export function cableRoutePointAt(
+  from: [number, number, number],
+  to: [number, number, number],
+  depth: number,
+  waypoints: Waypoint[] | undefined,
+  t: number
+): [number, number, number] {
+  const c = new THREE.CatmullRomCurve3(routePoints(from, to, depth, waypoints), false, "centripetal");
+  const p = c.getPointAt(Math.min(Math.max(t, 0), 1));
+  return [p.x, p.y, p.z];
 }
 
 function TubeAlong({
@@ -164,9 +190,10 @@ function TubeAlong({
 export function cableRouteLength(
   from: [number, number, number],
   to: [number, number, number],
-  depth: number = TRENCH_DEPTH
+  depth: number = TRENCH_DEPTH,
+  waypoints?: Waypoint[]
 ): number {
-  const pts = routePoints(from, to, depth);
+  const pts = routePoints(from, to, depth, waypoints);
   let len = 0;
   for (let i = 1; i < pts.length; i++) len += pts[i].distanceTo(pts[i - 1]);
   return len;
@@ -179,7 +206,9 @@ export function UndergroundCable({
   depth = TRENCH_DEPTH,
   onSelect,
   selected = false,
+  waypoints,
 }: {
+  waypoints?: Waypoint[];
   from: [number, number, number];
   to: [number, number, number];
   spec: CableSpec;
@@ -191,8 +220,8 @@ export function UndergroundCable({
   const conduit = CONDUITS.find((c) => c.id === spec.conduit) ?? CONDUITS[0];
 
   const curve = useMemo(
-    () => new THREE.CatmullRomCurve3(routePoints(from, to, depth), false, "centripetal"),
-    [from, to, depth]
+    () => new THREE.CatmullRomCurve3(routePoints(from, to, depth, waypoints), false, "centripetal"),
+    [from, to, depth, waypoints]
   );
 
   const coreR = size.coreD / 2;
