@@ -7,3 +7,4 @@
 - All connection tools (underground cables, aerial lines, small wires) live in the Wiring menu; line and wire type catalogues live in `src/ModelLibrary/cables/catalog.ts` — one place to pick and extend cable types.
 
 - All connection kinds (underground cables, aerial lines, wires) share one router and one route editor: ends are object ids or loose "pt:x,z" ground points, and optional ground waypoints are smoothed at render time — one data shape for routing, editing and free ends.
+- EV chargers live in `src/ModelLibrary/chargers/`, store their model-specific values in the object's property values, and are underground-cable endpoints — keeps supply from substations/panels on one connection model.
