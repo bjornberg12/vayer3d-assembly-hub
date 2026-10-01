@@ -2135,7 +2135,7 @@ export default function Scene3DViewer() {
               </button>
             );
             return (
-            <DraggablePanel initialX={410} initialY={64} title="Wiring" width={300} onClose={() => setCablesOpen(false)}>
+            <DraggablePanel initialX={480} initialY={120} title="Wiring" width={300} onClose={() => setCablesOpen(false)}>
               <SectionHeader id="cables" label="Cables" hint="Underground LV cables" />
               {wiringSection === "cables" && (
               <>
