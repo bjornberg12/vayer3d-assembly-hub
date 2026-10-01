@@ -1,7 +1,7 @@
 import { Canvas, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed } from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
@@ -37,6 +37,7 @@ import {
   type EVPartRecord, type EVType, type EVWireRecord,
 } from "@/ModelLibrary";
 import { DraggablePanel } from "./DraggablePanel";
+import { Button } from "./ui/button";
 import {
   WeatherEffects,
   DEFAULT_WEATHER,
@@ -518,6 +519,10 @@ export default function Scene3DViewer() {
 
 
   const [cameraReset, setCameraReset] = useState(0);
+  const resetCameraView = () => {
+    setViewId("iso");
+    setCameraReset((n) => n + 1);
+  };
 
 
   // R key rotates during placement, mouse wheel rotates during placement.
@@ -924,7 +929,8 @@ export default function Scene3DViewer() {
       />
       <Canvas
         shadows
-        camera={{ position: [14, 11, 16], fov: 50, near: 0.01, far: 2000 }}
+        gl={{ logarithmicDepthBuffer: true }}
+        camera={{ position: [14, 11, 16], fov: 50, near: 0.000001, far: 1_000_000_000 }}
         style={{
           background: night
             ? "#0b1020"
@@ -1255,6 +1261,8 @@ export default function Scene3DViewer() {
             enableDamping
             dampingFactor={0.08}
             zoomSpeed={0.6}
+            minDistance={0.000001}
+            maxDistance={Infinity}
             maxPolarAngle={Math.PI / 2 - 0.02}
             zoomToCursor
             enablePan
@@ -1302,6 +1310,18 @@ export default function Scene3DViewer() {
           )}
         </Suspense>
       </Canvas>
+
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        onClick={resetCameraView}
+        aria-label="Reset zoom and pan"
+        title="Reset zoom and pan"
+        className="absolute bottom-4 right-4 z-10 h-11 w-11 rounded-xl border border-white/40 bg-white/30 text-neutral-900 shadow-lg backdrop-blur-md hover:bg-white/50 hover:text-neutral-900"
+      >
+        <LocateFixed className="h-5 w-5" />
+      </Button>
 
 
       {/* Hamburger menus */}
