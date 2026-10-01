@@ -710,6 +710,7 @@ function CableRouteEditor({
           position={[w[0], 0.08, w[1]]}
           onPointerOver={hoverOn}
           onPointerOut={hoverOff}
+          onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => {
             e.stopPropagation();
             const ne = e.nativeEvent;
@@ -735,6 +736,7 @@ function CableRouteEditor({
             position={[mx, 0.06, mz]}
             onPointerOver={hoverOn}
             onPointerOut={hoverOff}
+          onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => {
               e.stopPropagation();
               if (e.nativeEvent.button !== 0) return;
