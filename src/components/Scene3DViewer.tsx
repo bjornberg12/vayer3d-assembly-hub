@@ -3267,6 +3267,15 @@ export default function Scene3DViewer() {
                     ))}
                   </div>
                 </div>
+                <div className="text-[10px] text-neutral-600">Drag the orange corners on the ground to reroute, "+" to add a corner, right-click a corner to remove it.</div>
+                {evPropWire.waypoints?.length ? (
+                  <button
+                    onClick={() => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, waypoints: undefined } : w)))}
+                    className="w-full rounded-lg border border-white/60 bg-white/45 px-3 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-white/70"
+                  >
+                    Reset route
+                  </button>
+                ) : null}
                 <button
                   onClick={() => { setEVWires((prev) => prev.filter((w) => w.id !== evPropWire.id)); setPropsTarget(null); setPropsOwnerId(null); }}
                   className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-500/35"
