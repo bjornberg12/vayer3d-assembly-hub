@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import * as THREE from "three";
 import { Part, PartOwner } from "@/components/PartLabel";
+import type { BaseDefaults } from "../properties";
 
 export type EVType =
   | "battery"
@@ -33,25 +34,51 @@ type Def = {
   lowVoltage?: boolean;
   /** Height of the wiring terminal above the part's origin. */
   terminalY: number;
+  /** Model-specific parameters (in addition to the shared basic properties). */
   params: (EVParamDef & { value: number })[];
+  /** Shared basic properties: which are on by default and their values. */
+  base: BaseDefaults;
 };
 
 const p = (key: string, label: string, unit: string, value: number, min: number, max: number, step = 1) => ({
   key, label, unit, value, min, max, step,
 });
 
+const DC = "DC";
 export const EV_DEFS: Record<EVType, Def> = {
-  battery: { name: "HV traction battery", subtitle: "Li-ion pack, underfloor", terminalY: 0.5, params: [p("voltage", "Nominal voltage", "V", 400, 200, 900, 10), p("capacity", "Capacity", "kWh", 75, 10, 200, 1), p("maxPower", "Max discharge", "kW", 250, 20, 600, 5)] },
-  motor: { name: "Traction motor", subtitle: "PMSM drive unit", terminalY: 0.62, params: [p("power", "Rated power", "kW", 150, 20, 500, 5), p("torque", "Peak torque", "Nm", 310, 50, 1000, 10), p("rpm", "Max speed", "rpm", 16000, 6000, 25000, 500)] },
-  inverter: { name: "Traction inverter", subtitle: "DC → 3-phase AC", terminalY: 0.86, params: [p("power", "Rated power", "kW", 160, 20, 500, 5), p("efficiency", "Efficiency", "%", 97, 85, 99.5, 0.5), p("voltage", "DC link voltage", "V", 400, 200, 900, 10)] },
-  obc: { name: "On-board charger", subtitle: "AC → DC charging", terminalY: 0.58, params: [p("power", "Charge power", "kW", 11, 3.7, 22, 0.1), p("phases", "AC phases", "", 3, 1, 3, 2)] },
-  dcdc: { name: "DC-DC converter", subtitle: "HV → 12 V", terminalY: 0.55, params: [p("power", "Output power", "kW", 2.5, 0.5, 5, 0.1), p("outVoltage", "Output voltage", "V", 12, 12, 48, 36)] },
-  pdu: { name: "HV junction box (PDU)", subtitle: "Fuses & contactors", terminalY: 0.6, params: [p("maxCurrent", "Max current", "A", 400, 100, 800, 10), p("fuse", "Main fuse", "A", 350, 50, 800, 10)] },
-  chargeport: { name: "Charge port", subtitle: "CCS2 inlet", terminalY: 0.8, params: [p("acPower", "Max AC power", "kW", 11, 3.7, 22, 0.1), p("dcPower", "Max DC power", "kW", 150, 50, 350, 10)] },
-  aux12: { name: "12 V auxiliary battery", subtitle: "Low voltage supply", lowVoltage: true, terminalY: 0.72, params: [p("capacity", "Capacity", "Ah", 60, 20, 120, 5), p("voltage", "Voltage", "V", 12, 12, 48, 36)] },
-  bms: { name: "Battery management system", subtitle: "Cell monitoring", lowVoltage: true, terminalY: 0.5, params: [p("cells", "Cells in series", "", 96, 24, 216, 4), p("balanceCurrent", "Balancing current", "mA", 200, 50, 1000, 50)] },
-  heater: { name: "PTC heater", subtitle: "Cabin / battery heating", terminalY: 0.85, params: [p("power", "Heating power", "kW", 5, 1, 10, 0.5)] },
-  compressor: { name: "Electric A/C compressor", subtitle: "Thermal management", terminalY: 0.75, params: [p("power", "Power", "kW", 4, 1, 10, 0.5)] },
+  battery: { name: "HV traction battery", subtitle: "Li-ion pack, underfloor", terminalY: 0.5,
+    params: [p("capacity", "Capacity", "kWh", 75, 10, 200, 1), p("maxPower", "Max discharge", "kW", 250, 20, 600, 5)],
+    base: { active: ["mass", "nominalVoltage", "ratedCurrent", "maxCurrent"], values: { mass: 450, material: "Li-ion NMC / aluminium", nominalVoltage: 400, voltageKind: DC, ratedCurrent: 250, maxCurrent: 625, height: 0.14, width: 1.5, depth: 2.1 } } },
+  motor: { name: "Traction motor", subtitle: "PMSM drive unit", terminalY: 0.62,
+    params: [p("torque", "Peak torque", "Nm", 310, 50, 1000, 10), p("rpm", "Max speed", "rpm", 16000, 6000, 25000, 500)],
+    base: { active: ["mass", "ratedPower", "nominalVoltage", "phases"], values: { mass: 45, material: "Steel / copper / aluminium", ratedPower: 150, nominalVoltage: 400, voltageKind: "AC", phases: 3 } } },
+  inverter: { name: "Traction inverter", subtitle: "DC → 3-phase AC", terminalY: 0.86,
+    params: [p("efficiency", "Efficiency", "%", 97, 85, 99.5, 0.5)],
+    base: { active: ["mass", "ratedPower", "nominalVoltage", "maxCurrent"], values: { mass: 9, material: "Aluminium", ratedPower: 160, nominalVoltage: 400, voltageKind: DC, maxCurrent: 450 } } },
+  obc: { name: "On-board charger", subtitle: "AC → DC charging", terminalY: 0.58,
+    params: [],
+    base: { active: ["mass", "ratedPower", "nominalVoltage", "phases", "frequency"], values: { mass: 6, material: "Aluminium", ratedPower: 11, nominalVoltage: 400, voltageKind: "AC", phases: 3, frequency: 50, ratedCurrent: 16 } } },
+  dcdc: { name: "DC-DC converter", subtitle: "HV → 12 V", terminalY: 0.55,
+    params: [p("outVoltage", "Output voltage", "V", 12, 12, 48, 36)],
+    base: { active: ["mass", "ratedPower", "nominalVoltage"], values: { mass: 3, material: "Aluminium", ratedPower: 2.5, nominalVoltage: 400, voltageKind: DC } } },
+  pdu: { name: "HV junction box (PDU)", subtitle: "Fuses & contactors", terminalY: 0.6,
+    params: [p("fuse", "Main fuse", "A", 350, 50, 800, 10)],
+    base: { active: ["mass", "nominalVoltage", "ratedCurrent", "maxCurrent"], values: { mass: 4, material: "Plastic / copper busbars", nominalVoltage: 400, voltageKind: DC, ratedCurrent: 300, maxCurrent: 400 } } },
+  chargeport: { name: "Charge port", subtitle: "CCS2 inlet", terminalY: 0.8,
+    params: [p("acPower", "Max AC power", "kW", 11, 3.7, 22, 0.1), p("dcPower", "Max DC power", "kW", 150, 50, 350, 10)],
+    base: { active: ["mass", "maxCurrent"], values: { mass: 1.2, material: "Plastic / copper", maxCurrent: 200, nominalVoltage: 400 } } },
+  aux12: { name: "12 V auxiliary battery", subtitle: "Low voltage supply", lowVoltage: true, terminalY: 0.72,
+    params: [p("capacity", "Capacity", "Ah", 60, 20, 120, 5)],
+    base: { active: ["mass", "nominalVoltage"], values: { mass: 15, material: "Lead-acid (AGM)", nominalVoltage: 12, voltageKind: DC } } },
+  bms: { name: "Battery management system", subtitle: "Cell monitoring", lowVoltage: true, terminalY: 0.5,
+    params: [p("cells", "Cells in series", "", 96, 24, 216, 4), p("balanceCurrent", "Balancing current", "mA", 200, 50, 1000, 50)],
+    base: { active: ["mass", "nominalVoltage"], values: { mass: 0.3, material: "PCB (FR-4)", nominalVoltage: 12, voltageKind: DC } } },
+  heater: { name: "PTC heater", subtitle: "Cabin / battery heating", terminalY: 0.85,
+    params: [],
+    base: { active: ["mass", "ratedPower", "nominalVoltage"], values: { mass: 2, material: "Aluminium / ceramic", ratedPower: 5, nominalVoltage: 400, voltageKind: DC } } },
+  compressor: { name: "Electric A/C compressor", subtitle: "Thermal management", terminalY: 0.75,
+    params: [],
+    base: { active: ["mass", "ratedPower", "nominalVoltage"], values: { mass: 7, material: "Aluminium", ratedPower: 4, nominalVoltage: 400, voltageKind: DC } } },
 };
 
 export const EV_TYPES = Object.keys(EV_DEFS) as EVType[];
