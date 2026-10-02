@@ -16,6 +16,46 @@ export type EVType =
   | "heater"
   | "compressor";
 
+export type PinRole = "dc+" | "dc-" | "L1" | "L2" | "L3" | "N" | "PE" | "U" | "V" | "W" | "12+" | "12-" | "sig";
+export type PinDef = { id: string; label: string; role: PinRole; local: [number, number, number] };
+
+export const PIN_COLORS: Record<PinRole, string> = {
+  "dc+": "#dc2626", "dc-": "#111111", L1: "#7c4a1e", L2: "#1f1f1f", L3: "#9ca3af", N: "#2563eb", PE: "#84cc16",
+  U: "#7c4a1e", V: "#1f1f1f", W: "#9ca3af", "12+": "#f87171", "12-": "#374151", sig: "#a855f7",
+};
+const PHASE: PinRole[] = ["L1", "L2", "L3", "U", "V", "W"];
+/** True when two pin roles should not normally be joined. */
+export function pinsIncompatible(a?: PinRole, b?: PinRole) {
+  if (!a || !b || a === b) return false;
+  if (PHASE.includes(a) && PHASE.includes(b)) return false;
+  return true;
+}
+/** Lays pins out in rows of 6 on the part's top at height y. */
+export function layoutPins(list: [string, string, PinRole][], y: number, x0 = 0, z0 = 0): PinDef[] {
+  const S = 0.045, perRow = 6;
+  return list.map(([id, label, role], i) => {
+    const row = Math.floor(i / perRow), col = i % perRow;
+    const n = Math.min(perRow, list.length - row * perRow);
+    return { id, label, role, local: [x0 + (col - (n - 1) / 2) * S, y, z0 + row * S] };
+  });
+}
+const DCP: [string, string, PinRole][] = [["dcp", "DC+", "dc+"], ["dcn", "DC−", "dc-"]];
+const AC5: [string, string, PinRole][] = [["l1", "L1", "L1"], ["l2", "L2", "L2"], ["l3", "L3", "L3"], ["n", "N", "N"], ["pe", "PE", "PE"]];
+const pr = (pre: string, lab: string): [string, string, PinRole][] => [[`${pre}p`, `${lab} DC+`, "dc+"], [`${pre}n`, `${lab} DC−`, "dc-"]];
+const PIN_LISTS: Record<string, [string, string, PinRole][]> = {
+  battery: [...DCP, ["gnd", "Chassis ground", "PE"], ["bms", "BMS signal", "sig"], ["hvil", "HVIL interlock", "sig"]],
+  pdu: [...pr("bat", "Battery"), ...pr("inv", "Inverter"), ...pr("obc", "OBC"), ...pr("dcdc", "DC-DC"), ...pr("htr", "Heater"), ...pr("cmp", "Compressor"), ...pr("port", "Charge port"), ["gnd", "Ground", "PE"]],
+  inverter: [...DCP, ["u", "U", "U"], ["v", "V", "V"], ["w", "W", "W"], ["gnd", "Ground", "PE"], ["ctl", "Resolver / control", "sig"]],
+  motor: [["u", "U", "U"], ["v", "V", "V"], ["w", "W", "W"], ["gnd", "Ground", "PE"], ["sens", "Resolver / temp", "sig"]],
+  obc: [...AC5, ...DCP, ["can", "CAN / control", "sig"]],
+  dcdc: [["hvp", "HV DC+", "dc+"], ["hvn", "HV DC−", "dc-"], ["lvp", "12 V +", "12+"], ["lvn", "12 V −", "12-"], ["en", "Enable", "sig"]],
+  chargeport: [...AC5, ...DCP, ["cp", "CP (control pilot)", "sig"], ["pp", "PP (proximity)", "sig"]],
+  aux12: [["p", "+", "12+"], ["n", "−", "12-"]],
+  bms: [["vp", "12 V +", "12+"], ["vn", "12 V −", "12-"], ["sense", "Cell sense", "sig"], ["can", "CAN", "sig"]],
+  heater: [...DCP, ["gnd", "Ground", "PE"], ["ctl", "12 V control / CAN", "sig"]],
+  compressor: [...DCP, ["gnd", "Ground", "PE"], ["ctl", "12 V control / CAN", "sig"]],
+};
+
 export type EVParamDef = { key: string; label: string; unit: string; min: number; max: number; step: number };
 
 export type EVPartRecord = {
@@ -81,6 +121,19 @@ export const EV_DEFS: Record<EVType, Def> = {
     base: { active: ["mass", "ratedPower", "nominalVoltage"], values: { mass: 7, material: "Aluminium", ratedPower: 4, nominalVoltage: 400, voltageKind: DC } } },
 };
 
+const PIN_TOPS: Record<EVType, number> = { battery: 0.48, motor: 0.58, inverter: 0.73, obc: 0.53, dcdc: 0.51, pdu: 0.55, chargeport: 0.85, aux12: 0.7, bms: 0.49, heater: 0.83, compressor: 0.69 };
+export const pinsOf = (t: EVType): PinDef[] => layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : t === "inverter" ? -0.15 : 0);
+export const ownerOfEnd = (id: string) => id.split("#")[0];
+
+export function pinWorldOf(local: [number, number, number], pos: [number, number, number], rotY: number): [number, number, number] {
+  const c = Math.cos(rotY), s = Math.sin(rotY);
+  return [pos[0] + local[0] * c + local[2] * s, pos[1] + local[1], pos[2] - local[0] * s + local[2] * c];
+}
+export function evPinWorld(part: EVPartRecord, pinId: string): [number, number, number] | null {
+  const pin = pinsOf(part.type).find((q) => q.id === pinId);
+  return pin ? pinWorldOf(pin.local, part.position, part.rotationY) : null;
+}
+
 export const EV_TYPES = Object.keys(EV_DEFS) as EVType[];
 export const WIRE_SECTIONS = [2.5, 16, 35, 50, 70, 95];
 
@@ -103,12 +156,21 @@ export function defaultEVLayout(): { parts: EVPartRecord[]; wires: EVWireRecord[
   ];
   const parts = L.map(([t, x, z], i) => ({ ...makeEVPart(t, [x, 0, z]), id: `ev-default-${t}-${i}` }));
   const id = (t: EVType) => parts.find((q) => q.type === t)!.id;
-  const W: [EVType, EVType, number][] = [
-    ["battery", "pdu", 95], ["pdu", "inverter", 70], ["inverter", "motor", 70], ["pdu", "obc", 16],
-    ["pdu", "dcdc", 16], ["chargeport", "pdu", 50], ["dcdc", "aux12", 16], ["battery", "bms", 2.5],
-    ["pdu", "heater", 16], ["pdu", "compressor", 16],
-  ];
-  return { parts, wires: W.map(([a, b, s], i) => ({ id: `evw-default-${i}`, a: id(a), b: id(b), crossSection: s })) };
+  const W: [EVType, string, EVType, string, number][] = [];
+  const add = (a: EVType, b: EVType, pairs: [string, string][], mm: number) => pairs.forEach(([x, y]) => W.push([a, x, b, y, mm]));
+  add("battery", "pdu", [["dcp", "batp"], ["dcn", "batn"]], 95);
+  add("pdu", "inverter", [["invp", "dcp"], ["invn", "dcn"]], 70);
+  add("inverter", "motor", [["u", "u"], ["v", "v"], ["w", "w"]], 70);
+  add("pdu", "obc", [["obcp", "dcp"], ["obcn", "dcn"]], 16);
+  add("pdu", "dcdc", [["dcdcp", "hvp"], ["dcdcn", "hvn"]], 16);
+  add("chargeport", "pdu", [["dcp", "portp"], ["dcn", "portn"]], 50);
+  add("chargeport", "obc", [["l1", "l1"], ["l2", "l2"], ["l3", "l3"], ["n", "n"], ["pe", "pe"]], 6);
+  add("dcdc", "aux12", [["lvp", "p"], ["lvn", "n"]], 16);
+  add("aux12", "bms", [["p", "vp"], ["n", "vn"]], 2.5);
+  add("battery", "bms", [["bms", "sense"]], 2.5);
+  add("pdu", "heater", [["htrp", "dcp"], ["htrn", "dcn"]], 16);
+  add("pdu", "compressor", [["cmpp", "dcp"], ["cmpn", "dcn"]], 16);
+  return { parts, wires: W.map(([a, pa, b, pb, s], i) => ({ id: `evw-default-${i}`, a: `${id(a)}#${pa}`, b: `${id(b)}#${pb}`, crossSection: s })) };
 }
 
 export function terminalPoint(part: EVPartRecord): [number, number, number] {
@@ -119,8 +181,8 @@ export function terminalPoint(part: EVPartRecord): [number, number, number] {
 }
 
 export function isHVWire(w: EVWireRecord, parts: EVPartRecord[]) {
-  const a = parts.find((x) => x.id === w.a);
-  const b = parts.find((x) => x.id === w.b);
+  const a = parts.find((x) => x.id === ownerOfEnd(w.a));
+  const b = parts.find((x) => x.id === ownerOfEnd(w.b));
   return !(a && EV_DEFS[a.type].lowVoltage) && !(b && EV_DEFS[b.type].lowVoltage);
 }
 
@@ -253,6 +315,14 @@ export function EVPart({ part }: { part: EVPartRecord }) {
         <Part name={EV_DEFS[part.type].name}>
           <Model type={part.type} />
         </Part>
+        {pinsOf(part.type).map((pin) => (
+          <Part key={pin.id} name={`${EV_DEFS[part.type].name} · ${pin.label}`}>
+            <mesh position={pin.local}>
+              <cylinderGeometry args={[0.012, 0.012, 0.03, 10]} />
+              <meshStandardMaterial color={PIN_COLORS[pin.role]} metalness={0.4} roughness={0.4} />
+            </mesh>
+          </Part>
+        ))}
       </PartOwner>
     </group>
   );

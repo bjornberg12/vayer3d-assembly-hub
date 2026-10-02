@@ -8,3 +8,4 @@
 
 - All connection kinds (underground cables, aerial lines, wires) share one router and one route editor: ends are object ids or loose "pt:x,z" ground points, and optional ground waypoints are smoothed at render time — one data shape for routing, editing and free ends.
 - EV chargers live in `src/ModelLibrary/chargers/`, store their model-specific values in the object's property values, and are underground-cable endpoints — keeps supply from substations/panels on one connection model.
+- Wire ends may reference a device pin as `owner#pin`; pin definitions (id, label, role, local position) live with the model (EV_DEFS pins, chargerPins) — one source for wiring and the future circuit solver.

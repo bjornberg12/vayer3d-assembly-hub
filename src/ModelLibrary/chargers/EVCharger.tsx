@@ -3,6 +3,7 @@
  * Model-specific parameters are stored in the object's property values (keys from CHARGER_PARAMS).
  */
 import { Part } from "@/components/PartLabel";
+import { layoutPins, type PinDef } from "../car-components/EVComponents";
 
 export type ChargerKind = "ac-wall" | "ac-pedestal" | "dc-fast";
 
@@ -93,4 +94,19 @@ export function EVCharger({ kind = "ac-wall" }: { kind?: string }) {
       <Part name="Type 2 connector"><mesh position={[0.18, 0.95, 0.03]}><boxGeometry args={[0.05, 0.12, 0.06]} /><meshStandardMaterial color={DARK} /></mesh></Part>
     </group>
   );
+}
+
+/** Connection pins: supply in (bottom) and vehicle outlet (front). */
+export function chargerPins(kind: string): PinDef[] {
+  const supply = layoutPins([["in-l1", "Supply L1", "L1"], ["in-l2", "Supply L2", "L2"], ["in-l3", "Supply L3", "L3"], ["in-n", "Supply N", "N"], ["in-pe", "Supply PE", "PE"]], 0.15, 0, 0.0)
+    .map((p) => ({ ...p, local: [p.local[0], p.local[1], kind === "dc-fast" ? 0.36 : 0.18] as [number, number, number] }));
+  const y = kind === "dc-fast" ? 1.2 : kind === "ac-pedestal" ? 0.95 : 1.0;
+  const z = kind === "dc-fast" ? 0.36 : kind === "ac-pedestal" ? 0.18 : 0.12;
+  const out = layoutPins(
+    kind === "dc-fast"
+      ? [["dcp", "Outlet DC+", "dc+"], ["dcn", "Outlet DC−", "dc-"], ["pe", "Outlet PE", "PE"], ["cp", "CP", "sig"], ["pp", "PP", "sig"]]
+      : [["l1", "Outlet L1", "L1"], ["l2", "Outlet L2", "L2"], ["l3", "Outlet L3", "L3"], ["n", "Outlet N", "N"], ["pe", "Outlet PE", "PE"], ["cp", "CP", "sig"], ["pp", "PP", "sig"]],
+    y,
+  ).map((p) => ({ ...p, local: [p.local[0], p.local[1], z] as [number, number, number] }));
+  return [...supply, ...out];
 }
