@@ -47,3 +47,6 @@ export const WIRE_TYPES: WireType[] = [
 ];
 export const DEFAULT_WIRE_TYPE = "3g2.5";
 export const wireTypeOf = (id?: string) => WIRE_TYPES.find((t) => t.id === id);
+
+/** Copper conductor resistance at 20 °C (Ω) for one core. */
+export const wireResistance = (lengthM: number, mm2: number) => (0.0175 * lengthM) / Math.max(mm2, 0.01);
