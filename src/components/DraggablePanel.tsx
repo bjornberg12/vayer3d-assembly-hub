@@ -22,21 +22,19 @@ export function DraggablePanel({
   closeOnLeave = false,
   children,
 }: DraggablePanelProps) {
+  const clampedPosition = (x: number, y: number) => ({
+    x: Math.max(8, Math.min(window.innerWidth - Math.min(width, window.innerWidth - 16) - 8, x)),
+    y: Math.max(8, Math.min(window.innerHeight - 48, y)),
+  });
   const [pos, setPos] = useState({ x: initialX, y: initialY });
   const dragging = useRef<{ dx: number; dy: number } | null>(null);
 
   useEffect(() => {
+    const clamp = () => setPos((current) => clampedPosition(current.x, current.y));
+    clamp();
     const move = (e: PointerEvent) => {
       if (!dragging.current) return;
-      const x = Math.max(
-        0,
-        Math.min(window.innerWidth - 40, e.clientX - dragging.current.dx),
-      );
-      const y = Math.max(
-        0,
-        Math.min(window.innerHeight - 40, e.clientY - dragging.current.dy),
-      );
-      setPos({ x, y });
+      setPos(clampedPosition(e.clientX - dragging.current.dx, e.clientY - dragging.current.dy));
     };
     const up = () => {
       dragging.current = null;
@@ -44,9 +42,11 @@ export function DraggablePanel({
     };
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("resize", clamp);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("resize", clamp);
     };
   }, []);
 
@@ -78,7 +78,7 @@ export function DraggablePanel({
   return (
     <div
       className="fixed z-20 flex max-h-[50dvh] flex-col overflow-hidden rounded-xl border border-white/40 bg-white/40 shadow-xl backdrop-blur-md"
-      style={{ left: pos.x, top: pos.y, width }}
+      style={{ left: pos.x, top: pos.y, width: `min(${width}px, calc(100vw - 16px))` }}
       onPointerEnter={cancelClose}
       onPointerLeave={scheduleClose}
     >

@@ -66,7 +66,15 @@ export type EVPartRecord = {
   params: Record<string, number>;
 };
 
-export type EVWireRecord = { id: string; a: string; b: string; crossSection: number; wireType?: string; waypoints?: [number, number][] };
+export type EVWireRecord = {
+  id: string;
+  a: string;
+  b: string;
+  crossSection: number;
+  wireType?: string;
+  waypoints?: [number, number][];
+  routingMode?: "freehand" | "auto";
+};
 
 type Def = {
   name: string;
@@ -78,6 +86,8 @@ type Def = {
   params: (EVParamDef & { value: number })[];
   /** Shared basic properties: which are on by default and their values. */
   base: BaseDefaults;
+  /** X/Z footprint used by physical wire routing. */
+  footprint: [number, number];
 };
 
 const p = (key: string, label: string, unit: string, value: number, min: number, max: number, step = 1) => ({
@@ -86,37 +96,37 @@ const p = (key: string, label: string, unit: string, value: number, min: number,
 
 const DC = "DC";
 export const EV_DEFS: Record<EVType, Def> = {
-  battery: { name: "HV traction battery", subtitle: "Li-ion pack, underfloor", terminalY: 0.5,
+  battery: { name: "HV traction battery", subtitle: "Li-ion pack, underfloor", terminalY: 0.5, footprint: [1.5, 2.1],
     params: [p("capacity", "Capacity", "kWh", 75, 10, 200, 1), p("maxPower", "Max discharge", "kW", 250, 20, 600, 5)],
     base: { active: ["mass", "nominalVoltage", "ratedCurrent", "maxCurrent"], values: { mass: 450, material: "Li-ion NMC / aluminium", nominalVoltage: 400, voltageKind: DC, ratedCurrent: 250, maxCurrent: 625, height: 0.14, width: 1.5, depth: 2.1 } } },
-  motor: { name: "Traction motor", subtitle: "PMSM drive unit", terminalY: 0.62,
+  motor: { name: "Traction motor", subtitle: "PMSM drive unit", terminalY: 0.62, footprint: [0.55, 0.45],
     params: [p("torque", "Peak torque", "Nm", 310, 50, 1000, 10), p("rpm", "Max speed", "rpm", 16000, 6000, 25000, 500)],
     base: { active: ["mass", "ratedPower", "nominalVoltage", "phases"], values: { mass: 45, material: "Steel / copper / aluminium", ratedPower: 150, nominalVoltage: 400, voltageKind: "AC", phases: 3 } } },
-  inverter: { name: "Traction inverter", subtitle: "DC → 3-phase AC", terminalY: 0.86,
+  inverter: { name: "Traction inverter", subtitle: "DC → 3-phase AC", terminalY: 0.86, footprint: [0.4, 0.3],
     params: [p("efficiency", "Efficiency", "%", 97, 85, 99.5, 0.5)],
     base: { active: ["mass", "ratedPower", "nominalVoltage", "maxCurrent"], values: { mass: 9, material: "Aluminium", ratedPower: 160, nominalVoltage: 400, voltageKind: DC, maxCurrent: 450 } } },
-  obc: { name: "On-board charger", subtitle: "AC → DC charging", terminalY: 0.58,
+  obc: { name: "On-board charger", subtitle: "AC → DC charging", terminalY: 0.58, footprint: [0.32, 0.28],
     params: [],
     base: { active: ["mass", "ratedPower", "nominalVoltage", "phases", "frequency"], values: { mass: 6, material: "Aluminium", ratedPower: 11, nominalVoltage: 400, voltageKind: "AC", phases: 3, frequency: 50, ratedCurrent: 16 } } },
-  dcdc: { name: "DC-DC converter", subtitle: "HV → 12 V", terminalY: 0.55,
+  dcdc: { name: "DC-DC converter", subtitle: "HV → 12 V", terminalY: 0.55, footprint: [0.24, 0.2],
     params: [p("outVoltage", "Output voltage", "V", 12, 12, 48, 36)],
     base: { active: ["mass", "ratedPower", "nominalVoltage"], values: { mass: 3, material: "Aluminium", ratedPower: 2.5, nominalVoltage: 400, voltageKind: DC } } },
-  pdu: { name: "HV junction box (PDU)", subtitle: "Fuses & contactors", terminalY: 0.6,
+  pdu: { name: "HV junction box (PDU)", subtitle: "Fuses & contactors", terminalY: 0.6, footprint: [0.32, 0.24],
     params: [p("fuse", "Main fuse", "A", 350, 50, 800, 10)],
     base: { active: ["mass", "nominalVoltage", "ratedCurrent", "maxCurrent"], values: { mass: 4, material: "Plastic / copper busbars", nominalVoltage: 400, voltageKind: DC, ratedCurrent: 300, maxCurrent: 400 } } },
-  chargeport: { name: "Charge port", subtitle: "CCS2 inlet", terminalY: 0.8,
+  chargeport: { name: "Charge port", subtitle: "CCS2 inlet", terminalY: 0.8, footprint: [0.18, 0.18],
     params: [p("acPower", "Max AC power", "kW", 11, 3.7, 22, 0.1), p("dcPower", "Max DC power", "kW", 150, 50, 350, 10)],
     base: { active: ["mass", "maxCurrent"], values: { mass: 1.2, material: "Plastic / copper", maxCurrent: 200, nominalVoltage: 400 } } },
-  aux12: { name: "12 V auxiliary battery", subtitle: "Low voltage supply", lowVoltage: true, terminalY: 0.72,
+  aux12: { name: "12 V auxiliary battery", subtitle: "Low voltage supply", lowVoltage: true, terminalY: 0.72, footprint: [0.25, 0.17],
     params: [p("capacity", "Capacity", "Ah", 60, 20, 120, 5)],
     base: { active: ["mass", "nominalVoltage"], values: { mass: 15, material: "Lead-acid (AGM)", nominalVoltage: 12, voltageKind: DC } } },
-  bms: { name: "Battery management system", subtitle: "Cell monitoring", lowVoltage: true, terminalY: 0.5,
+  bms: { name: "Battery management system", subtitle: "Cell monitoring", lowVoltage: true, terminalY: 0.5, footprint: [0.2, 0.14],
     params: [p("cells", "Cells in series", "", 96, 24, 216, 4), p("balanceCurrent", "Balancing current", "mA", 200, 50, 1000, 50)],
     base: { active: ["mass", "nominalVoltage"], values: { mass: 0.3, material: "PCB (FR-4)", nominalVoltage: 12, voltageKind: DC } } },
-  heater: { name: "PTC heater", subtitle: "Cabin / battery heating", terminalY: 0.85,
+  heater: { name: "PTC heater", subtitle: "Cabin / battery heating", terminalY: 0.85, footprint: [0.26, 0.14],
     params: [],
     base: { active: ["mass", "ratedPower", "nominalVoltage"], values: { mass: 2, material: "Aluminium / ceramic", ratedPower: 5, nominalVoltage: 400, voltageKind: DC } } },
-  compressor: { name: "Electric A/C compressor", subtitle: "Thermal management", terminalY: 0.75,
+  compressor: { name: "Electric A/C compressor", subtitle: "Thermal management", terminalY: 0.75, footprint: [0.28, 0.18],
     params: [],
     base: { active: ["mass", "ratedPower", "nominalVoltage"], values: { mass: 7, material: "Aluminium", ratedPower: 4, nominalVoltage: 400, voltageKind: DC } } },
 };
@@ -246,7 +256,6 @@ function Model({ type }: { type: EVType }) {
           <cylinderGeometry args={[0.04, 0.04, 1.4, 12]} />
           <meshStandardMaterial {...M.black} />
         </mesh>
-        <Box size={[0.06, 0.08, 0.06]} pos={[0.3, 0.58, 0]} mat="orange" />
       </>);
     case "inverter":
       return (<>
@@ -258,7 +267,7 @@ function Model({ type }: { type: EVType }) {
     case "dcdc":
       return <Box size={[0.24, 0.1, 0.2]} pos={[0, 0.45, 0]} mat="housing" />;
     case "pdu":
-      return (<><Box size={[0.32, 0.14, 0.24]} pos={[0, 0.47, 0]} mat="housing" /><Box size={[0.08, 0.04, 0.06]} pos={[0.08, 0.56, 0]} mat="orange" /></>);
+      return <Box size={[0.32, 0.14, 0.24]} pos={[0, 0.47, 0]} mat="housing" />;
     case "chargeport":
       return (<>
         <mesh position={[0, 0.75, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
@@ -270,7 +279,6 @@ function Model({ type }: { type: EVType }) {
     case "aux12":
       return (<>
         <Box size={[0.25, 0.18, 0.17]} pos={[0, 0.6, 0]} mat="black" />
-        <Box size={[0.03, 0.03, 0.03]} pos={[0.08, 0.705, 0]} mat="orange" />
         <mesh position={[-0.08, 0.705, 0]}><boxGeometry args={[0.03, 0.03, 0.03]} /><meshStandardMaterial color="#1e40af" /></mesh>
       </>);
     case "bms":
