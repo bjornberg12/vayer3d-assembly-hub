@@ -2143,7 +2143,7 @@ export default function Scene3DViewer() {
             draft={cableDraft}
             onAdd={(p) => {
               if (!routeFirst) finishRoute(makePt(p));
-              else setCableDraft((d) => [...d, p]);
+              else if (!(routingKind === "wire" && wireRoutingMode === "auto")) setCableDraft((d) => [...d, p]);
             }}
             onFinish={(p) => {
               if (routeFirst) finishRoute(makePt(p));
@@ -2853,6 +2853,17 @@ export default function Scene3DViewer() {
               <SectionHeader id="lines" label="Lines" hint="Aerial line cables" />
               {wiringSection === "lines" && (
                 <div className="px-4 pb-3">
+                  <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                    {(["freehand", "auto"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => { setWireRoutingMode(mode); setCableDraft([]); setWireRouteWarning(null); }}
+                        className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition ${wireRoutingMode === mode ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                      >
+                        {mode === "freehand" ? "Free hand" : "Auto route"}
+                      </button>
+                    ))}
+                  </div>
                   {(["LV aerial bundled (AMKA)", "20 kV bare conductor"] as const).map((g) => (
                     <div key={g} className="mb-2">
                       <div className="mb-1 text-[11px] text-neutral-600">{g}</div>
@@ -2947,7 +2958,8 @@ export default function Scene3DViewer() {
                     <Cable className="h-3.5 w-3.5" />
                     {evWireMode ? "Wiring…" : "Wire objects"}
                   </button>
-                   <p className="mt-1 text-[10px] text-neutral-600">Click a connection pin to start, click the ground for route corners, then click another pin to finish. The dashed preview snaps to the nearest pin.</p>
+                   <p className="mt-1 text-[10px] text-neutral-600">{wireRoutingMode === "freehand" ? "Click a connection pin to start, click the ground for route corners, then click another pin to finish." : "Select start and end pins. The wire automatically finds a clear right-angle route around components."} The dashed preview snaps to the nearest pin.</p>
+                   {wireRouteWarning && <p className="mt-1 rounded-md border border-red-400/60 bg-red-500/15 px-2 py-1 text-[10px] font-semibold text-red-700">{wireRouteWarning}</p>}
                 </div>
               )}
             </DraggablePanel>
@@ -2993,7 +3005,9 @@ export default function Scene3DViewer() {
           <span>
             {wireTypeOf(wireType)?.label}:{" "}
             {evWireFirst
-               ? `corners ${cableDraft.length} — click another pin to finish · Backspace undo, Esc cancel`
+               ? wireRoutingMode === "auto"
+                 ? "auto route — select the destination pin · Esc cancel"
+                 : `corners ${cableDraft.length} — click another pin to finish · Backspace undo, Esc cancel`
                : "click a connection pin to start a wire"}
           </span>
           <button
@@ -3642,6 +3656,7 @@ export default function Scene3DViewer() {
             ) : evPropWire ? (
               <div className="space-y-2 text-xs text-neutral-800">
                 <div>Type: <strong>{wireLabel(evPropWire)}</strong></div>
+                <div>Routing: <strong>{evPropWire.routingMode === "auto" ? "Auto route" : "Free hand"}</strong></div>
                 <div>Length: <strong>{anyWireLength(evPropWire).toFixed(2)} m</strong></div>
                 <div>From: <strong>{endName(evPropWire.a)}</strong></div>
                 <div>To: <strong>{endName(evPropWire.b)}</strong></div>
@@ -3664,10 +3679,10 @@ export default function Scene3DViewer() {
                     ))}
                   </div>
                 </div>
-                <div className="text-[10px] text-neutral-600">Drag the orange corners on the ground to reroute, "+" to add a corner, right-click a corner to remove it.</div>
+                <div className="text-[10px] text-neutral-600">Drag the orange corners on the ground to reroute, "+" to add a corner, right-click a corner to remove it. Editing an automatic route changes it to Free hand.</div>
                 {evPropWire.waypoints?.length ? (
                   <button
-                    onClick={() => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, waypoints: undefined } : w)))}
+                    onClick={() => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, waypoints: undefined, routingMode: "freehand" } : w)))}
                     className="w-full rounded-lg border border-white/60 bg-white/45 px-3 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-white/70"
                   >
                     Reset route
