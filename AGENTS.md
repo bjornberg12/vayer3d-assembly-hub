@@ -6,6 +6,6 @@
 - Wheel zoom travels along the cursor ray toward the raycast hit (min step, view direction preserved, pivot moved onto the view axis at hit depth) and middle-drag pan is custom grab-point panning; OrbitControls only rotates — distance-based dolly stalls and off-axis pivots swing the view.
 - All connection tools (underground cables, aerial lines, small wires) live in the Wiring menu; line and wire type catalogues live in `src/ModelLibrary/cables/catalog.ts` — one place to pick and extend cable types.
 
-- All connection kinds (underground cables, aerial lines, wires) share one router and one route editor: ends are object ids or loose "pt:x,z" ground points, and optional ground waypoints are smoothed at render time — one data shape for routing, editing and free ends.
+- All connection kinds share one router and route editor with optional ground waypoints; new small wires require `owner#pin` endpoints, while cables/lines allow object or loose `pt:x,z` ends and legacy wire ends remain readable — preserves routed editing without creating electrically ambiguous wires.
 - EV chargers live in `src/ModelLibrary/chargers/`, store their model-specific values in the object's property values, and are underground-cable endpoints — keeps supply from substations/panels on one connection model.
 - Wire ends may reference a device pin as `owner#pin`; pin definitions (id, label, role, local position) live with the model (EV_DEFS pins, chargerPins) — one source for wiring and the future circuit solver.
