@@ -1146,6 +1146,8 @@ export default function Scene3DViewer() {
   const [connections, setConnections] = useState<LineRecord[]>([]);
   const [lineType, setLineType] = useState<string>(DEFAULT_LINE_TYPE);
   const [wireType, setWireType] = useState<string>(DEFAULT_WIRE_TYPE);
+  const [wireRoutingMode, setWireRoutingMode] = useState<"freehand" | "auto">("freehand");
+  const [wireRouteWarning, setWireRouteWarning] = useState<string | null>(null);
   const [wiringSection, setWiringSection] = useState<"cables" | "lines" | "wires" | null>("cables");
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
   const [moveMode, setMoveMode] = useState(false);
@@ -1301,16 +1303,40 @@ export default function Scene3DViewer() {
     setEVParts((prev) => prev.filter((q) => q.id !== id));
     setEVWires((prev) => prev.filter((w) => ownerOfEnd(w.a) !== id && ownerOfEnd(w.b) !== id));
   };
+  const autoWireWaypoints = (aId: string, bId: string): Waypoint[] | null => {
+    const a = wireEnd(aId);
+    const b = wireEnd(bId);
+    if (!a || !b) return null;
+    const excluded = new Set([ownerOfEnd(aId), ownerOfEnd(bId)]);
+    const section = wireTypeOf(wireType)?.crossSection ?? 2.5;
+    const clearance = 0.06 + Math.min(Math.sqrt(section) / 100, 0.06);
+    const obstacles = evParts.filter((part) => !excluded.has(part.id)).map((part) => {
+      const [width, depth] = EV_DEFS[part.type].footprint;
+      const c = Math.abs(Math.cos(part.rotationY));
+      const s = Math.abs(Math.sin(part.rotationY));
+      const halfX = (width * c + depth * s) / 2 + clearance;
+      const halfZ = (width * s + depth * c) / 2 + clearance;
+      return { minX: part.position[0] - halfX, maxX: part.position[0] + halfX, minZ: part.position[2] - halfZ, maxZ: part.position[2] + halfZ };
+    });
+    return orthogonalRoute(a, b, obstacles);
+  };
   const handleEVWireClick = (id: string, wps: Waypoint[] = cableDraft) => {
     if (!id.includes("#") || !pinInfo(id)) return;
     endpointClickAt.current = performance.now();
+    setWireRouteWarning(null);
     if (!evWireFirst) { setCableDraft([]); return setEVWireFirst(id); }
     if (evWireFirst === id) { setCableDraft([]); return setEVWireFirst(null); }
     const a = evWireFirst;
+    const routed = wireRoutingMode === "auto" ? autoWireWaypoints(a, id) : wps;
+    if (wireRoutingMode === "auto" && routed === null) {
+      setWireRouteWarning("No clear automatic route was found. Move a component or switch to Free hand.");
+      return;
+    }
+    const waypoints = routed ?? [];
     setEVWires((prev) =>
-      !wps.length && prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
+      !waypoints.length && prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
         ? prev
-        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType, waypoints: wps.length ? wps : undefined }]
+        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType, routingMode: wireRoutingMode, waypoints: waypoints.length ? waypoints : undefined }]
     );
     setEVWireFirst(null);
     setCableDraft([]);
@@ -1357,6 +1383,7 @@ export default function Scene3DViewer() {
     const a = wireEnd(w.a);
     const b = wireEnd(w.b);
     if (!a || !b) return 0;
+    if (w.routingMode === "auto") return roundedOrthogonalCurve(a, b, w.waypoints ?? []).getLength();
     if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b)) return routedWireCurve(a, b, w.waypoints ?? []).getLength();
     return wireCurveLength(a, b);
   };
@@ -1367,6 +1394,7 @@ export default function Scene3DViewer() {
     setConnectFirst(null);
     setEVWireMode(false);
     setEVWireFirst(null);
+    setWireRouteWarning(null);
     setMoveMode(false);
     setCableMode(false);
     setCableFirst(null);
@@ -1852,7 +1880,7 @@ export default function Scene3DViewer() {
                 setPropsTarget(wireLabel(w));
                 setPropsOwnerId(w.id);
               };
-              if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b))
+              if (w.routingMode === "auto" || w.waypoints?.length || parsePt(w.a) || parsePt(w.b))
                 return (
                   <RoutedWire
                     key={w.id}
@@ -1863,6 +1891,7 @@ export default function Scene3DViewer() {
                     color={wt?.color ?? "#e5e7eb"}
                     selected={propsOwnerId === w.id}
                     onSelect={selectWire}
+                    orthogonal={w.routingMode === "auto"}
                   />
                 );
               return (
@@ -2122,6 +2151,7 @@ export default function Scene3DViewer() {
             skipRef={endpointClickAt}
             snapPins={routingKind === "wire" && routeFirst ? availableWirePins : []}
             pinOnlyEnd={routingKind === "wire"}
+            previewWaypoints={routingKind === "wire" && wireRoutingMode === "auto" && routeFirst ? (endId) => autoWireWaypoints(routeFirst, endId) : undefined}
           />
           {editRoute && selectedCable && (() => {
             const a = cableEndpoints.find((e) => e.id === selectedCable.a);
@@ -2172,7 +2202,7 @@ export default function Scene3DViewer() {
                 from={a}
                 to={b}
                 waypoints={evPropWire.waypoints ?? []}
-                onChange={(w) => upd({ waypoints: w.length ? w : undefined })}
+                onChange={(w) => upd({ waypoints: w.length ? w : undefined, routingMode: "freehand" })}
                 onFromMove={parsePt(evPropWire.a) ? (p) => upd({ a: makePt(p) }) : undefined}
                 onToMove={parsePt(evPropWire.b) ? (p) => upd({ b: makePt(p) }) : undefined}
                 controlsRef={controlsRef}
