@@ -32,6 +32,7 @@ import {
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider, PartOwner } from "./PartLabel";
 import { BasePropsEditor } from "./BasePropsEditor";
+import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
@@ -1153,13 +1154,14 @@ export default function Scene3DViewer() {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cablesOpen, setCablesOpen] = useState(false);
-  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger";
+  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource";
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
     { type: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
     { type: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
     { type: "evcharger", name: "EV charger", subtitle: "AC / DC car charger" },
+    { type: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply" },
   ];
   type AddedItem = {
     id: string;
@@ -1346,7 +1348,7 @@ export default function Scene3DViewer() {
       return { minX: pos[0] - halfX, maxX: pos[0] + halfX, minZ: pos[2] - halfZ, maxZ: pos[2] + halfZ };
     };
     const ITEM_FOOTPRINT: Record<string, [number, number]> = {
-      evcharger: [0.8, 0.6], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
+      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
     };
     const parts = sceneId === "electriccar" ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
     const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
@@ -1407,6 +1409,7 @@ export default function Scene3DViewer() {
     return null;
   };
   function pinDefsOfItem(it: { id: string; type: string }): PinDef[] {
+    if (it.type === "vsource") return sourcePins(String(objectProps[it.id]?.values.sourceKind ?? "AC"));
     return it.type === "evcharger" ? chargerPins(String(objectProps[it.id]?.values.chargerType ?? "ac-wall")) : [];
   }
   /** Pin definition + display name for an end id like "owner#pin". */
@@ -1434,6 +1437,13 @@ export default function Scene3DViewer() {
     if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b)) return routedWireCurve(a, b, w.waypoints ?? []).getLength();
     return wireCurveLength(a, b);
   };
+  const circuit = solveCircuits(
+    addedItems.filter((i) => i.type === "vsource").map((i) => {
+      const v = objectProps[i.id]?.values ?? sourceDefaults("AC");
+      return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
+    }),
+    evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })),
+  );
   const wireLabel = (w: EVWireRecord) =>
     wireTypeOf(w.wireType)?.label ?? (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
   const stopAllModes = () => {
@@ -1673,7 +1683,7 @@ export default function Scene3DViewer() {
     routingKind === "cable" ? cableFirst : routingKind === "line" ? connectFirst : routingKind === "wire" ? evWireFirst : null;
   const availableWirePins = [
     ...(sceneId === "electriccar" ? evParts.map((part) => ({ id: part.id, pins: pinsOf(part.type), pos: part.position, rot: part.rotationY })) : []),
-    ...addedItems.filter((item) => item.type === "evcharger").map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
+    ...addedItems.filter((item) => item.type === "evcharger" || item.type === "vsource").map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
   ].flatMap((owner) => owner.pins.map((pin) => ({
     id: `${owner.id}#${pin.id}`,
     point: pinWorldOf(pin.local, owner.pos, owner.rot),
@@ -1897,7 +1907,7 @@ export default function Scene3DViewer() {
             )}
             {evWireMode && [
               ...(sceneId === "electriccar" ? evParts.map((p) => ({ id: p.id, pins: pinsOf(p.type), pos: p.position, rot: p.rotationY })) : []),
-              ...addedItems.filter((i) => i.type === "evcharger").map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
+              ...addedItems.filter((i) => i.type === "evcharger" || i.type === "vsource").map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
             ].flatMap((o) =>
               o.pins.map((pin) => {
                 const endId = `${o.id}#${pin.id}`;
@@ -1998,6 +2008,9 @@ export default function Scene3DViewer() {
                   )}
                   {item.type === "alajaam" && (
                     <Substation step={itemStep} />
+                  )}
+                  {item.type === "vsource" && (
+                    <VoltageSource kind={String(objectProps[item.id]?.values.sourceKind ?? "AC")} />
                   )}
                   {item.type === "evcharger" && (
                     <EVCharger kind={String(objectProps[item.id]?.values.chargerType ?? "ac-wall")} />
@@ -3617,6 +3630,59 @@ export default function Scene3DViewer() {
                 }
               />
             )}
+            {propsModelId === "vsource" && propsOwnerId && (() => {
+              const v = { ...sourceDefaults("AC"), ...currentProps.values };
+              const kind = String(v.sourceKind ?? "AC") as SourceKind;
+              const setV = (patch: Record<string, string | number>) =>
+                setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...v, ...patch } } }));
+              const loops = circuit.loops[propsOwnerId] ?? [];
+              const vph = Number(v.srcVoltage) / Math.sqrt(3);
+              return (
+                <div className="space-y-2 text-xs text-neutral-800">
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Model-specific</div>
+                  <div className="grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                    {(["AC", "DC"] as SourceKind[]).map((k) => (
+                      <button key={k}
+                        onClick={() => {
+                          if (k === kind) return;
+                          setV({ ...sourceDefaults(k), name: String(v.name ?? "Voltage source") });
+                          setEVWires((prev) => prev.filter((w) => ownerOfEnd(w.a) !== propsOwnerId && ownerOfEnd(w.b) !== propsOwnerId));
+                        }}
+                        className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${kind === k ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                      >{k === "AC" ? "AC (L1 L2 L3 N PE)" : "DC (+ −)"}</button>
+                    ))}
+                  </div>
+                  {SOURCE_PARAMS.filter((d) => !d.dcOnly || kind === "DC").map((d) => (
+                    <div key={d.key} className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2">
+                      <span className="text-[11px]">{d.key === "srcVoltage" && kind === "AC" ? "Voltage (L-L)" : d.label}</span>
+                      <input type="number" min={d.min} max={d.max} step={d.step} value={Number(v[d.key] ?? 0)}
+                        onChange={(e) => setV(d.key === "srcVoltage" ? { srcVoltage: Number(e.target.value), nominalVoltage: Number(e.target.value) } : { [d.key]: Number(e.target.value) })}
+                        className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30" />
+                      <span className="text-[10px] text-neutral-500">{d.unit}</span>
+                    </div>
+                  ))}
+                  {kind === "AC" && (
+                    <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700">
+                      {(["l1", "l2", "l3"] as const).map((p) => (
+                        <div key={p}>{p.toUpperCase()}–N: {vph.toFixed(1)} V ∠ {PHASE_ANGLES[p]}° · {Number(v.frequency || 50)} Hz</div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Current</div>
+                  {loops.length === 0 ? (
+                    <div className="text-[11px] text-neutral-600">0 A — no closed wire loop between this source's {kind === "DC" ? "DC+ and DC−" : "phase and N"} pins.</div>
+                  ) : loops.map((l) => (
+                    <div key={l.from} className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700 break-words">
+                      {l.from.toUpperCase()}→{l.to.toUpperCase()}: I = U / R = {l.voltage.toFixed(1)} V / {(l.resistance * 1000).toFixed(2)} mΩ = <strong>{Number.isFinite(l.current) ? `${l.current.toFixed(1)} A` : "∞ (short)"}</strong>
+                      {kind === "DC" && Number(v.capacityAh) > 0 && Number.isFinite(l.current) && l.current > 0 && (
+                        <div className="font-sans text-neutral-500">Runtime at this current ≈ {(Number(v.capacityAh) / l.current * 60).toFixed(1)} min</div>
+                      )}
+                    </div>
+                  ))}
+                  <div className="text-[10px] text-neutral-600">Current is set by the wires' resistance{kind === "DC" ? " plus the internal resistance" : ""}. Wire the pins with Wiring → Wires.</div>
+                </div>
+              );
+            })()}
             {propsModelId === "evcharger" && propsOwnerId && (() => {
               const v = currentProps.values;
               const setV = (patch: Record<string, string | number>) =>
@@ -3768,9 +3834,12 @@ export default function Scene3DViewer() {
                     className="mt-0.5 w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
                   />
                 </label>
+                {circuit.wireCurrent[evPropWire.id] !== undefined && (
+                  <div className="rounded-lg border border-green-500/50 bg-green-500/15 px-2 py-1 text-[11px] text-green-800">Powered by a voltage source: <strong>{circuit.wireCurrent[evPropWire.id].toFixed(2)} A</strong> (calculated)</div>
+                )}
                 {(() => {
                   const r = wireResistance(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material);
-                  const i = evPropWire.currentA ?? 0;
+                  const i = circuit.wireCurrent[evPropWire.id] ?? evPropWire.currentA ?? 0;
                   const drop = r * i;
                   return (
                     <>

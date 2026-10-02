@@ -9,6 +9,7 @@ import { PANEL_STEPS } from "./distribution/DistributionPanel";
 import { SUBSTATION_STEPS } from "./substations/KioskSubstation";
 import { EV_DEFS, type EVType } from "./car-components/EVComponents";
 import { chargerDefaults } from "./chargers/EVCharger";
+import { sourceDefaults } from "./sources/VoltageSource";
 import { initObjectProps, type BaseDefaults, type ObjectProps } from "./properties";
 
 export * from "./properties";
@@ -22,7 +23,7 @@ export * from "./cables/catalog";
 export * from "./car-components/EVComponents";
 export * from "./chargers/EVCharger";
 
-export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "chargers" | "car-components";
+export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "chargers" | "sources" | "car-components";
 
 export type ModelCard = {
   id: string;
@@ -33,7 +34,7 @@ export type ModelCard = {
   base: BaseDefaults;
 };
 
-export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger", ModelCard> = {
+export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource", ModelCard> = {
   puitmast: {
     id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole", group: "electrical-posts",
     steps: ASSEMBLY_STEPS,
@@ -58,6 +59,10 @@ export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "
     id: "evcharger", name: "EV charger", subtitle: "Electric car charger", group: "chargers",
     base: { active: ["modelId", "mass", "height", "width", "depth", "nominalVoltage", "ratedPower", "phases"], values: chargerDefaults("ac-wall") as BaseDefaults["values"] },
   },
+  vsource: {
+    id: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply", group: "sources",
+    base: { active: ["modelId", "nominalVoltage", "frequency", "phases"], values: sourceDefaults("AC") as BaseDefaults["values"] },
+  },
 };
 
 /** Fresh basic-property set for any model id (scene model or car component). */
@@ -68,3 +73,5 @@ export function initPropsFor(modelId: string): ObjectProps {
   if (ev) return initObjectProps(ev.base, ev.name);
   return initObjectProps({ active: [], values: {} }, "Object");
 }
+export * from "./sources/VoltageSource";
+export * from "./sources/solver";
