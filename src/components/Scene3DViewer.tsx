@@ -599,16 +599,93 @@ function routedWireCurve(a: [number, number, number], b: [number, number, number
     "centripetal"
   );
 }
+
+type RouteObstacle = { minX: number; maxX: number; minZ: number; maxZ: number };
+
+function segmentClear(a: Waypoint, b: Waypoint, obstacles: RouteObstacle[]) {
+  return obstacles.every((o) => {
+    if (a[0] === b[0]) {
+      if (a[0] <= o.minX || a[0] >= o.maxX) return true;
+      return Math.max(a[1], b[1]) <= o.minZ || Math.min(a[1], b[1]) >= o.maxZ;
+    }
+    if (a[1] === b[1]) {
+      if (a[1] <= o.minZ || a[1] >= o.maxZ) return true;
+      return Math.max(a[0], b[0]) <= o.minX || Math.min(a[0], b[0]) >= o.maxX;
+    }
+    return false;
+  });
+}
+
+/** Shortest rectilinear route around expanded component footprints. */
+function orthogonalRoute(from: [number, number, number], to: [number, number, number], obstacles: RouteObstacle[]): Waypoint[] | null {
+  const start: Waypoint = [from[0], from[2]];
+  const end: Waypoint = [to[0], to[2]];
+  const xs = [...new Set([start[0], end[0], ...obstacles.flatMap((o) => [o.minX, o.maxX])])].sort((a, b) => a - b);
+  const zs = [...new Set([start[1], end[1], ...obstacles.flatMap((o) => [o.minZ, o.maxZ])])].sort((a, b) => a - b);
+  const nodes: Waypoint[] = [];
+  for (const x of xs) for (const z of zs) {
+    if (!obstacles.some((o) => x > o.minX && x < o.maxX && z > o.minZ && z < o.maxZ)) nodes.push([x, z]);
+  }
+  const key = (p: Waypoint) => `${p[0]},${p[1]}`;
+  const byKey = new Map(nodes.map((p) => [key(p), p]));
+  byKey.set(key(start), start);
+  byKey.set(key(end), end);
+  const all = [...byKey.values()];
+  type State = { point: Waypoint; axis: "x" | "z" | "start"; cost: number; path: Waypoint[] };
+  const queue: State[] = [{ point: start, axis: "start", cost: 0, path: [start] }];
+  const best = new Map<string, number>();
+  while (queue.length) {
+    queue.sort((a, b) => a.cost - b.cost);
+    const cur = queue.shift();
+    if (!cur) break;
+    if (key(cur.point) === key(end)) {
+      const compact = cur.path.filter((p, i, arr) => i === 0 || i === arr.length - 1 ||
+        (arr[i - 1][0] === p[0]) !== (p[0] === arr[i + 1][0]));
+      return compact.slice(1, -1);
+    }
+    const stateKey = `${key(cur.point)}:${cur.axis}`;
+    if ((best.get(stateKey) ?? Infinity) <= cur.cost) continue;
+    best.set(stateKey, cur.cost);
+    for (const next of all) {
+      if (next === cur.point || (next[0] !== cur.point[0] && next[1] !== cur.point[1])) continue;
+      if (!segmentClear(cur.point, next, obstacles)) continue;
+      const axis = next[0] === cur.point[0] ? "z" : "x";
+      const turn = cur.axis !== "start" && cur.axis !== axis ? 0.08 : 0;
+      queue.push({ point: next, axis, cost: cur.cost + Math.abs(next[0] - cur.point[0]) + Math.abs(next[1] - cur.point[1]) + turn, path: [...cur.path, next] });
+    }
+  }
+  return null;
+}
+
+function roundedOrthogonalCurve(a: [number, number, number], b: [number, number, number], wps: Waypoint[]) {
+  const corners = [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], 0.15, w[1])), new THREE.Vector3(...b)];
+  if (corners.length < 3) return new THREE.CatmullRomCurve3(corners, false, "centripetal");
+  const points: THREE.Vector3[] = [corners[0]];
+  for (let i = 1; i < corners.length - 1; i++) {
+    const prev = corners[i - 1], cur = corners[i], next = corners[i + 1];
+    const radius = Math.min(0.08, cur.distanceTo(prev) * 0.35, cur.distanceTo(next) * 0.35);
+    const before = cur.clone().lerp(prev, radius / Math.max(cur.distanceTo(prev), 0.001));
+    const after = cur.clone().lerp(next, radius / Math.max(cur.distanceTo(next), 0.001));
+    points.push(before);
+    for (let s = 1; s < 6; s++) {
+      const t = s / 6;
+      points.push(before.clone().multiplyScalar((1 - t) ** 2).addScaledVector(cur, 2 * (1 - t) * t).addScaledVector(after, t * t));
+    }
+    points.push(after);
+  }
+  points.push(corners[corners.length - 1]);
+  return new THREE.CatmullRomCurve3(points, false, "centripetal");
+}
 function RoutedWire({
-  from, to, waypoints, crossSection, color, selected, onSelect,
+  from, to, waypoints, crossSection, color, selected, onSelect, orthogonal = false,
 }: {
   from: [number, number, number]; to: [number, number, number]; waypoints: Waypoint[];
-  crossSection: number; color: string; selected: boolean; onSelect: () => void;
+  crossSection: number; color: string; selected: boolean; onSelect: () => void; orthogonal?: boolean;
 }) {
   const geo = useMemo(() => {
     const r = Math.max(0.006, (Math.sqrt(crossSection / Math.PI) / 1000) * 2.2);
-    return new THREE.TubeGeometry(routedWireCurve(from, to, waypoints), 120, r, 8, false);
-  }, [from, to, waypoints, crossSection]);
+    return new THREE.TubeGeometry(orthogonal ? roundedOrthogonalCurve(from, to, waypoints) : routedWireCurve(from, to, waypoints), 120, r, 8, false);
+  }, [from, to, waypoints, crossSection, orthogonal]);
   return (
     <mesh geometry={geo} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
       <meshStandardMaterial color={selected ? "#facc15" : color} roughness={0.5} emissive={selected ? "#f59e0b" : "#000000"} emissiveIntensity={selected ? 0.4 : 0} />
@@ -630,6 +707,7 @@ function CableRouter({
   skipRef,
   snapPins = [],
   pinOnlyEnd = false,
+  previewWaypoints,
 }: {
   active: boolean;
   start: [number, number, number] | null;
@@ -639,6 +717,7 @@ function CableRouter({
   skipRef: React.MutableRefObject<number>;
   snapPins?: { id: string; point: [number, number, number]; color: string }[];
   pinOnlyEnd?: boolean;
+  previewWaypoints?: (endId: string) => Waypoint[] | null;
 }) {
   const { camera, gl } = useThree();
   const [hover, setHover] = useState<GroundPt | null>(null);
@@ -713,9 +792,10 @@ function CableRouter({
     };
   }, [active, camera, gl, skipRef, pinOnlyEnd]);
   if (!active) return null;
+  const previewDraft = snapPin && previewWaypoints ? previewWaypoints(snapPin.id) ?? [] : draft;
   const pts: [number, number, number][] = [
     ...(start ? [[start[0], 0.03, start[2]] as [number, number, number]] : []),
-    ...draft.map((w) => [w[0], 0.03, w[1]] as [number, number, number]),
+    ...previewDraft.map((w) => [w[0], 0.03, w[1]] as [number, number, number]),
     ...(snapPin ? [snapPin.point] : hover ? [[hover[0], 0.03, hover[1]] as [number, number, number]] : []),
   ];
   return (
