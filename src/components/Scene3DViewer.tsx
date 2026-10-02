@@ -36,6 +36,7 @@ import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
   defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireCurveLength,
+  pinsOf, evPinWorld, pinWorldOf, chargerPins, ownerOfEnd, PIN_COLORS, pinsIncompatible, wireResistance, type PinDef,
   LINE_TYPES, WIRE_TYPES, DEFAULT_LINE_TYPE, DEFAULT_WIRE_TYPE, lineTypeOf, wireTypeOf,
   type EVPartRecord, type EVType, type EVWireRecord,
 } from "@/ModelLibrary";
@@ -1145,7 +1146,7 @@ export default function Scene3DViewer() {
   const removeItem = (id: string) => {
     setAddedItems((prev) => prev.filter((i) => i.id !== id));
     setConnections((prev) => prev.filter((c) => c.a !== id && c.b !== id));
-    setEVWires((prev) => prev.filter((w) => w.a !== id && w.b !== id));
+    setEVWires((prev) => prev.filter((w) => ownerOfEnd(w.a) !== id && ownerOfEnd(w.b) !== id));
     setCables((prev) => prev.filter((c) => c.a !== id && c.b !== id));
     setFeeders((prev) => {
       const next = { ...prev };
@@ -1186,7 +1187,7 @@ export default function Scene3DViewer() {
     setEVParts((prev) => prev.map((q) => (q.id === id ? { ...q, params: { ...q.params, [key]: value } } : q)));
   const removeEVPart = (id: string) => {
     setEVParts((prev) => prev.filter((q) => q.id !== id));
-    setEVWires((prev) => prev.filter((w) => w.a !== id && w.b !== id));
+    setEVWires((prev) => prev.filter((w) => ownerOfEnd(w.a) !== id && ownerOfEnd(w.b) !== id));
   };
   const handleEVWireClick = (id: string, wps: Waypoint[] = cableDraft) => {
     endpointClickAt.current = performance.now();
@@ -1205,11 +1206,39 @@ export default function Scene3DViewer() {
   const wireEnd = (id: string): [number, number, number] | null => {
     const pt = parsePt(id);
     if (pt) return [pt[0], 0.1, pt[1]];
+    if (id.includes("#")) {
+      const [oid, pin] = id.split("#");
+      const pp = sceneId === "electriccar" ? evParts.find((q) => q.id === oid) : undefined;
+      if (pp) return evPinWorld(pp, pin);
+      const it = addedItems.find((i) => i.id === oid);
+      const pd = it && pinDefsOfItem(it).find((q) => q.id === pin);
+      return it && pd ? pinWorldOf(pd.local, it.position, it.rotationY) : null;
+    }
     const part = sceneId === "electriccar" ? evParts.find((q) => q.id === id) : undefined;
     if (part) return terminalPoint(part);
     const item = addedItems.find((i) => i.id === id);
     if (item) return [item.position[0], 1.2, item.position[2]];
     return null;
+  };
+  function pinDefsOfItem(it: { id: string; type: string }): PinDef[] {
+    return it.type === "evcharger" ? chargerPins(String(objectProps[it.id]?.values.chargerType ?? "ac-wall")) : [];
+  }
+  /** Pin definition + display name for an end id like "owner#pin". */
+  const pinInfo = (id: string): { pin: PinDef; owner: string } | null => {
+    if (!id.includes("#")) return null;
+    const [oid, pid] = id.split("#");
+    const pp = evParts.find((q) => q.id === oid);
+    if (pp) { const pin = pinsOf(pp.type).find((q) => q.id === pid); return pin ? { pin, owner: EV_DEFS[pp.type].name } : null; }
+    const it = addedItems.find((i) => i.id === oid);
+    const pin = it && pinDefsOfItem(it).find((q) => q.id === pid);
+    return pin ? { pin, owner: "EV charger" } : null;
+  };
+  const endName = (id: string) => {
+    const pi = pinInfo(id);
+    if (pi) return `${pi.owner} · ${pi.pin.label}`;
+    if (parsePt(id)) return "Loose end";
+    const pp = evParts.find((q) => q.id === id);
+    return pp ? EV_DEFS[pp.type].name : addedItems.find((i) => i.id === id)?.type ?? "Object";
   };
   const anyWireLength = (w: EVWireRecord) => {
     const a = wireEnd(w.a);
@@ -1674,6 +1703,27 @@ export default function Scene3DViewer() {
                   </group>
                 ))}
               </group>
+            )}
+            {evWireMode && [
+              ...(sceneId === "electriccar" ? evParts.map((p) => ({ id: p.id, pins: pinsOf(p.type), pos: p.position, rot: p.rotationY })) : []),
+              ...addedItems.filter((i) => i.type === "evcharger").map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
+            ].flatMap((o) =>
+              o.pins.map((pin) => {
+                const endId = `${o.id}#${pin.id}`;
+                const used = evWires.some((w) => w.a === endId || w.b === endId);
+                return (
+                  <mesh
+                    key={endId}
+                    position={pinWorldOf(pin.local, o.pos, o.rot)}
+                    renderOrder={10}
+                    onClick={(e) => { e.stopPropagation(); handleEVWireClick(endId); }}
+                    onPointerOver={(e) => { e.stopPropagation(); setPartLabel(`${pinInfo(endId)?.owner ?? ""} · ${pin.label}`); setPartLabelPos(pinWorldOf(pin.local, o.pos, o.rot)); }}
+                  >
+                    <sphereGeometry args={[0.018, 12, 12]} />
+                    <meshBasicMaterial color={evWireFirst === endId ? "#f59e0b" : PIN_COLORS[pin.role]} transparent opacity={used ? 0.55 : 0.95} depthTest={false} />
+                  </mesh>
+                );
+              })
             )}
             {evWires.map((w) => {
               const a = wireEnd(w.a);
@@ -3427,8 +3477,19 @@ export default function Scene3DViewer() {
                     className="w-full accent-orange-500"
                   />
                 </label>
-                <div className="text-[11px] text-neutral-600">
-                  Wired to: {evWires.filter((w) => w.a === evPropPart.id || w.b === evPropPart.id).length} connection(s)
+                <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Pins</div>
+                <div className="space-y-0.5">
+                  {pinsOf(evPropPart.type).map((pin) => {
+                    const endId = `${evPropPart.id}#${pin.id}`;
+                    const ws = evWires.filter((w) => w.a === endId || w.b === endId);
+                    return (
+                      <div key={pin.id} className="flex items-center gap-1.5 text-[11px] text-neutral-800">
+                        <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/70" style={{ background: PIN_COLORS[pin.role] }} />
+                        <span className="w-24 shrink-0 font-semibold">{pin.label}</span>
+                        <span className="truncate text-neutral-600">{ws.length ? ws.map((w) => endName(w.a === endId ? w.b : w.a)).join(", ") : "—"}</span>
+                      </div>
+                    );
+                  })}
                 </div>
                 <button
                   onClick={() => { setEVWireMode(true); setEVWireFirst(evPropPart.id); setMoveMode(false); setPropsTarget(null); setPropsOwnerId(null); }}
@@ -3447,6 +3508,12 @@ export default function Scene3DViewer() {
               <div className="space-y-2 text-xs text-neutral-800">
                 <div>Type: <strong>{wireLabel(evPropWire)}</strong></div>
                 <div>Length: <strong>{anyWireLength(evPropWire).toFixed(2)} m</strong></div>
+                <div>From: <strong>{endName(evPropWire.a)}</strong></div>
+                <div>To: <strong>{endName(evPropWire.b)}</strong></div>
+                <div>Resistance: <strong>{(wireResistance(anyWireLength(evPropWire), evPropWire.crossSection) * 1000).toFixed(2)} mΩ</strong> <span className="text-neutral-500">(copper, 20 °C)</span></div>
+                {pinsIncompatible(pinInfo(evPropWire.a)?.pin.role, pinInfo(evPropWire.b)?.pin.role) && (
+                  <div className="rounded-lg border border-red-400/60 bg-red-500/15 px-2 py-1 font-semibold text-red-700">Warning: these pins are not normally connected ({pinInfo(evPropWire.a)?.pin.label} → {pinInfo(evPropWire.b)?.pin.label}).</div>
+                )}
                 <div>Colour: <strong>{wireTypeOf(evPropWire.wireType)?.colorName ?? (isHVWire(evPropWire, evParts) ? "Orange" : "Black")}</strong></div>
                 <div>
                   Wire type
