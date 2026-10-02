@@ -3817,15 +3817,6 @@ export default function Scene3DViewer() {
                     />
                   </label>
                 ))}
-                <label className="block text-xs text-neutral-800">
-                  Rotation {Math.round((evPropPart.rotationY * 180) / Math.PI)}°
-                  <input
-                    type="range" min={0} max={360} step={15}
-                    value={Math.round((evPropPart.rotationY * 180) / Math.PI)}
-                    onChange={(e) => setEVParts((prev) => prev.map((q) => q.id === evPropPart.id ? { ...q, rotationY: (Number(e.target.value) * Math.PI) / 180 } : q))}
-                    className="w-full accent-orange-500"
-                  />
-                </label>
                 <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Pins</div>
                 <div className="space-y-0.5">
                   {pinsOf(evPropPart.type).map((pin) => {
