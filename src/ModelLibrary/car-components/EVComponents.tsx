@@ -75,6 +75,8 @@ export type EVWireRecord = {
   waypoints?: [number, number][];
   routingMode?: "freehand" | "auto";
   material?: "copper" | "aluminium";
+  /** Current the wire is carrying (A), user-set until the circuit solver exists. */
+  currentA?: number;
 };
 
 type Def = {

@@ -3601,12 +3601,14 @@ export default function Scene3DViewer() {
                 {propsTarget}
               </div>
             </div>
-            <div>
-              <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
-                Scene
+            {!evPropWire && (
+              <div>
+                <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                  Scene
+                </div>
+                <div className="pt-1 text-sm text-neutral-800">{activeScene.name}</div>
               </div>
-              <div className="pt-1 text-sm text-neutral-800">{activeScene.name}</div>
-            </div>
+            )}
             {!evPropWire && (
               <BasePropsEditor
                 props={currentProps}
