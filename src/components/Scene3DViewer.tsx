@@ -2897,6 +2897,24 @@ export default function Scene3DViewer() {
               </div>
               </>
               )}
+              {wiringSection === "cables" && (
+                <div className="px-4 pb-3">
+                  <div className="mb-1 text-[11px] text-neutral-600">Installation cables (pin to pin)</div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {INSTALL_CABLE_TYPES.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => { stopAllModes(); setWireType(t.id); setEVWireMode(true); }}
+                        className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${evWireMode && wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-[10px] text-neutral-600">Click a type, then click two pins. Uses the Free hand / Auto route and material choice from Wires.</p>
+                  {evWireMode && wireRouteWarning && <p className="mt-1 rounded-md border border-red-400/60 bg-red-500/15 px-2 py-1 text-[10px] font-semibold text-red-700">{wireRouteWarning}</p>}
+                </div>
+              )}
               <SectionHeader id="lines" label="Lines" hint="Aerial line cables" />
               {wiringSection === "lines" && (
                 <div className="px-4 pb-3">
@@ -2968,7 +2986,7 @@ export default function Scene3DViewer() {
                   )}
                 </div>
               )}
-              <SectionHeader id="wires" label="Wires" hint="DC and installation cables" />
+              <SectionHeader id="wires" label="Wires" hint="Single-core wires" />
               {wiringSection === "wires" && (
                 <div className="px-4 pb-3">
                   <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
@@ -2982,22 +3000,32 @@ export default function Scene3DViewer() {
                       </button>
                     ))}
                   </div>
-                  {(["Installation cable", "DC single-core"] as const).map((g) => (
-                    <div key={g} className="mb-2">
-                      <div className="mb-1 text-[11px] text-neutral-600">{g}{g === "DC single-core" ? " (mm²)" : ""}</div>
-                      <div className="grid grid-cols-4 gap-1">
-                        {WIRE_TYPES.filter((t) => t.group === g).map((t) => (
-                          <button
-                            key={t.id}
-                            onClick={() => setWireType(t.id)}
-                            className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
-                          >
-                            {t.label.replace("DC ", "").replace(" mm²", "")}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="mb-1 text-[11px] text-neutral-600">Material</div>
+                  <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                    {(Object.keys(WIRE_MATERIALS) as WireMaterial[]).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setWireMaterial(m)}
+                        className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition ${wireMaterial === m ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                      >
+                        {WIRE_MATERIALS[m].label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mb-2">
+                    <div className="mb-1 text-[11px] text-neutral-600">Wire (mm²)</div>
+                    <div className="grid grid-cols-5 gap-1">
+                      {WIRE_TYPES.map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => setWireType(t.id)}
+                          className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
+                        >
+                          {t.crossSection}
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                   <button
                     onClick={() => { const on = !evWireMode; stopAllModes(); setEVWireMode(on); }}
                     className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${evWireMode ? "border-orange-300/60 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
@@ -3707,7 +3735,25 @@ export default function Scene3DViewer() {
                 <div>Length: <strong>{anyWireLength(evPropWire).toFixed(2)} m</strong></div>
                 <div>From: <strong>{endName(evPropWire.a)}</strong></div>
                 <div>To: <strong>{endName(evPropWire.b)}</strong></div>
-                <div>Resistance: <strong>{(wireResistance(anyWireLength(evPropWire), evPropWire.crossSection) * 1000).toFixed(2)} mΩ</strong> <span className="text-neutral-500">(copper, 20 °C)</span></div>
+                <div>
+                  Material
+                  <div className="mt-1 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                    {(Object.keys(WIRE_MATERIALS) as WireMaterial[]).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, material: m } : w)))}
+                        className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${(evPropWire.material ?? "copper") === m ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                      >
+                        {WIRE_MATERIALS[m].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>Resistance: <strong>{(wireResistance(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material) * 1000).toFixed(2)} mΩ</strong> <span className="text-neutral-500">({WIRE_MATERIALS[evPropWire.material ?? "copper"].label.toLowerCase()}, 20 °C)</span></div>
+                <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700 break-words">
+                  {resistanceFormula(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material)}
+                  <div className="mt-0.5 font-sans text-neutral-500">ρ = resistivity, L = route length, A = conductor cross-section</div>
+                </div>
                 {pinsIncompatible(pinInfo(evPropWire.a)?.pin.role, pinInfo(evPropWire.b)?.pin.role) && (
                   <div className="rounded-lg border border-red-400/60 bg-red-500/15 px-2 py-1 font-semibold text-red-700">Warning: these pins are not normally connected ({pinInfo(evPropWire.a)?.pin.label} → {pinInfo(evPropWire.b)?.pin.label}).</div>
                 )}
@@ -3715,7 +3761,7 @@ export default function Scene3DViewer() {
                 <div>
                   Wire type
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {WIRE_TYPES.map((t) => (
+                    {ALL_WIRE_TYPES.map((t) => (
                       <button
                         key={t.id}
                         onClick={() => setEVWires((prev) => prev.map((w) => w.id === evPropWire.id ? { ...w, wireType: t.id, crossSection: t.crossSection } : w))}
