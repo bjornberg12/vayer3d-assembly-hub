@@ -74,6 +74,7 @@ export type EVWireRecord = {
   wireType?: string;
   waypoints?: [number, number][];
   routingMode?: "freehand" | "auto";
+  material?: "copper" | "aluminium";
 };
 
 type Def = {

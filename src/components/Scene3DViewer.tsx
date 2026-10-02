@@ -37,7 +37,7 @@ import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
   defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireCurveLength,
   pinsOf, evPinWorld, pinWorldOf, chargerPins, ownerOfEnd, PIN_COLORS, pinsIncompatible, wireResistance, type PinDef,
-  LINE_TYPES, WIRE_TYPES, DEFAULT_LINE_TYPE, DEFAULT_WIRE_TYPE, lineTypeOf, wireTypeOf,
+  LINE_TYPES, WIRE_TYPES, INSTALL_CABLE_TYPES, ALL_WIRE_TYPES, WIRE_MATERIALS, resistanceFormula, type WireMaterial, DEFAULT_LINE_TYPE, DEFAULT_WIRE_TYPE, lineTypeOf, wireTypeOf,
   type EVPartRecord, type EVType, type EVWireRecord,
 } from "@/ModelLibrary";
 import { DraggablePanel } from "./DraggablePanel";
@@ -592,15 +592,44 @@ const parsePt = (id?: string | null): GroundPt | null => {
 };
 
 /** Wire curve through optional ground waypoints (wires run just above ground). */
+/** Corner height: just above the higher pin, so a wire never dips through the body a pin sits on. */
+const wireCornerY = (a: [number, number, number], b: [number, number, number]) => Math.max(0.15, a[1] + 0.03, b[1] + 0.03);
+
 function routedWireCurve(a: [number, number, number], b: [number, number, number], wps: Waypoint[]) {
+  const y = wireCornerY(a, b);
   return new THREE.CatmullRomCurve3(
-    [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], 0.15, w[1])), new THREE.Vector3(...b)],
+    [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], y, w[1])), new THREE.Vector3(...b)],
     false,
     "centripetal"
   );
 }
 
 type RouteObstacle = { minX: number; maxX: number; minZ: number; maxZ: number };
+
+function segmentHits(a: Waypoint, b: Waypoint, obstacles: RouteObstacle[]) {
+  for (let i = 1; i < 60; i++) {
+    const t = i / 60;
+    const x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
+    if (obstacles.some((o) => x > o.minX && x < o.maxX && z > o.minZ && z < o.maxZ)) return true;
+  }
+  return false;
+}
+
+/** Keep the user's corners, but detour any straight section that crosses an obstacle. */
+function detourFreehand(from: [number, number, number], to: [number, number, number], wps: Waypoint[], obstacles: RouteObstacle[]): { waypoints: Waypoint[]; blocked: boolean } {
+  const pts: Waypoint[] = [[from[0], from[2]], ...wps, [to[0], to[2]]];
+  const out: Waypoint[] = [];
+  let blocked = false;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p = pts[i], q = pts[i + 1];
+    if (segmentHits(p, q, obstacles)) {
+      const r = orthogonalRoute([p[0], 0, p[1]], [q[0], 0, q[1]], obstacles);
+      if (r) out.push(...r); else blocked = true;
+    }
+    if (i < pts.length - 2) out.push(q);
+  }
+  return { waypoints: out, blocked };
+}
 
 function segmentClear(a: Waypoint, b: Waypoint, obstacles: RouteObstacle[]) {
   return obstacles.every((o) => {
@@ -658,7 +687,8 @@ function orthogonalRoute(from: [number, number, number], to: [number, number, nu
 }
 
 function roundedOrthogonalCurve(a: [number, number, number], b: [number, number, number], wps: Waypoint[]) {
-  const corners = [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], 0.15, w[1])), new THREE.Vector3(...b)];
+  const y = wireCornerY(a, b);
+  const corners = [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], y, w[1])), new THREE.Vector3(...b)];
   if (corners.length < 3) return new THREE.CatmullRomCurve3(corners, false, "centripetal");
   const points: THREE.Vector3[] = [corners[0]];
   for (let i = 1; i < corners.length - 1; i++) {
@@ -1147,6 +1177,7 @@ export default function Scene3DViewer() {
   const [lineType, setLineType] = useState<string>(DEFAULT_LINE_TYPE);
   const [wireType, setWireType] = useState<string>(DEFAULT_WIRE_TYPE);
   const [wireRoutingMode, setWireRoutingMode] = useState<"freehand" | "auto">("freehand");
+  const [wireMaterial, setWireMaterial] = useState<WireMaterial>("copper");
   const [wireRouteWarning, setWireRouteWarning] = useState<string | null>(null);
   const [wiringSection, setWiringSection] = useState<"cables" | "lines" | "wires" | null>("cables");
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
@@ -1303,22 +1334,29 @@ export default function Scene3DViewer() {
     setEVParts((prev) => prev.filter((q) => q.id !== id));
     setEVWires((prev) => prev.filter((w) => ownerOfEnd(w.a) !== id && ownerOfEnd(w.b) !== id));
   };
+  /** Clearance-expanded footprints of every object in the scene (car parts and placed items). */
+  const routingObstacles = (excluded: Set<string | null>): RouteObstacle[] => {
+    const section = wireTypeOf(wireType)?.crossSection ?? 2.5;
+    const clearance = 0.06 + Math.min(Math.sqrt(section) / 100, 0.06);
+    const box = (pos: [number, number, number], rot: number, width: number, depth: number) => {
+      const c = Math.abs(Math.cos(rot));
+      const s = Math.abs(Math.sin(rot));
+      const halfX = (width * c + depth * s) / 2 + clearance;
+      const halfZ = (width * s + depth * c) / 2 + clearance;
+      return { minX: pos[0] - halfX, maxX: pos[0] + halfX, minZ: pos[2] - halfZ, maxZ: pos[2] + halfZ };
+    };
+    const ITEM_FOOTPRINT: Record<string, [number, number]> = {
+      evcharger: [0.8, 0.6], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
+    };
+    const parts = sceneId === "electriccar" ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
+    const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
+    return [...parts, ...items];
+  };
   const autoWireWaypoints = (aId: string, bId: string): Waypoint[] | null => {
     const a = wireEnd(aId);
     const b = wireEnd(bId);
     if (!a || !b) return null;
-    const excluded = new Set([ownerOfEnd(aId), ownerOfEnd(bId)]);
-    const section = wireTypeOf(wireType)?.crossSection ?? 2.5;
-    const clearance = 0.06 + Math.min(Math.sqrt(section) / 100, 0.06);
-    const obstacles = evParts.filter((part) => !excluded.has(part.id)).map((part) => {
-      const [width, depth] = EV_DEFS[part.type].footprint;
-      const c = Math.abs(Math.cos(part.rotationY));
-      const s = Math.abs(Math.sin(part.rotationY));
-      const halfX = (width * c + depth * s) / 2 + clearance;
-      const halfZ = (width * s + depth * c) / 2 + clearance;
-      return { minX: part.position[0] - halfX, maxX: part.position[0] + halfX, minZ: part.position[2] - halfZ, maxZ: part.position[2] + halfZ };
-    });
-    return orthogonalRoute(a, b, obstacles);
+    return orthogonalRoute(a, b, routingObstacles(new Set([ownerOfEnd(aId), ownerOfEnd(bId)])));
   };
   const handleEVWireClick = (id: string, wps: Waypoint[] = cableDraft) => {
     if (!id.includes("#") || !pinInfo(id)) return;
@@ -1327,7 +1365,16 @@ export default function Scene3DViewer() {
     if (!evWireFirst) { setCableDraft([]); return setEVWireFirst(id); }
     if (evWireFirst === id) { setCableDraft([]); return setEVWireFirst(null); }
     const a = evWireFirst;
-    const routed = wireRoutingMode === "auto" ? autoWireWaypoints(a, id) : wps;
+    let routed: Waypoint[] | null = wps;
+    if (wireRoutingMode === "auto") routed = autoWireWaypoints(a, id);
+    else {
+      const pa = wireEnd(a), pb = wireEnd(id);
+      if (pa && pb) {
+        const d = detourFreehand(pa, pb, wps, routingObstacles(new Set([ownerOfEnd(a), ownerOfEnd(id)])));
+        routed = d.waypoints;
+        if (d.blocked) setWireRouteWarning("Part of this wire could not be routed around an object.");
+      }
+    }
     if (wireRoutingMode === "auto" && routed === null) {
       setWireRouteWarning("No clear automatic route was found. Move a component or switch to Free hand.");
       return;
@@ -1336,7 +1383,7 @@ export default function Scene3DViewer() {
     setEVWires((prev) =>
       !waypoints.length && prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
         ? prev
-        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType, routingMode: wireRoutingMode, waypoints: waypoints.length ? waypoints : undefined }]
+        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType, material: wireMaterial, routingMode: wireRoutingMode, waypoints: waypoints.length ? waypoints : undefined }]
     );
     setEVWireFirst(null);
     setCableDraft([]);
@@ -2850,6 +2897,24 @@ export default function Scene3DViewer() {
               </div>
               </>
               )}
+              {wiringSection === "cables" && (
+                <div className="px-4 pb-3">
+                  <div className="mb-1 text-[11px] text-neutral-600">Installation cables (pin to pin)</div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {INSTALL_CABLE_TYPES.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => { stopAllModes(); setWireType(t.id); setEVWireMode(true); }}
+                        className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${evWireMode && wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-1 text-[10px] text-neutral-600">Click a type, then click two pins. Uses the Free hand / Auto route and material choice from Wires.</p>
+                  {evWireMode && wireRouteWarning && <p className="mt-1 rounded-md border border-red-400/60 bg-red-500/15 px-2 py-1 text-[10px] font-semibold text-red-700">{wireRouteWarning}</p>}
+                </div>
+              )}
               <SectionHeader id="lines" label="Lines" hint="Aerial line cables" />
               {wiringSection === "lines" && (
                 <div className="px-4 pb-3">
@@ -2921,7 +2986,7 @@ export default function Scene3DViewer() {
                   )}
                 </div>
               )}
-              <SectionHeader id="wires" label="Wires" hint="DC and installation cables" />
+              <SectionHeader id="wires" label="Wires" hint="Single-core wires" />
               {wiringSection === "wires" && (
                 <div className="px-4 pb-3">
                   <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
@@ -2935,22 +3000,32 @@ export default function Scene3DViewer() {
                       </button>
                     ))}
                   </div>
-                  {(["Installation cable", "DC single-core"] as const).map((g) => (
-                    <div key={g} className="mb-2">
-                      <div className="mb-1 text-[11px] text-neutral-600">{g}{g === "DC single-core" ? " (mm²)" : ""}</div>
-                      <div className="grid grid-cols-4 gap-1">
-                        {WIRE_TYPES.filter((t) => t.group === g).map((t) => (
-                          <button
-                            key={t.id}
-                            onClick={() => setWireType(t.id)}
-                            className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
-                          >
-                            {t.label.replace("DC ", "").replace(" mm²", "")}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="mb-1 text-[11px] text-neutral-600">Material</div>
+                  <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                    {(Object.keys(WIRE_MATERIALS) as WireMaterial[]).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setWireMaterial(m)}
+                        className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition ${wireMaterial === m ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                      >
+                        {WIRE_MATERIALS[m].label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mb-2">
+                    <div className="mb-1 text-[11px] text-neutral-600">Wire (mm²)</div>
+                    <div className="grid grid-cols-5 gap-1">
+                      {WIRE_TYPES.map((t) => (
+                        <button
+                          key={t.id}
+                          onClick={() => setWireType(t.id)}
+                          className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
+                        >
+                          {t.crossSection}
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  </div>
                   <button
                     onClick={() => { const on = !evWireMode; stopAllModes(); setEVWireMode(on); }}
                     className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${evWireMode ? "border-orange-300/60 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
@@ -3660,7 +3735,25 @@ export default function Scene3DViewer() {
                 <div>Length: <strong>{anyWireLength(evPropWire).toFixed(2)} m</strong></div>
                 <div>From: <strong>{endName(evPropWire.a)}</strong></div>
                 <div>To: <strong>{endName(evPropWire.b)}</strong></div>
-                <div>Resistance: <strong>{(wireResistance(anyWireLength(evPropWire), evPropWire.crossSection) * 1000).toFixed(2)} mΩ</strong> <span className="text-neutral-500">(copper, 20 °C)</span></div>
+                <div>
+                  Material
+                  <div className="mt-1 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                    {(Object.keys(WIRE_MATERIALS) as WireMaterial[]).map((m) => (
+                      <button
+                        key={m}
+                        onClick={() => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, material: m } : w)))}
+                        className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${(evPropWire.material ?? "copper") === m ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                      >
+                        {WIRE_MATERIALS[m].label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>Resistance: <strong>{(wireResistance(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material) * 1000).toFixed(2)} mΩ</strong> <span className="text-neutral-500">({WIRE_MATERIALS[evPropWire.material ?? "copper"].label.toLowerCase()}, 20 °C)</span></div>
+                <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700 break-words">
+                  {resistanceFormula(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material)}
+                  <div className="mt-0.5 font-sans text-neutral-500">ρ = resistivity, L = route length, A = conductor cross-section</div>
+                </div>
                 {pinsIncompatible(pinInfo(evPropWire.a)?.pin.role, pinInfo(evPropWire.b)?.pin.role) && (
                   <div className="rounded-lg border border-red-400/60 bg-red-500/15 px-2 py-1 font-semibold text-red-700">Warning: these pins are not normally connected ({pinInfo(evPropWire.a)?.pin.label} → {pinInfo(evPropWire.b)?.pin.label}).</div>
                 )}
@@ -3668,7 +3761,7 @@ export default function Scene3DViewer() {
                 <div>
                   Wire type
                   <div className="mt-1 flex flex-wrap gap-1">
-                    {WIRE_TYPES.map((t) => (
+                    {ALL_WIRE_TYPES.map((t) => (
                       <button
                         key={t.id}
                         onClick={() => setEVWires((prev) => prev.map((w) => w.id === evPropWire.id ? { ...w, wireType: t.id, crossSection: t.crossSection } : w))}

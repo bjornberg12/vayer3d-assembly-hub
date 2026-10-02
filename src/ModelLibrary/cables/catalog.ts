@@ -28,25 +28,46 @@ export const lineTypeOf = (id?: string) => LINE_TYPES.find((t) => t.id === id) ?
 export type WireType = {
   id: string;
   label: string;
-  group: "Installation cable" | "DC single-core";
+  group: "Installation cable" | "Wire";
   crossSection: number; // mm² per core
   cores: number;
   color: string;
   colorName: string;
 };
 
-export const WIRE_TYPES: WireType[] = [
+/** Multi-core installation cables (shown in Wiring → Cables, routed pin-to-pin). */
+export const INSTALL_CABLE_TYPES: WireType[] = [
   { id: "3g1.5", label: "3G1.5", group: "Installation cable", crossSection: 1.5, cores: 3, color: "#e5e7eb", colorName: "White" },
   { id: "3g2.5", label: "3G2.5", group: "Installation cable", crossSection: 2.5, cores: 3, color: "#e5e7eb", colorName: "White" },
   { id: "5g2.5", label: "5G2.5", group: "Installation cable", crossSection: 2.5, cores: 5, color: "#d1d5db", colorName: "Grey" },
   { id: "5g6", label: "5G6", group: "Installation cable", crossSection: 6, cores: 5, color: "#9ca3af", colorName: "Grey" },
-  ...[4, 6, 10, 16, 35, 50, 95].map((s) => ({
-    id: `dc-${s}`, label: `DC ${s} mm²`, group: "DC single-core" as const, crossSection: s, cores: 1,
-    color: s >= 35 ? "#f07a1a" : "#b91c1c", colorName: s >= 35 ? "Orange" : "Red",
-  })),
 ];
-export const DEFAULT_WIRE_TYPE = "3g2.5";
-export const wireTypeOf = (id?: string) => WIRE_TYPES.find((t) => t.id === id);
 
-/** Copper conductor resistance at 20 °C (Ω) for one core. */
-export const wireResistance = (lengthM: number, mm2: number) => (0.0175 * lengthM) / Math.max(mm2, 0.01);
+/** Single-core wires, usable for AC or DC. */
+export const WIRE_TYPES: WireType[] = [0.5, 0.75, 1, 1.5, 2.5, 4, 6, 10, 16, 25, 35, 50, 70, 95].map((s) => ({
+  id: `w-${s}`, label: `Wire ${s} mm²`, group: "Wire" as const, crossSection: s, cores: 1,
+  color: s >= 35 ? "#f07a1a" : "#b91c1c", colorName: s >= 35 ? "Orange" : "Red",
+}));
+export const DEFAULT_WIRE_TYPE = "w-2.5";
+export const ALL_WIRE_TYPES = [...INSTALL_CABLE_TYPES, ...WIRE_TYPES];
+export const wireTypeOf = (id?: string) => {
+  if (id?.startsWith("dc-")) id = `w-${id.slice(3)}`; // legacy DC ids
+  return ALL_WIRE_TYPES.find((t) => t.id === id);
+};
+
+export type WireMaterial = "copper" | "aluminium";
+/** Resistivity at 20 °C in Ω·mm²/m. */
+export const WIRE_MATERIALS: Record<WireMaterial, { label: string; rho: number }> = {
+  copper: { label: "Copper", rho: 0.0175 },
+  aluminium: { label: "Aluminium", rho: 0.0282 },
+};
+
+/** Conductor resistance at 20 °C (Ω) for one core. */
+export const wireResistance = (lengthM: number, mm2: number, material: WireMaterial = "copper") =>
+  (WIRE_MATERIALS[material].rho * lengthM) / Math.max(mm2, 0.01);
+
+export const resistanceFormula = (lengthM: number, mm2: number, material: WireMaterial = "copper") => {
+  const rho = WIRE_MATERIALS[material].rho;
+  const r = wireResistance(lengthM, mm2, material) * 1000;
+  return `R = ρ·L/A = ${rho} Ω·mm²/m × ${lengthM.toFixed(2)} m / ${mm2} mm² = ${r.toFixed(2)} mΩ`;
+};
