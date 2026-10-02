@@ -40,6 +40,8 @@ function shortestPath(wires: SolverWire[], start: string, goal: string): { r: nu
 
 export function solveCircuits(sources: SolverSource[], wires: SolverWire[]) {
   const wireCurrent: Record<string, number> = {};
+  const re: Record<string, number> = {}, im: Record<string, number> = {};
+  const ANG: Record<string, number> = { dcp: 0, l1: 0, l2: -120, l3: 120 };
   const loops: Record<string, LoopResult[]> = {};
   for (const s of sources) {
     const pairs: [string, string, number][] =
@@ -53,8 +55,11 @@ export function solveCircuits(sources: SolverSource[], wires: SolverWire[]) {
       const r = path.r + (s.kind === "DC" ? s.internalR : 0);
       const i = r > 0 ? v / r : Infinity;
       loops[s.id].push({ from: a, to: b, voltage: v, resistance: r, current: i, wires: path.wires });
-      for (const wid of path.wires) wireCurrent[wid] = (wireCurrent[wid] ?? 0) + i;
+      // AC phases add as phasors (120° apart), so a balanced shared neutral carries ~0 A.
+      const th = (ANG[a] * Math.PI) / 180;
+      for (const wid of path.wires) { re[wid] = (re[wid] ?? 0) + i * Math.cos(th); im[wid] = (im[wid] ?? 0) + i * Math.sin(th); }
     }
   }
+  for (const k of Object.keys(re)) wireCurrent[k] = Math.hypot(re[k], im[k]);
   return { wireCurrent, loops };
 }
