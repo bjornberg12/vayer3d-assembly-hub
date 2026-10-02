@@ -3601,12 +3601,14 @@ export default function Scene3DViewer() {
                 {propsTarget}
               </div>
             </div>
-            <div>
-              <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
-                Scene
+            {!evPropWire && (
+              <div>
+                <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                  Scene
+                </div>
+                <div className="pt-1 text-sm text-neutral-800">{activeScene.name}</div>
               </div>
-              <div className="pt-1 text-sm text-neutral-800">{activeScene.name}</div>
-            </div>
+            )}
             {!evPropWire && (
               <BasePropsEditor
                 props={currentProps}
@@ -3754,6 +3756,32 @@ export default function Scene3DViewer() {
                   {resistanceFormula(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material)}
                   <div className="mt-0.5 font-sans text-neutral-500">ρ = resistivity, L = route length, A = conductor cross-section</div>
                 </div>
+                <label className="block">
+                  <span className="flex justify-between">
+                    <span>Current</span>
+                    <span className="font-mono font-semibold">{(evPropWire.currentA ?? 0).toFixed(1)} A</span>
+                  </span>
+                  <input
+                    type="number" min={0} max={1000} step={0.5}
+                    value={evPropWire.currentA ?? 0}
+                    onChange={(e) => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, currentA: Math.max(0, Number(e.target.value) || 0) } : w)))}
+                    className="mt-0.5 w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+                  />
+                </label>
+                {(() => {
+                  const r = wireResistance(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material);
+                  const i = evPropWire.currentA ?? 0;
+                  const drop = r * i;
+                  return (
+                    <>
+                      <div>Voltage drop: <strong>{drop < 1 ? `${(drop * 1000).toFixed(1)} mV` : `${drop.toFixed(2)} V`}</strong></div>
+                      <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700 break-words">
+                        U = R × I = {(r * 1000).toFixed(2)} mΩ × {i.toFixed(1)} A = {drop < 1 ? `${(drop * 1000).toFixed(1)} mV` : `${drop.toFixed(3)} V`}
+                        <div className="mt-0.5 font-sans text-neutral-500">Voltage lost along the wire at the current above (one conductor, 20 °C).</div>
+                      </div>
+                    </>
+                  );
+                })()}
                 {pinsIncompatible(pinInfo(evPropWire.a)?.pin.role, pinInfo(evPropWire.b)?.pin.role) && (
                   <div className="rounded-lg border border-red-400/60 bg-red-500/15 px-2 py-1 font-semibold text-red-700">Warning: these pins are not normally connected ({pinInfo(evPropWire.a)?.pin.label} → {pinInfo(evPropWire.b)?.pin.label}).</div>
                 )}
