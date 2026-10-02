@@ -227,17 +227,7 @@ function Box({ size, pos, mat }: { size: [number, number, number]; pos: [number,
   );
 }
 
-function Terminal({ y }: { y: number }) {
-  return (
-    <mesh position={[0, y - 0.02, 0]}>
-      <cylinderGeometry args={[0.035, 0.035, 0.05, 12]} />
-      <meshStandardMaterial {...M.orange} />
-    </mesh>
-  );
-}
-
 function Model({ type }: { type: EVType }) {
-  const ty = EV_DEFS[type].terminalY;
   switch (type) {
     case "battery":
       return (<>
@@ -245,7 +235,6 @@ function Model({ type }: { type: EVType }) {
         {Array.from({ length: 6 }).map((_, i) => (
           <Box key={i} size={[1.3, 0.025, 0.28]} pos={[0, 0.465, -0.85 + i * 0.34]} mat="alu" />
         ))}
-        <Terminal y={ty} />
       </>);
     case "motor":
       return (<>
@@ -257,21 +246,19 @@ function Model({ type }: { type: EVType }) {
           <cylinderGeometry args={[0.04, 0.04, 1.4, 12]} />
           <meshStandardMaterial {...M.black} />
         </mesh>
-        <group position={[0.3, 0, 0]}><Terminal y={ty} /></group>
         <Box size={[0.06, 0.08, 0.06]} pos={[0.3, 0.58, 0]} mat="orange" />
       </>);
     case "inverter":
       return (<>
         <Box size={[0.4, 0.14, 0.3]} pos={[-0.15, 0.62, 0]} mat="alu" />
         <Box size={[0.4, 0.03, 0.3]} pos={[-0.15, 0.71, 0]} mat="housing" />
-        <group position={[0, 0.15, 0]}><Terminal y={ty - 0.15} /></group>
       </>);
     case "obc":
-      return (<><Box size={[0.32, 0.12, 0.28]} pos={[0, 0.46, 0]} mat="alu" /><Terminal y={ty} /></>);
+      return <Box size={[0.32, 0.12, 0.28]} pos={[0, 0.46, 0]} mat="alu" />;
     case "dcdc":
-      return (<><Box size={[0.24, 0.1, 0.2]} pos={[0, 0.45, 0]} mat="housing" /><Terminal y={ty} /></>);
+      return <Box size={[0.24, 0.1, 0.2]} pos={[0, 0.45, 0]} mat="housing" />;
     case "pdu":
-      return (<><Box size={[0.32, 0.14, 0.24]} pos={[0, 0.47, 0]} mat="housing" /><Box size={[0.08, 0.04, 0.06]} pos={[0.08, 0.56, 0]} mat="orange" /><Terminal y={ty} /></>);
+      return (<><Box size={[0.32, 0.14, 0.24]} pos={[0, 0.47, 0]} mat="housing" /><Box size={[0.08, 0.04, 0.06]} pos={[0.08, 0.56, 0]} mat="orange" /></>);
     case "chargeport":
       return (<>
         <mesh position={[0, 0.75, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
@@ -279,7 +266,6 @@ function Model({ type }: { type: EVType }) {
           <meshStandardMaterial {...M.black} />
         </mesh>
         <Box size={[0.03, 0.18, 0.14]} pos={[-0.05, 0.75, 0]} mat="housing" />
-        <Terminal y={ty + 0.05} />
       </>);
     case "aux12":
       return (<>
@@ -295,7 +281,6 @@ function Model({ type }: { type: EVType }) {
         {Array.from({ length: 5 }).map((_, i) => (
           <Box key={i} size={[0.01, 0.12, 0.065]} pos={[-0.1 + i * 0.05, 0.75, 0]} mat="housing" />
         ))}
-        <Terminal y={ty} />
       </>);
     case "compressor":
       return (<>
@@ -303,7 +288,6 @@ function Model({ type }: { type: EVType }) {
           <cylinderGeometry args={[0.08, 0.08, 0.26, 20]} />
           <meshStandardMaterial {...M.alu} />
         </mesh>
-        <Terminal y={ty} />
       </>);
   }
 }

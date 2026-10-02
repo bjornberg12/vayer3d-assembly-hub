@@ -628,6 +628,8 @@ function CableRouter({
   onAdd,
   onFinish,
   skipRef,
+  snapPins = [],
+  pinOnlyEnd = false,
 }: {
   active: boolean;
   start: [number, number, number] | null;
@@ -635,23 +637,46 @@ function CableRouter({
   onAdd: (p: Waypoint) => void;
   onFinish: (p: Waypoint) => void;
   skipRef: React.MutableRefObject<number>;
+  snapPins?: { id: string; point: [number, number, number]; color: string }[];
+  pinOnlyEnd?: boolean;
 }) {
   const { camera, gl } = useThree();
   const [hover, setHover] = useState<GroundPt | null>(null);
+  const [snapPin, setSnapPin] = useState<{ id: string; point: [number, number, number]; color: string } | null>(null);
   const addRef = useRef(onAdd);
   const finishRef = useRef(onFinish);
+  const snapPinsRef = useRef(snapPins);
   addRef.current = onAdd;
   finishRef.current = onFinish;
+  snapPinsRef.current = snapPins;
   useEffect(() => {
     if (!active) {
       setHover(null);
+      setSnapPin(null);
       return;
     }
     const dom = gl.domElement;
     let dx = 0, dy = 0;
     let timer: number | null = null;
     const down = (e: PointerEvent) => { dx = e.clientX; dy = e.clientY; };
-    const move = (e: PointerEvent) => setHover(groundHit(e, dom, camera));
+    const move = (e: PointerEvent) => {
+      setHover(groundHit(e, dom, camera));
+      let nearest: { id: string; point: [number, number, number]; color: string } | null = null;
+      let nearestPx = 72;
+      const rect = dom.getBoundingClientRect();
+      for (const candidate of snapPinsRef.current) {
+        const projected = new THREE.Vector3(...candidate.point).project(camera);
+        if (projected.z < -1 || projected.z > 1) continue;
+        const sx = rect.left + ((projected.x + 1) / 2) * rect.width;
+        const sy = rect.top + ((1 - projected.y) / 2) * rect.height;
+        const distance = Math.hypot(e.clientX - sx, e.clientY - sy);
+        if (distance < nearestPx) {
+          nearestPx = distance;
+          nearest = candidate;
+        }
+      }
+      setSnapPin(nearest);
+    };
     const up = (e: PointerEvent) => {
       if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
       if (Math.hypot(e.clientX - dx, e.clientY - dy) > 4) return;
@@ -670,6 +695,7 @@ function CableRouter({
       }, 260);
     };
     const dbl = (e: MouseEvent) => {
+      if (pinOnlyEnd) return;
       if (performance.now() - skipRef.current < 400) return;
       const p = groundHit(e, dom, camera);
       if (p) finishRef.current(p);
@@ -685,12 +711,12 @@ function CableRouter({
       dom.removeEventListener("pointerup", up);
       dom.removeEventListener("dblclick", dbl);
     };
-  }, [active, camera, gl, skipRef]);
+  }, [active, camera, gl, skipRef, pinOnlyEnd]);
   if (!active) return null;
   const pts: [number, number, number][] = [
     ...(start ? [[start[0], 0.03, start[2]] as [number, number, number]] : []),
     ...draft.map((w) => [w[0], 0.03, w[1]] as [number, number, number]),
-    ...(hover ? [[hover[0], 0.03, hover[1]] as [number, number, number]] : []),
+    ...(snapPin ? [snapPin.point] : hover ? [[hover[0], 0.03, hover[1]] as [number, number, number]] : []),
   ];
   return (
     <group>
@@ -699,6 +725,12 @@ function CableRouter({
         <mesh position={[hover[0], 0.05, hover[1]]} raycast={() => null}>
           <sphereGeometry args={[0.08, 12, 10]} />
           <meshBasicMaterial color="#f59e0b" transparent opacity={0.6} />
+        </mesh>
+      )}
+      {snapPin && (
+        <mesh position={snapPin.point} raycast={() => null} renderOrder={20}>
+          <sphereGeometry args={[0.04, 16, 12]} />
+          <meshBasicMaterial color={snapPin.color} transparent opacity={0.85} depthTest={false} />
         </mesh>
       )}
       {draft.map((w, i) => (
@@ -1190,6 +1222,7 @@ export default function Scene3DViewer() {
     setEVWires((prev) => prev.filter((w) => ownerOfEnd(w.a) !== id && ownerOfEnd(w.b) !== id));
   };
   const handleEVWireClick = (id: string, wps: Waypoint[] = cableDraft) => {
+    if (!id.includes("#") || !pinInfo(id)) return;
     endpointClickAt.current = performance.now();
     if (!evWireFirst) { setCableDraft([]); return setEVWireFirst(id); }
     if (evWireFirst === id) { setCableDraft([]); return setEVWireFirst(null); }
@@ -1483,6 +1516,14 @@ export default function Scene3DViewer() {
     pendingAdd || pendingEV ? null : cableMode ? "cable" : connectMode ? "line" : evWireMode ? "wire" : null;
   const routeFirst =
     routingKind === "cable" ? cableFirst : routingKind === "line" ? connectFirst : routingKind === "wire" ? evWireFirst : null;
+  const availableWirePins = [
+    ...(sceneId === "electriccar" ? evParts.map((part) => ({ id: part.id, pins: pinsOf(part.type), pos: part.position, rot: part.rotationY })) : []),
+    ...addedItems.filter((item) => item.type === "evcharger").map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
+  ].flatMap((owner) => owner.pins.map((pin) => ({
+    id: `${owner.id}#${pin.id}`,
+    point: pinWorldOf(pin.local, owner.pos, owner.rot),
+    color: PIN_COLORS[pin.role],
+  }))).filter((pin) => pin.id !== evWireFirst);
   const finishRoute = (endId: string, wps: Waypoint[] = cableDraft) => {
     if (routingKind === "cable") handleCableClick(endId, wps);
     else if (routingKind === "line") handleItemClickForConnect(endId, wps);
@@ -1511,7 +1552,7 @@ export default function Scene3DViewer() {
       } else if (e.key === "Backspace") {
         e.preventDefault();
         setCableDraft((d) => d.slice(0, -1));
-      } else if (e.key === "Enter" && cableDraft.length) {
+      } else if (e.key === "Enter" && cableDraft.length && routingKind !== "wire") {
         e.preventDefault();
         const last = cableDraft[cableDraft.length - 1];
         finishRoute(makePt(last), cableDraft.slice(0, -1));
@@ -1677,14 +1718,9 @@ export default function Scene3DViewer() {
                 {evParts.map((part) => (
                   <group key={part.id}>
                     <EVPart part={part} />
-                    {(evWireMode || moveMode) && (
+                    {moveMode && (
                       <mesh
                         position={[part.position[0], 0.5, part.position[2]]}
-                        onClick={(e) => {
-                          if (!evWireMode) return;
-                          e.stopPropagation();
-                          handleEVWireClick(part.id);
-                        }}
                         onPointerDown={(e) => {
                           if (!moveMode || e.button !== 0) return;
                           e.stopPropagation();
@@ -1693,7 +1729,7 @@ export default function Scene3DViewer() {
                       >
                         <sphereGeometry args={[0.2, 16, 16]} />
                         <meshBasicMaterial
-                          color={evWireFirst === part.id || draggingId === part.id ? "#f59e0b" : moveMode ? "#a855f7" : "#f97316"}
+                          color={draggingId === part.id ? "#f59e0b" : "#a855f7"}
                           transparent
                           opacity={0.35}
                           depthTest={false}
@@ -1811,15 +1847,10 @@ export default function Scene3DViewer() {
                     <EVCharger kind={String(objectProps[item.id]?.values.chargerType ?? "ac-wall")} />
                   )}
                   {/* Invisible proxy for connect / move mode */}
-                  {(connectMode || moveMode || evWireMode) && (
+                   {(connectMode || moveMode) && (
                     <mesh
                       position={[0, 5, 0]}
                       onClick={(e) => {
-                        if (evWireMode) {
-                          e.stopPropagation();
-                          handleEVWireClick(item.id);
-                          return;
-                        }
                         if (!connectMode) return;
                         e.stopPropagation();
                         handleItemClickForConnect(item.id);
@@ -1835,10 +1866,8 @@ export default function Scene3DViewer() {
                         color={
                           draggingId === item.id
                             ? "#f59e0b"
-                            : isSelected || evWireFirst === item.id
+                            : isSelected
                             ? "#22c55e"
-                            : evWireMode
-                            ? "#f97316"
                             : moveMode
                             ? "#a855f7"
                             : "#3b82f6"
@@ -2011,6 +2040,8 @@ export default function Scene3DViewer() {
               if (routeFirst) finishRoute(makePt(p));
             }}
             skipRef={endpointClickAt}
+            snapPins={routingKind === "wire" && routeFirst ? availableWirePins : []}
+            pinOnlyEnd={routingKind === "wire"}
           />
           {editRoute && selectedCable && (() => {
             const a = cableEndpoints.find((e) => e.id === selectedCable.a);
@@ -2806,7 +2837,7 @@ export default function Scene3DViewer() {
                     <Cable className="h-3.5 w-3.5" />
                     {evWireMode ? "Wiring…" : "Wire objects"}
                   </button>
-                  <p className="mt-1 text-[10px] text-neutral-600">Click an object or the ground to start, click the ground for corners, then click an object — or double-click to end anywhere. Click a wire to edit it.</p>
+                   <p className="mt-1 text-[10px] text-neutral-600">Click a connection pin to start, click the ground for route corners, then click another pin to finish. The dashed preview snaps to the nearest pin.</p>
                 </div>
               )}
             </DraggablePanel>
@@ -2852,8 +2883,8 @@ export default function Scene3DViewer() {
           <span>
             {wireTypeOf(wireType)?.label}:{" "}
             {evWireFirst
-              ? `corners ${cableDraft.length} — click an object, or double-click to end here · Backspace undo, Enter finish, Esc cancel`
-              : "click an object or the ground to start a wire"}
+               ? `corners ${cableDraft.length} — click another pin to finish · Backspace undo, Esc cancel`
+               : "click a connection pin to start a wire"}
           </span>
           <button
             onClick={() => { setEVWireMode(false); setEVWireFirst(null); }}
@@ -3491,12 +3522,6 @@ export default function Scene3DViewer() {
                     );
                   })}
                 </div>
-                <button
-                  onClick={() => { setEVWireMode(true); setEVWireFirst(evPropPart.id); setMoveMode(false); setPropsTarget(null); setPropsOwnerId(null); }}
-                  className="w-full rounded-lg border border-orange-400/60 bg-orange-500/25 px-3 py-2 text-xs font-semibold text-orange-800 transition hover:bg-orange-500/35"
-                >
-                  Wire from this part
-                </button>
                 <button
                   onClick={() => { removeEVPart(evPropPart.id); setPropsTarget(null); setPropsOwnerId(null); setPartLabel(null); setPartLabelPos(null); }}
                   className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-500/35"
