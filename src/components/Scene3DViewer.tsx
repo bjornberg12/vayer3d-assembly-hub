@@ -3622,6 +3622,57 @@ export default function Scene3DViewer() {
                 <div className="pt-1 text-sm text-neutral-800">{activeScene.name}</div>
               </div>
             )}
+            {(() => {
+              const item = addedItems.find((i) => i.id === propsOwnerId);
+              const obj = item ?? evPropPart;
+              if (!obj) return null;
+              const update = (patch: { position?: [number, number, number]; rotationY?: number }) => {
+                if (item) setAddedItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
+                else if (evPropPart) setEVParts((prev) => prev.map((q) => (q.id === evPropPart.id ? { ...q, ...patch } : q)));
+              };
+              const deg = Math.round((((obj.rotationY ?? 0) * 180) / Math.PI) % 360 + 360) % 360;
+              const axisInput = (idx: 0 | 2, label: string) => (
+                <label className="flex items-center gap-1.5">
+                  <span className="w-3 text-[11px] font-semibold">{label}</span>
+                  <input
+                    type="number" step={0.05}
+                    value={Number(obj.position[idx].toFixed(3))}
+                    onChange={(e) => {
+                      const p = [...obj.position] as [number, number, number];
+                      p[idx] = Number(e.target.value) || 0;
+                      update({ position: p });
+                    }}
+                    className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+                  />
+                  <span className="text-[10px] text-neutral-500">m</span>
+                </label>
+              );
+              return (
+                <div className="space-y-2 text-xs text-neutral-800">
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Position &amp; rotation</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {axisInput(0, "X")}
+                    {axisInput(2, "Z")}
+                  </div>
+                  <div>
+                    <span className="flex justify-between text-[11px]"><span>Rotation</span><span className="font-mono font-semibold">{deg}°</span></span>
+                    <div className="flex items-center gap-1.5">
+                      <button onClick={() => update({ rotationY: ((deg - 15) * Math.PI) / 180 })} className="rounded-md border border-white/60 bg-white/55 px-2 py-0.5 text-[11px] font-semibold hover:bg-white/80" aria-label="Rotate left">⟲</button>
+                      <input type="range" min={0} max={359} step={1} value={deg}
+                        onChange={(e) => update({ rotationY: (Number(e.target.value) * Math.PI) / 180 })}
+                        className="w-full accent-orange-500" />
+                      <button onClick={() => update({ rotationY: ((deg + 15) * Math.PI) / 180 })} className="rounded-md border border-white/60 bg-white/55 px-2 py-0.5 text-[11px] font-semibold hover:bg-white/80" aria-label="Rotate right">⟳</button>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => { const on = !moveMode; stopAllModes(); setMoveMode(on); }}
+                    className={`w-full rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${moveMode ? "border-amber-400 bg-amber-400/80 text-neutral-900" : "border-white/60 bg-white/45 text-neutral-800 hover:bg-white/70"}`}
+                  >
+                    {moveMode ? "Done moving" : "Drag to move with mouse"}
+                  </button>
+                </div>
+              );
+            })()}
             {!evPropWire && (
               <BasePropsEditor
                 props={currentProps}
@@ -3766,15 +3817,6 @@ export default function Scene3DViewer() {
                     />
                   </label>
                 ))}
-                <label className="block text-xs text-neutral-800">
-                  Rotation {Math.round((evPropPart.rotationY * 180) / Math.PI)}°
-                  <input
-                    type="range" min={0} max={360} step={15}
-                    value={Math.round((evPropPart.rotationY * 180) / Math.PI)}
-                    onChange={(e) => setEVParts((prev) => prev.map((q) => q.id === evPropPart.id ? { ...q, rotationY: (Number(e.target.value) * Math.PI) / 180 } : q))}
-                    className="w-full accent-orange-500"
-                  />
-                </label>
                 <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Pins</div>
                 <div className="space-y-0.5">
                   {pinsOf(evPropPart.type).map((pin) => {
