@@ -592,15 +592,44 @@ const parsePt = (id?: string | null): GroundPt | null => {
 };
 
 /** Wire curve through optional ground waypoints (wires run just above ground). */
+/** Corner height: just above the higher pin, so a wire never dips through the body a pin sits on. */
+const wireCornerY = (a: [number, number, number], b: [number, number, number]) => Math.max(0.15, a[1] + 0.03, b[1] + 0.03);
+
 function routedWireCurve(a: [number, number, number], b: [number, number, number], wps: Waypoint[]) {
+  const y = wireCornerY(a, b);
   return new THREE.CatmullRomCurve3(
-    [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], 0.15, w[1])), new THREE.Vector3(...b)],
+    [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], y, w[1])), new THREE.Vector3(...b)],
     false,
     "centripetal"
   );
 }
 
 type RouteObstacle = { minX: number; maxX: number; minZ: number; maxZ: number };
+
+function segmentHits(a: Waypoint, b: Waypoint, obstacles: RouteObstacle[]) {
+  for (let i = 1; i < 60; i++) {
+    const t = i / 60;
+    const x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
+    if (obstacles.some((o) => x > o.minX && x < o.maxX && z > o.minZ && z < o.maxZ)) return true;
+  }
+  return false;
+}
+
+/** Keep the user's corners, but detour any straight section that crosses an obstacle. */
+function detourFreehand(from: [number, number, number], to: [number, number, number], wps: Waypoint[], obstacles: RouteObstacle[]): { waypoints: Waypoint[]; blocked: boolean } {
+  const pts: Waypoint[] = [[from[0], from[2]], ...wps, [to[0], to[2]]];
+  const out: Waypoint[] = [];
+  let blocked = false;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p = pts[i], q = pts[i + 1];
+    if (segmentHits(p, q, obstacles)) {
+      const r = orthogonalRoute([p[0], 0, p[1]], [q[0], 0, q[1]], obstacles);
+      if (r) out.push(...r); else blocked = true;
+    }
+    if (i < pts.length - 2) out.push(q);
+  }
+  return { waypoints: out, blocked };
+}
 
 function segmentClear(a: Waypoint, b: Waypoint, obstacles: RouteObstacle[]) {
   return obstacles.every((o) => {
@@ -658,7 +687,8 @@ function orthogonalRoute(from: [number, number, number], to: [number, number, nu
 }
 
 function roundedOrthogonalCurve(a: [number, number, number], b: [number, number, number], wps: Waypoint[]) {
-  const corners = [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], 0.15, w[1])), new THREE.Vector3(...b)];
+  const y = wireCornerY(a, b);
+  const corners = [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], y, w[1])), new THREE.Vector3(...b)];
   if (corners.length < 3) return new THREE.CatmullRomCurve3(corners, false, "centripetal");
   const points: THREE.Vector3[] = [corners[0]];
   for (let i = 1; i < corners.length - 1; i++) {
