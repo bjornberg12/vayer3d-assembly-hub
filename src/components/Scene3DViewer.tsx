@@ -2853,17 +2853,6 @@ export default function Scene3DViewer() {
               <SectionHeader id="lines" label="Lines" hint="Aerial line cables" />
               {wiringSection === "lines" && (
                 <div className="px-4 pb-3">
-                  <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
-                    {(["freehand", "auto"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        onClick={() => { setWireRoutingMode(mode); setCableDraft([]); setWireRouteWarning(null); }}
-                        className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition ${wireRoutingMode === mode ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
-                      >
-                        {mode === "freehand" ? "Free hand" : "Auto route"}
-                      </button>
-                    ))}
-                  </div>
                   {(["LV aerial bundled (AMKA)", "20 kV bare conductor"] as const).map((g) => (
                     <div key={g} className="mb-2">
                       <div className="mb-1 text-[11px] text-neutral-600">{g}</div>
@@ -2935,6 +2924,17 @@ export default function Scene3DViewer() {
               <SectionHeader id="wires" label="Wires" hint="DC and installation cables" />
               {wiringSection === "wires" && (
                 <div className="px-4 pb-3">
+                  <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                    {(["freehand", "auto"] as const).map((mode) => (
+                      <button
+                        key={mode}
+                        onClick={() => { setWireRoutingMode(mode); setCableDraft([]); setWireRouteWarning(null); }}
+                        className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition ${wireRoutingMode === mode ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                      >
+                        {mode === "freehand" ? "Free hand" : "Auto route"}
+                      </button>
+                    ))}
+                  </div>
                   {(["Installation cable", "DC single-core"] as const).map((g) => (
                     <div key={g} className="mb-2">
                       <div className="mb-1 text-[11px] text-neutral-600">{g}{g === "DC single-core" ? " (mm²)" : ""}</div>
