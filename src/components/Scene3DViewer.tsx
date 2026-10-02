@@ -37,7 +37,7 @@ import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
   defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireCurveLength,
   pinsOf, evPinWorld, pinWorldOf, chargerPins, ownerOfEnd, PIN_COLORS, pinsIncompatible, wireResistance, type PinDef,
-  LINE_TYPES, WIRE_TYPES, DEFAULT_LINE_TYPE, DEFAULT_WIRE_TYPE, lineTypeOf, wireTypeOf,
+  LINE_TYPES, WIRE_TYPES, INSTALL_CABLE_TYPES, ALL_WIRE_TYPES, WIRE_MATERIALS, resistanceFormula, type WireMaterial, DEFAULT_LINE_TYPE, DEFAULT_WIRE_TYPE, lineTypeOf, wireTypeOf,
   type EVPartRecord, type EVType, type EVWireRecord,
 } from "@/ModelLibrary";
 import { DraggablePanel } from "./DraggablePanel";
@@ -1177,6 +1177,7 @@ export default function Scene3DViewer() {
   const [lineType, setLineType] = useState<string>(DEFAULT_LINE_TYPE);
   const [wireType, setWireType] = useState<string>(DEFAULT_WIRE_TYPE);
   const [wireRoutingMode, setWireRoutingMode] = useState<"freehand" | "auto">("freehand");
+  const [wireMaterial, setWireMaterial] = useState<WireMaterial>("copper");
   const [wireRouteWarning, setWireRouteWarning] = useState<string | null>(null);
   const [wiringSection, setWiringSection] = useState<"cables" | "lines" | "wires" | null>("cables");
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
@@ -1333,22 +1334,29 @@ export default function Scene3DViewer() {
     setEVParts((prev) => prev.filter((q) => q.id !== id));
     setEVWires((prev) => prev.filter((w) => ownerOfEnd(w.a) !== id && ownerOfEnd(w.b) !== id));
   };
+  /** Clearance-expanded footprints of every object in the scene (car parts and placed items). */
+  const routingObstacles = (excluded: Set<string | null>): RouteObstacle[] => {
+    const section = wireTypeOf(wireType)?.crossSection ?? 2.5;
+    const clearance = 0.06 + Math.min(Math.sqrt(section) / 100, 0.06);
+    const box = (pos: [number, number, number], rot: number, width: number, depth: number) => {
+      const c = Math.abs(Math.cos(rot));
+      const s = Math.abs(Math.sin(rot));
+      const halfX = (width * c + depth * s) / 2 + clearance;
+      const halfZ = (width * s + depth * c) / 2 + clearance;
+      return { minX: pos[0] - halfX, maxX: pos[0] + halfX, minZ: pos[2] - halfZ, maxZ: pos[2] + halfZ };
+    };
+    const ITEM_FOOTPRINT: Record<string, [number, number]> = {
+      evcharger: [0.8, 0.6], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
+    };
+    const parts = sceneId === "electriccar" ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
+    const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
+    return [...parts, ...items];
+  };
   const autoWireWaypoints = (aId: string, bId: string): Waypoint[] | null => {
     const a = wireEnd(aId);
     const b = wireEnd(bId);
     if (!a || !b) return null;
-    const excluded = new Set([ownerOfEnd(aId), ownerOfEnd(bId)]);
-    const section = wireTypeOf(wireType)?.crossSection ?? 2.5;
-    const clearance = 0.06 + Math.min(Math.sqrt(section) / 100, 0.06);
-    const obstacles = evParts.filter((part) => !excluded.has(part.id)).map((part) => {
-      const [width, depth] = EV_DEFS[part.type].footprint;
-      const c = Math.abs(Math.cos(part.rotationY));
-      const s = Math.abs(Math.sin(part.rotationY));
-      const halfX = (width * c + depth * s) / 2 + clearance;
-      const halfZ = (width * s + depth * c) / 2 + clearance;
-      return { minX: part.position[0] - halfX, maxX: part.position[0] + halfX, minZ: part.position[2] - halfZ, maxZ: part.position[2] + halfZ };
-    });
-    return orthogonalRoute(a, b, obstacles);
+    return orthogonalRoute(a, b, routingObstacles(new Set([ownerOfEnd(aId), ownerOfEnd(bId)])));
   };
   const handleEVWireClick = (id: string, wps: Waypoint[] = cableDraft) => {
     if (!id.includes("#") || !pinInfo(id)) return;
@@ -1357,7 +1365,16 @@ export default function Scene3DViewer() {
     if (!evWireFirst) { setCableDraft([]); return setEVWireFirst(id); }
     if (evWireFirst === id) { setCableDraft([]); return setEVWireFirst(null); }
     const a = evWireFirst;
-    const routed = wireRoutingMode === "auto" ? autoWireWaypoints(a, id) : wps;
+    let routed: Waypoint[] | null = wps;
+    if (wireRoutingMode === "auto") routed = autoWireWaypoints(a, id);
+    else {
+      const pa = wireEnd(a), pb = wireEnd(id);
+      if (pa && pb) {
+        const d = detourFreehand(pa, pb, wps, routingObstacles(new Set([ownerOfEnd(a), ownerOfEnd(id)])));
+        routed = d.waypoints;
+        if (d.blocked) setWireRouteWarning("Part of this wire could not be routed around an object.");
+      }
+    }
     if (wireRoutingMode === "auto" && routed === null) {
       setWireRouteWarning("No clear automatic route was found. Move a component or switch to Free hand.");
       return;
@@ -1366,7 +1383,7 @@ export default function Scene3DViewer() {
     setEVWires((prev) =>
       !waypoints.length && prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
         ? prev
-        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType, routingMode: wireRoutingMode, waypoints: waypoints.length ? waypoints : undefined }]
+        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType, material: wireMaterial, routingMode: wireRoutingMode, waypoints: waypoints.length ? waypoints : undefined }]
     );
     setEVWireFirst(null);
     setCableDraft([]);
