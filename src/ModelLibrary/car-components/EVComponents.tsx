@@ -375,3 +375,35 @@ export function EVChassisGhost() {
     </group>
   );
 }
+
+/**
+ * Electrical equivalent of each car part for the circuit solver: resistive loads
+ * (R = V²/P at the part's nominal voltage and rated power) between its supply pins,
+ * plus near-zero busbars for pass-through parts (PDU, charge port).
+ */
+export function evLoads(part: EVPartRecord, values: Record<string, string | number> = {}) {
+  const base = EV_DEFS[part.type].base.values;
+  const V = Number(values.nominalVoltage ?? base.nominalVoltage ?? 400) || 400;
+  const PkW = Number(values.ratedPower ?? base.ratedPower ?? 0);
+  const id = (pin: string) => `${part.id}#${pin}`;
+  const load = (a: string, b: string, volts: number, watts: number) => ({ owner: part.id, a: id(a), b: id(b), r: (volts * volts) / Math.max(watts, 0.1), ratedV: volts });
+  const bus = (a: string, b: string) => ({ owner: `${part.id}#bus`, a: id(a), b: id(b), r: 0.0002, ratedV: V });
+  const vph = V / Math.sqrt(3);
+  switch (part.type) {
+    case "battery": return [load("dcp", "dcn", V, 11000)]; // charging load
+    case "inverter": return [load("dcp", "dcn", V, (PkW || 160) * 1000)];
+    case "motor": { const w = ((PkW || 150) * 1000) / 3; return [load("u", "v", V, w), load("v", "w", V, w), load("w", "u", V, w)]; }
+    case "obc": { const w = ((PkW || 11) * 1000) / 3; return [load("l1", "n", vph, w), load("l2", "n", vph, w), load("l3", "n", vph, w)]; }
+    case "dcdc": return [load("hvp", "hvn", V, (PkW || 2.5) * 1000)];
+    case "heater": return [load("dcp", "dcn", V, (PkW || 5) * 1000)];
+    case "compressor": return [load("dcp", "dcn", V, (PkW || 4) * 1000)];
+    case "aux12": return [load("p", "n", V || 12, 500)]; // charging load
+    case "bms": return [load("vp", "vn", V || 12, 5)];
+    case "chargeport": return [load("dcp", "dcn", V, 30), load("l1", "n", 230, 10), load("l2", "n", 230, 10), load("l3", "n", 230, 10)]; // inlet electronics
+    case "pdu": {
+      const pre = ["inv", "obc", "dcdc", "htr", "cmp", "port"];
+      return [load("batp", "batn", V, 20), ...pre.flatMap((q) => [bus("batp", `${q}p`), bus("batn", `${q}n`)])];
+    }
+  }
+  return [];
+}
