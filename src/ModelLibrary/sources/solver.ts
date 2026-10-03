@@ -7,7 +7,7 @@ export type SolverWire = { id: string; a: string; b: string; r: number };
 export type SolverSource = { id: string; kind: string; voltage: number; internalR: number };
 export type LoopResult = { from: string; to: string; voltage: number; resistance: number; current: number; wires: string[] };
 
-function shortestPath(wires: SolverWire[], start: string, goal: string): { r: number; wires: string[] } | null {
+function shortestPath(wires: SolverWire[], start: string, goal: string): { r: number; wires: string[]; forward: boolean[] } | null {
   const adj = new Map<string, { to: string; w: SolverWire }[]>();
   for (const w of wires) {
     if (!adj.has(w.a)) adj.set(w.a, []);
@@ -33,9 +33,15 @@ function shortestPath(wires: SolverWire[], start: string, goal: string): { r: nu
   }
   if (!dist.has(goal)) return null;
   const path: string[] = [];
+  const forward: boolean[] = [];
   let n = goal;
-  while (n !== start) { const p = prev.get(n)!; path.push(p.wire); n = p.node; }
-  return { r: dist.get(goal)!, wires: path };
+  while (n !== start) {
+    const p = prev.get(n)!;
+    path.push(p.wire);
+    forward.push(wires.find((w) => w.id === p.wire)!.a === p.node); // conventional current travels a→b
+    n = p.node;
+  }
+  return { r: dist.get(goal)!, wires: path, forward };
 }
 
 export function solveCircuits(sources: SolverSource[], wires: SolverWire[]) {
@@ -43,6 +49,8 @@ export function solveCircuits(sources: SolverSource[], wires: SolverWire[]) {
   const re: Record<string, number> = {}, im: Record<string, number> = {};
   const ANG: Record<string, number> = { dcp: 0, l1: 0, l2: -120, l3: 120 };
   const loops: Record<string, LoopResult[]> = {};
+  /** Per wire: +1 when conventional current flows a→b, −1 for b→a; AC flag and frequency. */
+  const wireFlow: Record<string, { dir: number; ac: boolean; phaseDeg: number }> = {};
   for (const s of sources) {
     const pairs: [string, string, number][] =
       s.kind === "DC"
@@ -57,9 +65,10 @@ export function solveCircuits(sources: SolverSource[], wires: SolverWire[]) {
       loops[s.id].push({ from: a, to: b, voltage: v, resistance: r, current: i, wires: path.wires });
       // AC phases add as phasors (120° apart), so a balanced shared neutral carries ~0 A.
       const th = (ANG[a] * Math.PI) / 180;
+      path.wires.forEach((wid, k) => { if (!wireFlow[wid]) wireFlow[wid] = { dir: path.forward[k] ? 1 : -1, ac: s.kind !== "DC", phaseDeg: ANG[a] }; });
       for (const wid of path.wires) { re[wid] = (re[wid] ?? 0) + i * Math.cos(th); im[wid] = (im[wid] ?? 0) + i * Math.sin(th); }
     }
   }
   for (const k of Object.keys(re)) wireCurrent[k] = Math.hypot(re[k], im[k]);
-  return { wireCurrent, loops };
+  return { wireCurrent, loops, wireFlow };
 }

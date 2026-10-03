@@ -75,3 +75,4 @@ export function initPropsFor(modelId: string): ObjectProps {
 }
 export * from "./sources/VoltageSource";
 export * from "./sources/solver";
+export * from "./sources/ElectronFlow";

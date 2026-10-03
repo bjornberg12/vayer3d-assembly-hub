@@ -32,6 +32,7 @@ import {
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider, PartOwner } from "./PartLabel";
 import { BasePropsEditor } from "./BasePropsEditor";
+import { ElectronFlow, wireCurve as evWireCurve } from "@/ModelLibrary";
 import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
@@ -1317,6 +1318,7 @@ export default function Scene3DViewer() {
 
   // --- Electric car internals ------------------------------------------------
   const [evParts, setEVParts] = useState<EVPartRecord[]>(() => defaultEVLayout().parts);
+  const [showFlow, setShowFlow] = useState(false);
   const [evWires, setEVWires] = useState<EVWireRecord[]>(() => defaultEVLayout().wires);
   const [pendingEV, setPendingEV] = useState<EVType | null>(null);
   const [evWireMode, setEVWireMode] = useState(false);
@@ -1926,6 +1928,22 @@ export default function Scene3DViewer() {
                 );
               })
             )}
+            {showFlow && evWires.map((w) => {
+              const flow = circuit.wireFlow[w.id];
+              const a = wireEnd(w.a);
+              const b = wireEnd(w.b);
+              if (!flow || !a || !b) return null;
+              const curve = w.routingMode === "auto"
+                ? roundedOrthogonalCurve(a, b, w.waypoints ?? [])
+                : w.waypoints?.length || parsePt(w.a) || parsePt(w.b)
+                  ? routedWireCurve(a, b, w.waypoints ?? [])
+                  : evWireCurve(a, b);
+              return (
+                <ElectronFlow key={`flow-${w.id}-${a.join()}-${b.join()}-${(w.waypoints ?? []).join()}`} curve={curve}
+                  current={circuit.wireCurrent[w.id] ?? 0} dir={flow.dir} ac={flow.ac} phaseDeg={flow.phaseDeg}
+                  radius={Math.max(Math.sqrt(w.crossSection / Math.PI) / 1000 * 2.2, 0.004)} />
+              );
+            })}
             {evWires.map((w) => {
               const a = wireEnd(w.a);
               const b = wireEnd(w.b);
@@ -2999,6 +3017,19 @@ export default function Scene3DViewer() {
                   )}
                 </div>
               )}
+              <div className="px-4 pb-2 pt-1">
+                <button
+                  onClick={() => setShowFlow((f) => !f)}
+                  className={`w-full rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${showFlow ? "border-sky-400 bg-sky-400/80 text-neutral-900" : "border-white/60 bg-white/45 text-neutral-800 hover:bg-white/70"}`}
+                >
+                  {showFlow ? "Hide electron flow" : "Simulate electron flow"}
+                </button>
+                {showFlow && (
+                  <div className="mt-1 text-[10px] leading-snug text-neutral-600">
+                    <span className="font-semibold text-sky-600">Blue dots</span> = electrons (flow − → +). <span className="font-semibold text-amber-600">Amber arrows</span> = electric field / conventional current (+ → −). AC wires swing back and forth (slowed down). Only wires in a closed loop from a voltage source carry current.
+                  </div>
+                )}
+              </div>
               <SectionHeader id="wires" label="Wires" hint="Single-core wires" />
               {wiringSection === "wires" && (
                 <div className="px-4 pb-3">

@@ -211,7 +211,7 @@ export function wireCurveLength(a: [number, number, number], b: [number, number,
   return wireCurve(a, b).getLength();
 }
 
-function wireCurve(a: [number, number, number], b: [number, number, number]) {
+export function wireCurve(a: [number, number, number], b: [number, number, number]) {
   const va = new THREE.Vector3(...a);
   const vb = new THREE.Vector3(...b);
   const lift = Math.max(va.y, vb.y) + 0.12 + va.distanceTo(vb) * 0.06;
