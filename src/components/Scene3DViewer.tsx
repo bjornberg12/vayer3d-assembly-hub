@@ -32,7 +32,7 @@ import {
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider, PartOwner } from "./PartLabel";
 import { BasePropsEditor } from "./BasePropsEditor";
-import { ElectronFlow, wireCurve as evWireCurve } from "@/ModelLibrary";
+import { ElectronFlow, wireCurve as evWireCurve, evLoads, type PartStatus } from "@/ModelLibrary";
 import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
@@ -1445,6 +1445,7 @@ export default function Scene3DViewer() {
       return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
     }),
     evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })),
+    sceneId === "electriccar" ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
   );
   const wireLabel = (w: EVWireRecord) =>
     wireTypeOf(w.wireType)?.label ?? (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
@@ -3848,6 +3849,20 @@ export default function Scene3DViewer() {
                     />
                   </label>
                 ))}
+                {(() => {
+                  const st: PartStatus | undefined = circuit.partStatus[evPropPart.id];
+                  const state = st?.state ?? "off";
+                  const style = state === "on" ? "border-green-500/50 bg-green-500/15 text-green-800" : state === "off" ? "border-neutral-400/50 bg-white/40 text-neutral-700" : "border-red-400/60 bg-red-500/15 text-red-700";
+                  const label = state === "on" ? "Powered on" : state === "low" ? "Undervoltage — not enough to run" : state === "over" ? "Overvoltage — supply too high" : "Off — no supply";
+                  return (
+                    <div className={`rounded-lg border px-2 py-1.5 text-[11px] ${style}`}>
+                      <div className="font-semibold">{label}</div>
+                      {st && state !== "off" && (
+                        <div className="font-mono text-[10px]">U = {st.voltage.toFixed(1)} V (rated {st.ratedV.toFixed(0)} V) · I = {st.current.toFixed(2)} A · P = {st.powerW >= 1000 ? `${(st.powerW / 1000).toFixed(2)} kW` : `${st.powerW.toFixed(1)} W`}</div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Pins</div>
                 <div className="space-y-0.5">
                   {pinsOf(evPropPart.type).map((pin) => {
