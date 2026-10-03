@@ -1886,6 +1886,17 @@ export default function Scene3DViewer() {
                 {evParts.map((part) => (
                   <group key={part.id}>
                     <EVPart part={part} />
+                    {(() => {
+                      const st = circuit.partStatus[part.id]?.state;
+                      if (!st || st === "off") return null;
+                      const col = st === "on" ? "#22c55e" : "#ef4444";
+                      return (
+                        <mesh position={[part.position[0], part.position[1] + EV_DEFS[part.type].terminalY + 0.12, part.position[2]]} raycast={() => null}>
+                          <sphereGeometry args={[0.035, 16, 12]} />
+                          <meshBasicMaterial color={col} toneMapped={false} />
+                        </mesh>
+                      );
+                    })()}
                     {moveMode && (
                       <mesh
                         position={[part.position[0], 0.5, part.position[2]]}
