@@ -11,3 +11,4 @@
 - Wire ends may reference a device pin as `owner#pin`; pin definitions (id, label, role, local position) live with the model (EV_DEFS pins, chargerPins) — one source for wiring and the future circuit solver.
 - Small wires support freehand waypoints or collision-aware orthogonal auto-routes; component footprint bounds live with EV_DEFS and manual route edits convert auto-routes to freehand — routing stays model-aware and user edits remain authoritative.
 - Voltage sources live in `src/ModelLibrary/sources/`; `solver.ts` computes wire currents from source pin loops (I = V/R, AC phasors) and calculated currents override manual wire current — one place to grow the circuit solver.
+- Electron-flow visuals (`sources/ElectronFlow.tsx`) are driven only by solver output (wireCurrent + wireFlow direction), never by manual wire current — the animation always reflects the simulated circuit.
