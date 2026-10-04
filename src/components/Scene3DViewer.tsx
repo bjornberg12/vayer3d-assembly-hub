@@ -34,6 +34,7 @@ import { PartLabelProvider, PartOwner } from "./PartLabel";
 import { BasePropsEditor } from "./BasePropsEditor";
 import { ElectronFlow, wireCurve as evWireCurve, evLoads, type PartStatus } from "@/ModelLibrary";
 import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
+import { TransformerModel, transformerPins, transformerDefaults, transformerModel, transformerTerminalLocals, TRANSFORMER_PARAMS, type VectorGroup } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
@@ -1155,7 +1156,8 @@ export default function Scene3DViewer() {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cablesOpen, setCablesOpen] = useState(false);
-  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource";
+  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer";
+  const PIN_ITEM_TYPES: string[] = ["evcharger", "vsource", "transformer"];
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
@@ -1163,6 +1165,7 @@ export default function Scene3DViewer() {
     { type: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
     { type: "evcharger", name: "EV charger", subtitle: "AC / DC car charger" },
     { type: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply" },
+    { type: "transformer", name: "Transformer", subtitle: "3-phase, HV / LV pins" },
   ];
   type AddedItem = {
     id: string;
@@ -1350,7 +1353,7 @@ export default function Scene3DViewer() {
       return { minX: pos[0] - halfX, maxX: pos[0] + halfX, minZ: pos[2] - halfZ, maxZ: pos[2] + halfZ };
     };
     const ITEM_FOOTPRINT: Record<string, [number, number]> = {
-      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
+      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
     };
     const parts = sceneId === "electriccar" ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
     const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
@@ -1411,6 +1414,7 @@ export default function Scene3DViewer() {
     return null;
   };
   function pinDefsOfItem(it: { id: string; type: string }): PinDef[] {
+    if (it.type === "transformer") return transformerPins();
     if (it.type === "vsource") return sourcePins(String(objectProps[it.id]?.values.sourceKind ?? "AC"));
     return it.type === "evcharger" ? chargerPins(String(objectProps[it.id]?.values.chargerType ?? "ac-wall")) : [];
   }
@@ -1422,7 +1426,7 @@ export default function Scene3DViewer() {
     if (pp) { const pin = pinsOf(pp.type).find((q) => q.id === pid); return pin ? { pin, owner: EV_DEFS[pp.type].name } : null; }
     const it = addedItems.find((i) => i.id === oid);
     const pin = it && pinDefsOfItem(it).find((q) => q.id === pid);
-    return pin ? { pin, owner: "EV charger" } : null;
+    return pin ? { pin, owner: it?.type === "transformer" ? "Transformer" : it?.type === "vsource" ? "Voltage source" : "EV charger" } : null;
   };
   const endName = (id: string) => {
     const pi = pinInfo(id);
@@ -1528,6 +1532,23 @@ export default function Scene3DViewer() {
     ];
   };
   type CableEnd = { id: string; name: string; point: [number, number, number] };
+  /** Ends that cables and lines can attach to as a whole 3-phase group. */
+  const terminalEnds = useMemo(() => {
+    const out: { id: string; name: string; point: [number, number, number]; phases: [number, number, number][] }[] = [];
+    addedItems.forEach((i, idx) => {
+      const world = (l: [number, number, number][]) => l.map((p) => rotateLocal(p, i.position, i.rotationY));
+      if (i.type === "transformer") {
+        (["hv", "lv"] as const).forEach((side) => {
+          const ph = world(transformerTerminalLocals(side));
+          out.push({ id: `${i.id}#${side}`, name: `Transformer #${idx + 1} ${side.toUpperCase()}`, point: ph[1], phases: ph });
+        });
+      } else if (i.type === "vsource" && String(objectProps[i.id]?.values.sourceKind ?? "AC") !== "DC") {
+        const ph = world(sourcePins("AC").slice(0, 3).map((p) => p.local));
+        out.push({ id: `${i.id}#ac`, name: `Voltage source #${idx + 1}`, point: ph[1], phases: ph });
+      }
+    });
+    return out;
+  }, [addedItems, objectProps]);
   const cableEndpoints: CableEnd[] = useMemo(() => {
     const list: CableEnd[] = [];
     addedItems.forEach((i, idx) => {
@@ -1538,6 +1559,8 @@ export default function Scene3DViewer() {
         point: rotateLocal(cableExitLocal(i.type), i.position, i.rotationY),
       });
     });
+    // 3-phase terminal ends (transformer HV/LV, AC voltage source)
+    terminalEnds.forEach((t) => list.push({ id: t.id, name: t.name, point: t.point }));
     // Loose (unconnected) cable ends
     cables.forEach((c) => {
       [c.a, c.b].forEach((id) => {
@@ -1686,7 +1709,7 @@ export default function Scene3DViewer() {
     routingKind === "cable" ? cableFirst : routingKind === "line" ? connectFirst : routingKind === "wire" ? evWireFirst : null;
   const availableWirePins = [
     ...(sceneId === "electriccar" ? evParts.map((part) => ({ id: part.id, pins: pinsOf(part.type), pos: part.position, rot: part.rotationY })) : []),
-    ...addedItems.filter((item) => item.type === "evcharger" || item.type === "vsource").map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
+    ...addedItems.filter((item) => PIN_ITEM_TYPES.includes(item.type)).map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
   ].flatMap((owner) => owner.pins.map((pin) => ({
     id: `${owner.id}#${pin.id}`,
     point: pinWorldOf(pin.local, owner.pos, owner.rot),
@@ -1921,7 +1944,7 @@ export default function Scene3DViewer() {
             )}
             {evWireMode && [
               ...(sceneId === "electriccar" ? evParts.map((p) => ({ id: p.id, pins: pinsOf(p.type), pos: p.position, rot: p.rotationY })) : []),
-              ...addedItems.filter((i) => i.type === "evcharger" || i.type === "vsource").map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
+              ...addedItems.filter((i) => PIN_ITEM_TYPES.includes(i.type)).map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
             ].flatMap((o) =>
               o.pins.map((pin) => {
                 const endId = `${o.id}#${pin.id}`;
@@ -2039,6 +2062,7 @@ export default function Scene3DViewer() {
                   {item.type === "alajaam" && (
                     <Substation step={itemStep} />
                   )}
+                  {item.type === "transformer" && <TransformerModel />}
                   {item.type === "vsource" && (
                     <VoltageSource kind={String(objectProps[item.id]?.values.sourceKind ?? "AC")} />
                   )}
