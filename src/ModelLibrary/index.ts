@@ -10,6 +10,7 @@ import { SUBSTATION_STEPS } from "./substations/KioskSubstation";
 import { EV_DEFS, type EVType } from "./car-components/EVComponents";
 import { chargerDefaults } from "./chargers/EVCharger";
 import { sourceDefaults } from "./sources/VoltageSource";
+import { transformerDefaults } from "./transformers/Transformer";
 import { initObjectProps, type BaseDefaults, type ObjectProps } from "./properties";
 
 export * from "./properties";
@@ -23,7 +24,7 @@ export * from "./cables/catalog";
 export * from "./car-components/EVComponents";
 export * from "./chargers/EVCharger";
 
-export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "chargers" | "sources" | "car-components";
+export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "chargers" | "sources" | "transformers" | "car-components";
 
 export type ModelCard = {
   id: string;
@@ -34,7 +35,7 @@ export type ModelCard = {
   base: BaseDefaults;
 };
 
-export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource", ModelCard> = {
+export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer", ModelCard> = {
   puitmast: {
     id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole", group: "electrical-posts",
     steps: ASSEMBLY_STEPS,
@@ -63,6 +64,10 @@ export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "
     id: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply", group: "sources",
     base: { active: ["modelId", "nominalVoltage", "frequency", "phases"], values: sourceDefaults("AC") as BaseDefaults["values"] },
   },
+  transformer: {
+    id: "transformer", name: "Transformer", subtitle: "3-phase power transformer", group: "transformers",
+    base: { active: ["modelId", "mass", "height", "width", "depth", "ratedPower", "frequency"], values: transformerDefaults() as BaseDefaults["values"] },
+  },
 };
 
 /** Fresh basic-property set for any model id (scene model or car component). */
@@ -76,3 +81,4 @@ export function initPropsFor(modelId: string): ObjectProps {
 export * from "./sources/VoltageSource";
 export * from "./sources/solver";
 export * from "./sources/ElectronFlow";
+export * from "./transformers/Transformer";
