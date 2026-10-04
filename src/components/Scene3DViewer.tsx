@@ -34,6 +34,7 @@ import { PartLabelProvider, PartOwner } from "./PartLabel";
 import { BasePropsEditor } from "./BasePropsEditor";
 import { ElectronFlow, wireCurve as evWireCurve, evLoads, type PartStatus } from "@/ModelLibrary";
 import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
+import { TransformerModel, transformerPins, transformerDefaults, transformerModel, transformerTerminalLocals, TRANSFORMER_PARAMS, type VectorGroup } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
@@ -1155,7 +1156,8 @@ export default function Scene3DViewer() {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cablesOpen, setCablesOpen] = useState(false);
-  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource";
+  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer";
+  const PIN_ITEM_TYPES: string[] = ["evcharger", "vsource", "transformer"];
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
@@ -1163,6 +1165,7 @@ export default function Scene3DViewer() {
     { type: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
     { type: "evcharger", name: "EV charger", subtitle: "AC / DC car charger" },
     { type: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply" },
+    { type: "transformer", name: "Transformer", subtitle: "3-phase, HV / LV pins" },
   ];
   type AddedItem = {
     id: string;
@@ -1350,7 +1353,7 @@ export default function Scene3DViewer() {
       return { minX: pos[0] - halfX, maxX: pos[0] + halfX, minZ: pos[2] - halfZ, maxZ: pos[2] + halfZ };
     };
     const ITEM_FOOTPRINT: Record<string, [number, number]> = {
-      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
+      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
     };
     const parts = sceneId === "electriccar" ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
     const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
@@ -1411,6 +1414,7 @@ export default function Scene3DViewer() {
     return null;
   };
   function pinDefsOfItem(it: { id: string; type: string }): PinDef[] {
+    if (it.type === "transformer") return transformerPins();
     if (it.type === "vsource") return sourcePins(String(objectProps[it.id]?.values.sourceKind ?? "AC"));
     return it.type === "evcharger" ? chargerPins(String(objectProps[it.id]?.values.chargerType ?? "ac-wall")) : [];
   }
@@ -1422,7 +1426,7 @@ export default function Scene3DViewer() {
     if (pp) { const pin = pinsOf(pp.type).find((q) => q.id === pid); return pin ? { pin, owner: EV_DEFS[pp.type].name } : null; }
     const it = addedItems.find((i) => i.id === oid);
     const pin = it && pinDefsOfItem(it).find((q) => q.id === pid);
-    return pin ? { pin, owner: "EV charger" } : null;
+    return pin ? { pin, owner: it?.type === "transformer" ? "Transformer" : it?.type === "vsource" ? "Voltage source" : "EV charger" } : null;
   };
   const endName = (id: string) => {
     const pi = pinInfo(id);
@@ -1439,13 +1443,36 @@ export default function Scene3DViewer() {
     if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b)) return routedWireCurve(a, b, w.waypoints ?? []).getLength();
     return wireCurveLength(a, b);
   };
+  /** Node id for phase k (0..2, 3 = neutral) at a cable/line end. */
+  const phaseNode = (end: string, k: number) => {
+    const [oid, side] = end.split("#");
+    if (side === "hv") return `${oid}#${k < 3 ? `h${k + 1}` : "hn"}`;
+    if (side === "lv") return `${oid}#${k < 3 ? `x${k + 1}` : "xn"}`;
+    if (side === "ac") return `${oid}#${k < 3 ? `l${k + 1}` : "n"}`;
+    return `${end}@${k}`; // posts, panels, joints: conductors pass straight through
+  };
+  const AL_RHO = 0.0282;
+  const bundleWires = [
+    ...cables.filter((c) => !cableLoose(c)).flatMap((c) => {
+      const area = CABLE_SIZES.find((z) => z.id === c.size)?.area ?? 95;
+      const len = cableLengthOf(c);
+      return [0, 1, 2, 3].map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / area }));
+    }),
+    ...connections.filter((c) => !parsePt(c.a) && !parsePt(c.b)).flatMap((c) => {
+      const lt = lineTypeOf(c.type);
+      const len = lineLengthOf(c);
+      return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
+    }),
+  ];
+  const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
   const circuit = solveCircuits(
     addedItems.filter((i) => i.type === "vsource").map((i) => {
       const v = objectProps[i.id]?.values ?? sourceDefaults("AC");
       return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
     }),
-    evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })),
+    [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
     sceneId === "electriccar" ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
+    addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
   );
   const wireLabel = (w: EVWireRecord) =>
     wireTypeOf(w.wireType)?.label ?? (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
@@ -1528,6 +1555,23 @@ export default function Scene3DViewer() {
     ];
   };
   type CableEnd = { id: string; name: string; point: [number, number, number] };
+  /** Ends that cables and lines can attach to as a whole 3-phase group. */
+  const terminalEnds = useMemo(() => {
+    const out: { id: string; name: string; point: [number, number, number]; phases: [number, number, number][] }[] = [];
+    addedItems.forEach((i, idx) => {
+      const world = (l: [number, number, number][]) => l.map((p) => rotateLocal(p, i.position, i.rotationY));
+      if (i.type === "transformer") {
+        (["hv", "lv"] as const).forEach((side) => {
+          const ph = world(transformerTerminalLocals(side));
+          out.push({ id: `${i.id}#${side}`, name: `Transformer #${idx + 1} ${side.toUpperCase()}`, point: ph[1], phases: ph });
+        });
+      } else if (i.type === "vsource" && String(objectProps[i.id]?.values.sourceKind ?? "AC") !== "DC") {
+        const ph = world(sourcePins("AC").slice(0, 3).map((p) => p.local));
+        out.push({ id: `${i.id}#ac`, name: `Voltage source #${idx + 1}`, point: ph[1], phases: ph });
+      }
+    });
+    return out;
+  }, [addedItems, objectProps]);
   const cableEndpoints: CableEnd[] = useMemo(() => {
     const list: CableEnd[] = [];
     addedItems.forEach((i, idx) => {
@@ -1538,6 +1582,8 @@ export default function Scene3DViewer() {
         point: rotateLocal(cableExitLocal(i.type), i.position, i.rotationY),
       });
     });
+    // 3-phase terminal ends (transformer HV/LV, AC voltage source)
+    terminalEnds.forEach((t) => list.push({ id: t.id, name: t.name, point: t.point }));
     // Loose (unconnected) cable ends
     cables.forEach((c) => {
       [c.a, c.b].forEach((id) => {
@@ -1564,7 +1610,7 @@ export default function Scene3DViewer() {
     });
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [addedItems, sceneId, cables]);
+  }, [addedItems, sceneId, cables, terminalEnds]);
 
   const handleCableClick = (endId: string, wps: Waypoint[] = cableDraft) => {
     if (!cableMode) return;
@@ -1642,8 +1688,8 @@ export default function Scene3DViewer() {
   const linePhases = (c: LineRecord): [[number, number, number][], [number, number, number][]] | null => {
     const ia = addedItems.find((i) => i.id === c.a);
     const ib = addedItems.find((i) => i.id === c.b);
-    let pa = ia ? worldPhasePoints(ia) : null;
-    let pb = ib ? worldPhasePoints(ib) : null;
+    let pa = ia ? worldPhasePoints(ia) : terminalEnds.find((t) => t.id === c.a)?.phases ?? null;
+    let pb = ib ? worldPhasePoints(ib) : terminalEnds.find((t) => t.id === c.b)?.phases ?? null;
     const loose = (pt: GroundPt, ref: [number, number, number][] | null) => {
       const r = ref && ref.length ? ref : DEFAULT_LINE_PHASES;
       const cc = centroid(r);
@@ -1686,7 +1732,7 @@ export default function Scene3DViewer() {
     routingKind === "cable" ? cableFirst : routingKind === "line" ? connectFirst : routingKind === "wire" ? evWireFirst : null;
   const availableWirePins = [
     ...(sceneId === "electriccar" ? evParts.map((part) => ({ id: part.id, pins: pinsOf(part.type), pos: part.position, rot: part.rotationY })) : []),
-    ...addedItems.filter((item) => item.type === "evcharger" || item.type === "vsource").map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
+    ...addedItems.filter((item) => PIN_ITEM_TYPES.includes(item.type)).map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
   ].flatMap((owner) => owner.pins.map((pin) => ({
     id: `${owner.id}#${pin.id}`,
     point: pinWorldOf(pin.local, owner.pos, owner.rot),
@@ -1707,7 +1753,7 @@ export default function Scene3DViewer() {
     const pt = parsePt(id);
     if (pt) return [pt[0], 0, pt[1]];
     if (routingKind === "cable") return cableEndpoints.find((e) => e.id === id)?.point ?? null;
-    if (routingKind === "line") return addedItems.find((i) => i.id === id)?.position ?? null;
+    if (routingKind === "line") return addedItems.find((i) => i.id === id)?.position ?? terminalEnds.find((t) => t.id === id)?.point ?? null;
     return wireEnd(id);
   };
   useEffect(() => {
@@ -1921,7 +1967,7 @@ export default function Scene3DViewer() {
             )}
             {evWireMode && [
               ...(sceneId === "electriccar" ? evParts.map((p) => ({ id: p.id, pins: pinsOf(p.type), pos: p.position, rot: p.rotationY })) : []),
-              ...addedItems.filter((i) => i.type === "evcharger" || i.type === "vsource").map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
+              ...addedItems.filter((i) => PIN_ITEM_TYPES.includes(i.type)).map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
             ].flatMap((o) =>
               o.pins.map((pin) => {
                 const endId = `${o.id}#${pin.id}`;
@@ -2039,6 +2085,7 @@ export default function Scene3DViewer() {
                   {item.type === "alajaam" && (
                     <Substation step={itemStep} />
                   )}
+                  {item.type === "transformer" && <TransformerModel />}
                   {item.type === "vsource" && (
                     <VoltageSource kind={String(objectProps[item.id]?.values.sourceKind ?? "AC")} />
                   )}
@@ -2176,6 +2223,23 @@ export default function Scene3DViewer() {
                   </mesh>
                 ))}
 
+            {/* 3-phase terminal markers (transformer HV/LV, AC source) for cables and lines */}
+            {(cableMode || connectMode) && terminalEnds.map((t) => {
+              const first = (cableMode ? cableFirst : connectFirst) === t.id;
+              return (
+                <mesh
+                  key={t.id}
+                  position={t.point}
+                  renderOrder={10}
+                  onClick={(ev) => { ev.stopPropagation(); if (cableMode) handleCableClick(t.id); else handleItemClickForConnect(t.id); }}
+                  onPointerOver={(ev) => { ev.stopPropagation(); setPartLabel(t.name); setPartLabelPos(t.point); }}
+                  onPointerOut={() => { setPartLabel(null); setPartLabelPos(null); }}
+                >
+                  <sphereGeometry args={[0.16, 16, 16]} />
+                  <meshBasicMaterial color={first ? "#f59e0b" : t.id.endsWith("#hv") ? "#ef4444" : "#22c55e"} transparent opacity={first ? 0.85 : 0.55} depthTest={false} />
+                </mesh>
+              );
+            })}
             {/* Cable proxy for the fixed scene model at the origin */}
             {false && cableMode && (
               <mesh
@@ -2921,6 +2985,7 @@ export default function Scene3DViewer() {
                             {c.conduit !== "none" ? ` · ${c.conduit}` : ""}
                             {" · "}
                             {cableLengthOf(c).toFixed(1)} m
+                            {bundleCurrent(c.id) > 0 && ` · ${bundleCurrent(c.id).toFixed(1)} A`}
                             <span className="ml-1 text-neutral-500">
                               {a?.name ?? "?"} → {b?.name ?? "?"}
                             </span>
@@ -3009,6 +3074,7 @@ export default function Scene3DViewer() {
                             {sel && (
                               <div className="mt-1 text-[10px] text-neutral-700">
                                 Length {span.toFixed(1)} m · sag {sag.toFixed(2)} m · {lt.voltage >= 1000 ? `${lt.voltage / 1000} kV` : `${lt.voltage} V`} · {lt.crossSection} mm²
+                                {bundleCurrent(c.id) > 0 && <> · <strong>{bundleCurrent(c.id).toFixed(1)} A</strong> (calculated)</>}
                               </div>
                             )}
                             {sel && c.waypoints?.length ? (
