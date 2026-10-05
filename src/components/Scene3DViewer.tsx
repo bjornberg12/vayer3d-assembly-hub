@@ -1443,37 +1443,6 @@ export default function Scene3DViewer() {
     if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b)) return routedWireCurve(a, b, w.waypoints ?? []).getLength();
     return wireCurveLength(a, b);
   };
-  /** Node id for phase k (0..2, 3 = neutral) at a cable/line end. */
-  const phaseNode = (end: string, k: number) => {
-    const [oid, side] = end.split("#");
-    if (side === "hv") return `${oid}#${k < 3 ? `h${k + 1}` : "hn"}`;
-    if (side === "lv") return `${oid}#${k < 3 ? `x${k + 1}` : "xn"}`;
-    if (side === "ac") return `${oid}#${k < 3 ? `l${k + 1}` : "n"}`;
-    return `${end}@${k}`; // posts, panels, joints: conductors pass straight through
-  };
-  const AL_RHO = 0.0282;
-  const bundleWires = [
-    ...cables.filter((c) => !cableLoose(c)).flatMap((c) => {
-      const area = CABLE_SIZES.find((z) => z.id === c.size)?.area ?? 95;
-      const len = cableLengthOf(c);
-      return [0, 1, 2, 3].map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / area }));
-    }),
-    ...connections.filter((c) => !parsePt(c.a) && !parsePt(c.b)).flatMap((c) => {
-      const lt = lineTypeOf(c.type);
-      const len = lineLengthOf(c);
-      return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
-    }),
-  ];
-  const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
-  const circuit = solveCircuits(
-    addedItems.filter((i) => i.type === "vsource").map((i) => {
-      const v = objectProps[i.id]?.values ?? sourceDefaults("AC");
-      return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
-    }),
-    [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
-    sceneId === "electriccar" ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
-    addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
-  );
   const wireLabel = (w: EVWireRecord) =>
     wireTypeOf(w.wireType)?.label ?? (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
   const stopAllModes = () => {
@@ -1723,7 +1692,38 @@ export default function Scene3DViewer() {
     let len = 0;
     for (let i = 1; i < p.length; i++) len += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1], p[i][2] - p[i - 1][2]);
     return len;
+  };  /** Node id for phase k (0..2, 3 = neutral) at a cable/line end. */
+  const phaseNode = (end: string, k: number) => {
+    const [oid, side] = end.split("#");
+    if (side === "hv") return `${oid}#${k < 3 ? `h${k + 1}` : "hn"}`;
+    if (side === "lv") return `${oid}#${k < 3 ? `x${k + 1}` : "xn"}`;
+    if (side === "ac") return `${oid}#${k < 3 ? `l${k + 1}` : "n"}`;
+    return `${end}@${k}`; // posts, panels, joints: conductors pass straight through
   };
+  const AL_RHO = 0.0282;
+  const bundleWires = [
+    ...cables.filter((c) => !cableLoose(c)).flatMap((c) => {
+      const area = CABLE_SIZES.find((z) => z.id === c.size)?.area ?? 95;
+      const len = cableLengthOf(c);
+      return [0, 1, 2, 3].map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / area }));
+    }),
+    ...connections.filter((c) => !parsePt(c.a) && !parsePt(c.b)).flatMap((c) => {
+      const lt = lineTypeOf(c.type);
+      const len = lineLengthOf(c);
+      return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
+    }),
+  ];
+  const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
+  const circuit = solveCircuits(
+    addedItems.filter((i) => i.type === "vsource").map((i) => {
+      const v = objectProps[i.id]?.values ?? sourceDefaults("AC");
+      return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
+    }),
+    [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
+    sceneId === "electriccar" ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
+    addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
+  );
+
 
   // --- Shared routing for cables, lines and wires -----------------------------
   const routingKind: "cable" | "line" | "wire" | null =
