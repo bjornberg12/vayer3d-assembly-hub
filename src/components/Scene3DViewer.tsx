@@ -740,6 +740,7 @@ function CableRouter({
   skipRef,
   snapPins = [],
   pinOnlyEnd = false,
+  onPinClick,
   previewWaypoints,
 }: {
   active: boolean;
@@ -750,6 +751,8 @@ function CableRouter({
   skipRef: React.MutableRefObject<number>;
   snapPins?: { id: string; point: [number, number, number]; color: string }[];
   pinOnlyEnd?: boolean;
+  /** When set, a click near a snap pin picks that pin directly. */
+  onPinClick?: (id: string) => void;
   previewWaypoints?: (endId: string) => Waypoint[] | null;
 }) {
   const { camera, gl } = useThree();
@@ -761,6 +764,9 @@ function CableRouter({
   addRef.current = onAdd;
   finishRef.current = onFinish;
   snapPinsRef.current = snapPins;
+  const pinClickRef = useRef(onPinClick);
+  pinClickRef.current = onPinClick;
+  const nearestRef = useRef<string | null>(null);
   useEffect(() => {
     if (!active) {
       setHover(null);
@@ -787,11 +793,18 @@ function CableRouter({
           nearest = candidate;
         }
       }
+      nearestRef.current = nearest?.id ?? null;
       setSnapPin(nearest);
     };
     const up = (e: PointerEvent) => {
       if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
       if (Math.hypot(e.clientX - dx, e.clientY - dy) > 4) return;
+      if (pinClickRef.current && nearestRef.current && performance.now() - skipRef.current > 300) {
+        const id = nearestRef.current;
+        if (timer !== null) { window.clearTimeout(timer); timer = null; }
+        pinClickRef.current(id);
+        return;
+      }
       // Second click of a double-click: drop the pending corner, dblclick finishes.
       if (timer !== null) {
         window.clearTimeout(timer);
@@ -1738,6 +1751,8 @@ export default function Scene3DViewer() {
     point: pinWorldOf(pin.local, owner.pos, owner.rot),
     color: PIN_COLORS[pin.role],
   }))).filter((pin) => pin.id !== evWireFirst);
+  /** Transformer HV/LV and AC source connectors that aerial lines snap to. */
+  const lineSnapEnds = terminalEnds.filter((t) => t.id !== connectFirst).map((t) => ({ id: t.id, point: t.point, color: t.id.endsWith("#hv") ? "#ef4444" : "#22c55e" }));
   const finishRoute = (endId: string, wps: Waypoint[] = cableDraft) => {
     if (routingKind === "cable") handleCableClick(endId, wps);
     else if (routingKind === "line") handleItemClickForConnect(endId, wps);
@@ -2093,7 +2108,7 @@ export default function Scene3DViewer() {
                     <EVCharger kind={String(objectProps[item.id]?.values.chargerType ?? "ac-wall")} />
                   )}
                   {/* Invisible proxy for connect / move mode */}
-                   {(connectMode || moveMode) && (
+                   {(moveMode || (connectMode && item.type !== "transformer" && item.type !== "vsource")) && (
                     <mesh
                       position={[0, 5, 0]}
                       onClick={(e) => {
@@ -2231,7 +2246,7 @@ export default function Scene3DViewer() {
                   key={t.id}
                   position={t.point}
                   renderOrder={10}
-                  onClick={(ev) => { ev.stopPropagation(); if (cableMode) handleCableClick(t.id); else handleItemClickForConnect(t.id); }}
+                  onClick={(ev) => { ev.stopPropagation(); if (cableMode) handleCableClick(t.id); /* lines: picked by the router snap */ }}
                   onPointerOver={(ev) => { ev.stopPropagation(); setPartLabel(t.name); setPartLabelPos(t.point); }}
                   onPointerOut={() => { setPartLabel(null); setPartLabelPos(null); }}
                 >
@@ -2303,7 +2318,8 @@ export default function Scene3DViewer() {
               if (routeFirst) finishRoute(makePt(p));
             }}
             skipRef={endpointClickAt}
-            snapPins={routingKind === "wire" && routeFirst ? availableWirePins : []}
+            snapPins={routingKind === "wire" && routeFirst ? availableWirePins : routingKind === "line" ? lineSnapEnds : []}
+            onPinClick={routingKind === "line" ? (id) => handleItemClickForConnect(id) : undefined}
             pinOnlyEnd={routingKind === "wire"}
             previewWaypoints={routingKind === "wire" && wireRoutingMode === "auto" && routeFirst ? (endId) => autoWireWaypoints(routeFirst, endId) : undefined}
           />
