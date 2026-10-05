@@ -2246,7 +2246,7 @@ export default function Scene3DViewer() {
                   key={t.id}
                   position={t.point}
                   renderOrder={10}
-                  onClick={(ev) => { ev.stopPropagation(); if (cableMode) handleCableClick(t.id); else handleItemClickForConnect(t.id); }}
+                  onClick={(ev) => { ev.stopPropagation(); if (cableMode) handleCableClick(t.id); /* lines: picked by the router snap */ }}
                   onPointerOver={(ev) => { ev.stopPropagation(); setPartLabel(t.name); setPartLabelPos(t.point); }}
                   onPointerOut={() => { setPartLabel(null); setPartLabelPos(null); }}
                 >
