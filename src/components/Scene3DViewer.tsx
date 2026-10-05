@@ -3790,6 +3790,53 @@ export default function Scene3DViewer() {
                 }
               />
             )}
+            {propsModelId === "transformer" && propsOwnerId && (() => {
+              const v = { ...transformerDefaults(), ...currentProps.values };
+              const setV = (patch: Record<string, string | number>) =>
+                setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...v, ...patch } } }));
+              const m = transformerModel(v);
+              const st = circuit.transformerStatus[propsOwnerId];
+              const vec = String(v.tfVector) as VectorGroup;
+              return (
+                <div className="space-y-2 text-xs text-neutral-800">
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Model-specific</div>
+                  <div className="grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                    {(["Dyn11", "YNyn0"] as VectorGroup[]).map((k) => (
+                      <button key={k} onClick={() => setV({ tfVector: k })}
+                        className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${vec === k ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}>{k}</button>
+                    ))}
+                  </div>
+                  {TRANSFORMER_PARAMS.map((d) => (
+                    <div key={d.key} className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2">
+                      <span className="text-[11px]">{d.label}</span>
+                      <input type="number" min={d.min} max={d.max} step={d.step} value={Number(v[d.key] ?? 0)}
+                        onChange={(e) => {
+                          const n = Number(e.target.value);
+                          setV(d.key === "tfPrimaryV" ? { tfPrimaryV: n, nominalVoltage: n } : d.key === "tfRatedKVA" ? { tfRatedKVA: n, ratedPower: n } : { [d.key]: n });
+                        }}
+                        className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30" />
+                      <span className="text-[10px] text-neutral-500">{d.unit}</span>
+                    </div>
+                  ))}
+                  <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700">
+                    <div>Turns ratio per winding: {m.ratio.toFixed(2)} : 1</div>
+                    <div>Rated LV current: {(m.ratedVA / (Math.sqrt(3) * m.vs)).toFixed(1)} A · HV: {(m.ratedVA / (Math.sqrt(3) * m.vp)).toFixed(2)} A</div>
+                    <div>LV impedance per phase: {(m.rSec * 1000).toFixed(2)} mΩ</div>
+                  </div>
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Operation</div>
+                  {!st || st.primaryV < 1 ? (
+                    <div className="text-[11px] text-neutral-600">Not energised — connect an AC source to the HV side (H1 H2 H3) with a cable, line or wires.</div>
+                  ) : (
+                    <div className={`rounded-md border px-2 py-1 font-mono text-[10px] leading-snug ${st.loadPct > 100 ? "border-red-400 bg-red-100/60 text-red-800" : "border-white/50 bg-white/35 text-neutral-700"}`}>
+                      <div>HV: {st.primaryV.toFixed(0)} V · LV: {st.secondaryV.toFixed(1)} V</div>
+                      <div>LV currents: {st.currents.map((c) => `${c.toFixed(1)} A`).join(" / ")}</div>
+                      <div>Load: {(st.loadVA / 1000).toFixed(1)} kVA ({st.loadPct.toFixed(0)}%){st.loadPct > 100 ? " — OVERLOADED" : ""}</div>
+                    </div>
+                  )}
+                  <div className="text-[10px] text-neutral-600">HV pins H1–H3 (+N for YNyn0), LV pins X1–X3, N, PE. Cables and lines attach to the red (HV) or green (LV) markers; wires attach to single pins.</div>
+                </div>
+              );
+            })()}
             {propsModelId === "vsource" && propsOwnerId && (() => {
               const v = { ...sourceDefaults("AC"), ...currentProps.values };
               const kind = String(v.sourceKind ?? "AC") as SourceKind;
