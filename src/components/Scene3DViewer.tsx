@@ -1443,37 +1443,6 @@ export default function Scene3DViewer() {
     if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b)) return routedWireCurve(a, b, w.waypoints ?? []).getLength();
     return wireCurveLength(a, b);
   };
-  /** Node id for phase k (0..2, 3 = neutral) at a cable/line end. */
-  const phaseNode = (end: string, k: number) => {
-    const [oid, side] = end.split("#");
-    if (side === "hv") return `${oid}#${k < 3 ? `h${k + 1}` : "hn"}`;
-    if (side === "lv") return `${oid}#${k < 3 ? `x${k + 1}` : "xn"}`;
-    if (side === "ac") return `${oid}#${k < 3 ? `l${k + 1}` : "n"}`;
-    return `${end}@${k}`; // posts, panels, joints: conductors pass straight through
-  };
-  const AL_RHO = 0.0282;
-  const bundleWires = [
-    ...cables.filter((c) => !cableLoose(c)).flatMap((c) => {
-      const area = CABLE_SIZES.find((z) => z.id === c.size)?.area ?? 95;
-      const len = cableLengthOf(c);
-      return [0, 1, 2, 3].map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / area }));
-    }),
-    ...connections.filter((c) => !parsePt(c.a) && !parsePt(c.b)).flatMap((c) => {
-      const lt = lineTypeOf(c.type);
-      const len = lineLengthOf(c);
-      return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
-    }),
-  ];
-  const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
-  const circuit = solveCircuits(
-    addedItems.filter((i) => i.type === "vsource").map((i) => {
-      const v = objectProps[i.id]?.values ?? sourceDefaults("AC");
-      return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
-    }),
-    [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
-    sceneId === "electriccar" ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
-    addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
-  );
   const wireLabel = (w: EVWireRecord) =>
     wireTypeOf(w.wireType)?.label ?? (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
   const stopAllModes = () => {
@@ -1723,7 +1692,38 @@ export default function Scene3DViewer() {
     let len = 0;
     for (let i = 1; i < p.length; i++) len += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1], p[i][2] - p[i - 1][2]);
     return len;
+  };  /** Node id for phase k (0..2, 3 = neutral) at a cable/line end. */
+  const phaseNode = (end: string, k: number) => {
+    const [oid, side] = end.split("#");
+    if (side === "hv") return `${oid}#${k < 3 ? `h${k + 1}` : "hn"}`;
+    if (side === "lv") return `${oid}#${k < 3 ? `x${k + 1}` : "xn"}`;
+    if (side === "ac") return `${oid}#${k < 3 ? `l${k + 1}` : "n"}`;
+    return `${end}@${k}`; // posts, panels, joints: conductors pass straight through
   };
+  const AL_RHO = 0.0282;
+  const bundleWires = [
+    ...cables.filter((c) => !cableLoose(c)).flatMap((c) => {
+      const area = CABLE_SIZES.find((z) => z.id === c.size)?.area ?? 95;
+      const len = cableLengthOf(c);
+      return [0, 1, 2, 3].map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / area }));
+    }),
+    ...connections.filter((c) => !parsePt(c.a) && !parsePt(c.b)).flatMap((c) => {
+      const lt = lineTypeOf(c.type);
+      const len = lineLengthOf(c);
+      return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
+    }),
+  ];
+  const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
+  const circuit = solveCircuits(
+    addedItems.filter((i) => i.type === "vsource").map((i) => {
+      const v = objectProps[i.id]?.values ?? sourceDefaults("AC");
+      return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
+    }),
+    [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
+    sceneId === "electriccar" ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
+    addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
+  );
+
 
   // --- Shared routing for cables, lines and wires -----------------------------
   const routingKind: "cable" | "line" | "wire" | null =
@@ -3790,6 +3790,53 @@ export default function Scene3DViewer() {
                 }
               />
             )}
+            {propsModelId === "transformer" && propsOwnerId && (() => {
+              const v = { ...transformerDefaults(), ...currentProps.values };
+              const setV = (patch: Record<string, string | number>) =>
+                setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...v, ...patch } } }));
+              const m = transformerModel(v);
+              const st = circuit.transformerStatus[propsOwnerId];
+              const vec = String(v.tfVector) as VectorGroup;
+              return (
+                <div className="space-y-2 text-xs text-neutral-800">
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Model-specific</div>
+                  <div className="grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                    {(["Dyn11", "YNyn0"] as VectorGroup[]).map((k) => (
+                      <button key={k} onClick={() => setV({ tfVector: k })}
+                        className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${vec === k ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}>{k}</button>
+                    ))}
+                  </div>
+                  {TRANSFORMER_PARAMS.map((d) => (
+                    <div key={d.key} className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2">
+                      <span className="text-[11px]">{d.label}</span>
+                      <input type="number" min={d.min} max={d.max} step={d.step} value={Number(v[d.key] ?? 0)}
+                        onChange={(e) => {
+                          const n = Number(e.target.value);
+                          setV(d.key === "tfPrimaryV" ? { tfPrimaryV: n, nominalVoltage: n } : d.key === "tfRatedKVA" ? { tfRatedKVA: n, ratedPower: n } : { [d.key]: n });
+                        }}
+                        className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30" />
+                      <span className="text-[10px] text-neutral-500">{d.unit}</span>
+                    </div>
+                  ))}
+                  <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700">
+                    <div>Turns ratio per winding: {m.ratio.toFixed(2)} : 1</div>
+                    <div>Rated LV current: {(m.ratedVA / (Math.sqrt(3) * m.vs)).toFixed(1)} A · HV: {(m.ratedVA / (Math.sqrt(3) * m.vp)).toFixed(2)} A</div>
+                    <div>LV impedance per phase: {(m.rSec * 1000).toFixed(2)} mΩ</div>
+                  </div>
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Operation</div>
+                  {!st || st.primaryV < 1 ? (
+                    <div className="text-[11px] text-neutral-600">Not energised — connect an AC source to the HV side (H1 H2 H3) with a cable, line or wires.</div>
+                  ) : (
+                    <div className={`rounded-md border px-2 py-1 font-mono text-[10px] leading-snug ${st.loadPct > 100 ? "border-red-400 bg-red-100/60 text-red-800" : "border-white/50 bg-white/35 text-neutral-700"}`}>
+                      <div>HV: {st.primaryV.toFixed(0)} V · LV: {st.secondaryV.toFixed(1)} V</div>
+                      <div>LV currents: {st.currents.map((c) => `${c.toFixed(1)} A`).join(" / ")}</div>
+                      <div>Load: {(st.loadVA / 1000).toFixed(1)} kVA ({st.loadPct.toFixed(0)}%){st.loadPct > 100 ? " — OVERLOADED" : ""}</div>
+                    </div>
+                  )}
+                  <div className="text-[10px] text-neutral-600">HV pins H1–H3 (+N for YNyn0), LV pins X1–X3, N, PE. Cables and lines attach to the red (HV) or green (LV) markers; wires attach to single pins.</div>
+                </div>
+              );
+            })()}
             {propsModelId === "vsource" && propsOwnerId && (() => {
               const v = { ...sourceDefaults("AC"), ...currentProps.values };
               const kind = String(v.sourceKind ?? "AC") as SourceKind;
