@@ -35,6 +35,7 @@ import { BasePropsEditor } from "./BasePropsEditor";
 import { ElectronFlow, wireCurve as evWireCurve, evLoads, type PartStatus } from "@/ModelLibrary";
 import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
 import { TransformerModel, transformerPins, transformerDefaults, transformerModel, transformerTerminalLocals, TRANSFORMER_PARAMS, type VectorGroup } from "@/ModelLibrary";
+import { SwitchgearModel, parseSwitchgear, switchgearWires, cubicleTerminalLocals, cubicleConducts, cubicleChecklist, makeCubicle, CUBICLE_KIND_LABEL, type Cubicle, type CubicleKind } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
@@ -1547,6 +1548,12 @@ export default function Scene3DViewer() {
           const ph = world(transformerTerminalLocals(side));
           out.push({ id: `${i.id}#${side}`, name: `Transformer #${idx + 1} ${side.toUpperCase()}`, point: ph[1], phases: ph });
         });
+      } else if (i.type === "alajaam") {
+        const cubs = parseSwitchgear(objectProps[i.id]?.values.swg);
+        cubs.forEach((c, k) => {
+          const ph = world(cubicleTerminalLocals(k, cubs.length));
+          out.push({ id: `${i.id}#mv${k + 1}`, name: `Alajaam #${idx + 1} · ${c.label} (10 kV)`, point: ph[1], phases: ph });
+        });
       } else if (i.type === "vsource" && String(objectProps[i.id]?.values.sourceKind ?? "AC") !== "DC") {
         const ph = world(sourcePins("AC").slice(0, 3).map((p) => p.local));
         out.push({ id: `${i.id}#ac`, name: `Voltage source #${idx + 1}`, point: ph[1], phases: ph });
@@ -1726,6 +1733,14 @@ export default function Scene3DViewer() {
       return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
     }),
   ];
+  const switchgearOf = (id: string) => parseSwitchgear(objectProps[id]?.values.swg);
+  const setSwitchgear = (id: string, next: Cubicle[]) =>
+    setObjectProps((prev) => {
+      const cur = prev[id] ?? initPropsFor("alajaam");
+      return { ...prev, [id]: { ...cur, values: { ...cur.values, swg: JSON.stringify(next) } } };
+    });
+  bundleWires.push(...addedItems.filter((i) => i.type === "alajaam").flatMap((i) => switchgearWires(i.id, switchgearOf(i.id))));
+  const cubicleCurrent = (subId: string, k: number) => Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
   const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
   const circuit = solveCircuits(
     addedItems.filter((i) => i.type === "vsource").map((i) => {
@@ -1735,7 +1750,24 @@ export default function Scene3DViewer() {
     [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
     sceneId === "electriccar" ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
     addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
-  );
+  );  // Protection: closed breakers trip instantly when current exceeds I> / I>>.
+  const tripKey = addedItems.filter((i) => i.type === "alajaam").map((i) => switchgearOf(i.id).map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`).join(",")).join("|");
+  useEffect(() => {
+    for (const it of addedItems.filter((i) => i.type === "alajaam")) {
+      const cubs = switchgearOf(it.id);
+      let changed = false;
+      const next = cubs.map((c, k) => {
+        if (c.kind !== "cb" || !cubicleConducts(c)) return c;
+        const I = cubicleCurrent(it.id, k);
+        if (I <= c.pickupA) return c;
+        changed = true;
+        return { ...c, tripped: I > c.scA ? `I>> short circuit (${I.toFixed(0)} A)` : `I> overcurrent (${I.toFixed(0)} A)` };
+      });
+      if (changed) setSwitchgear(it.id, next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripKey]);
+
 
 
   // --- Shared routing for cables, lines and wires -----------------------------
@@ -2098,7 +2130,10 @@ export default function Scene3DViewer() {
                     </>
                   )}
                   {item.type === "alajaam" && (
-                    <Substation step={itemStep} />
+                    <>
+                      <Substation step={itemStep} />
+                      <SwitchgearModel cubicles={parseSwitchgear(objectProps[item.id]?.values.swg)} />
+                    </>
                   )}
                   {item.type === "transformer" && <TransformerModel />}
                   {item.type === "vsource" && (
@@ -3806,6 +3841,90 @@ export default function Scene3DViewer() {
                 }
               />
             )}
+            {propsModelId === "alajaam" && propsOwnerId && (() => {
+              const sid = propsOwnerId;
+              const cubs = switchgearOf(sid);
+              const setC = (k: number, patch: Partial<Cubicle>) => setSwitchgear(sid, cubs.map((c, i) => (i === k ? { ...c, ...patch } : c)));
+              const busLive = cubs.some((c, k) => cubicleConducts(c) && cubicleCurrent(sid, k) > 0) || cubs.some((_, k) => cubicleCurrent(sid, k) > 0);
+              const inp = "w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30";
+              const btn = (on: boolean) => `rounded-md px-2 py-1 text-[11px] font-semibold transition ${on ? "bg-neutral-800 text-white" : "border border-white/60 bg-white/50 text-neutral-800 hover:bg-white/80"}`;
+              return (
+                <div className="space-y-2 text-xs text-neutral-800">
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">MV switchgear (10 kV)</div>
+                  <div className="text-[10px] text-neutral-600">Each cubicle has a 10 kV connector on the front wall for cables and lines. All cubicles share one busbar.</div>
+                  {cubs.map((c, k) => {
+                    const I = cubicleCurrent(sid, k);
+                    const live = busLive || I > 0;
+                    const checks = cubicleChecklist(c, live, I);
+                    const passed = checks.filter((x) => x.status === "pass").length;
+                    return (
+                      <div key={c.id} className={`space-y-1.5 rounded-lg border p-2 ${c.tripped ? "border-orange-400 bg-orange-100/50" : "border-white/50 bg-white/30"}`}>
+                        <div className="flex items-center gap-2">
+                          <input value={c.label} onChange={(e) => setC(k, { label: e.target.value })} className={inp} />
+                          <button aria-label="Remove cubicle" onClick={() => setSwitchgear(sid, cubs.filter((_, i) => i !== k))} className="rounded p-1 text-neutral-600 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <select value={c.kind} onChange={(e) => setC(k, { kind: e.target.value as CubicleKind, tripped: undefined })} className={inp}>
+                          {(Object.keys(CUBICLE_KIND_LABEL) as CubicleKind[]).map((t) => <option key={t} value={t}>{CUBICLE_KIND_LABEL[t]}</option>)}
+                        </select>
+                        <div className="flex flex-wrap gap-1">
+                          <button className={btn(c.closed)} disabled={c.earthed} title={c.earthed ? "Interlock: open the earthing switch first" : ""}
+                            onClick={() => setC(k, { closed: !c.closed, tripped: undefined })}>{c.closed ? "Closed — open" : "Open — close"}</button>
+                          <button className={btn(c.earthed)} disabled={c.closed && !c.tripped} title={c.closed ? "Interlock: open the main switch first" : ""}
+                            onClick={() => setC(k, { earthed: !c.earthed })}>{c.earthed ? "Earthed — remove earth" : "Earth"}</button>
+                          {c.tripped && <button className={btn(false)} onClick={() => setC(k, { tripped: undefined, closed: false })}>Reset trip</button>}
+                        </div>
+                        <div className="font-mono text-[10px] text-neutral-700">
+                          {c.tripped ? <strong className="text-orange-700">TRIPPED: {c.tripped}</strong> : c.earthed ? "Earthed" : cubicleConducts(c) ? "Closed" : "Open"} · I = {I.toFixed(1)} A
+                        </div>
+                        {(c.closed || c.earthed) && <div className="text-[10px] text-neutral-500">{c.closed ? "Earthing switch locked (main switch closed)." : "Main switch locked (earthed)."}</div>}
+                        {c.kind === "cb" && (
+                          <div className="grid grid-cols-[90px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
+                            <span className="text-[11px]">I&gt; overcurrent</span>
+                            <input type="number" min={1} step={1} value={c.pickupA} onChange={(e) => setC(k, { pickupA: Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">A</span>
+                            <span className="text-[11px]">I&gt;&gt; short circuit</span>
+                            <input type="number" min={1} step={10} value={c.scA} onChange={(e) => setC(k, { scA: Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">A</span>
+                          </div>
+                        )}
+                        <details className="rounded-md border border-white/50 bg-white/35 px-2 py-1">
+                          <summary className="cursor-pointer text-[11px] font-semibold">Inspection checklist ({passed}/{checks.length} pass)</summary>
+                          <div className="mt-1 space-y-1">
+                            <label className="flex items-center gap-2 text-[11px]"><input type="checkbox" checked={!!c.visualOk} onChange={(e) => setC(k, { visualOk: e.target.checked })} /> Visual inspection OK</label>
+                            <div className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2">
+                              <span className="text-[11px]">SF6 pressure</span>
+                              <input type="number" step={0.05} value={c.gasBar ?? ""} onChange={(e) => setC(k, { gasBar: e.target.value === "" ? undefined : Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">bar</span>
+                              <span className="text-[11px]">Insulation resistance</span>
+                              <input type="number" step={100} value={c.insulationMOhm ?? ""} onChange={(e) => setC(k, { insulationMOhm: e.target.value === "" ? undefined : Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">MΩ</span>
+                              {c.kind === "cb" && <>
+                                <span className="text-[11px]">Trip test current</span>
+                                <input type="number" step={5} value={c.tripTestA ?? ""} onChange={(e) => setC(k, { tripTestA: e.target.value === "" ? undefined : Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">A</span>
+                              </>}
+                            </div>
+                            {c.kind === "cb" && (
+                              <button className={btn(false)} disabled={!c.tripTestA || !c.closed || !!c.tripped}
+                                onClick={() => { const t = c.tripTestA ?? 0; const ok = t > c.pickupA; setC(k, { tripTestResult: ok ? "pass" : "fail", tripped: ok ? `Test trip (${t} A injected)` : undefined }); }}>
+                                Inject test current
+                              </button>
+                            )}
+                            <ul className="space-y-0.5">
+                              {checks.map((x) => (
+                                <li key={x.id} className="flex gap-1.5 text-[10px] leading-snug">
+                                  <span className={`font-bold ${x.status === "pass" ? "text-green-700" : x.status === "fail" ? "text-red-700" : "text-neutral-400"}`}>{x.status === "pass" ? "✓" : x.status === "fail" ? "✗" : "○"}</span>
+                                  <span>{x.label} — <span className="text-neutral-500">{x.detail}</span></span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </details>
+                      </div>
+                    );
+                  })}
+                  <div className="flex gap-1">
+                    <button className={btn(false)} onClick={() => setSwitchgear(sid, [...cubs, makeCubicle("lbs", cubs.filter((c) => c.kind === "lbs").length + 1)])}>+ Cable cubicle</button>
+                    <button className={btn(false)} onClick={() => setSwitchgear(sid, [...cubs, makeCubicle("cb", cubs.filter((c) => c.kind === "cb").length + 1)])}>+ Breaker cubicle</button>
+                  </div>
+                </div>
+              );
+            })()}
             {propsModelId === "transformer" && propsOwnerId && (() => {
               const v = { ...transformerDefaults(), ...currentProps.values };
               const setV = (patch: Record<string, string | number>) =>

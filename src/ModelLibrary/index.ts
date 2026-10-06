@@ -82,3 +82,4 @@ export * from "./sources/VoltageSource";
 export * from "./sources/solver";
 export * from "./sources/ElectronFlow";
 export * from "./transformers/Transformer";
+export * from "./substations/Switchgear";
