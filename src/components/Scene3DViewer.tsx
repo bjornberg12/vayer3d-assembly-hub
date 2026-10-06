@@ -35,6 +35,7 @@ import { BasePropsEditor } from "./BasePropsEditor";
 import { ElectronFlow, wireCurve as evWireCurve, evLoads, type PartStatus } from "@/ModelLibrary";
 import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
 import { TransformerModel, transformerPins, transformerDefaults, transformerModel, transformerTerminalLocals, TRANSFORMER_PARAMS, type VectorGroup } from "@/ModelLibrary";
+import { SwitchgearModel, parseSwitchgear, switchgearWires, cubicleTerminalLocals, cubicleConducts, cubicleChecklist, makeCubicle, CUBICLE_KIND_LABEL, type Cubicle, type CubicleKind } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
@@ -1547,6 +1548,12 @@ export default function Scene3DViewer() {
           const ph = world(transformerTerminalLocals(side));
           out.push({ id: `${i.id}#${side}`, name: `Transformer #${idx + 1} ${side.toUpperCase()}`, point: ph[1], phases: ph });
         });
+      } else if (i.type === "alajaam") {
+        const cubs = parseSwitchgear(objectProps[i.id]?.values.swg);
+        cubs.forEach((c, k) => {
+          const ph = world(cubicleTerminalLocals(k, cubs.length));
+          out.push({ id: `${i.id}#mv${k + 1}`, name: `Alajaam #${idx + 1} · ${c.label} (10 kV)`, point: ph[1], phases: ph });
+        });
       } else if (i.type === "vsource" && String(objectProps[i.id]?.values.sourceKind ?? "AC") !== "DC") {
         const ph = world(sourcePins("AC").slice(0, 3).map((p) => p.local));
         out.push({ id: `${i.id}#ac`, name: `Voltage source #${idx + 1}`, point: ph[1], phases: ph });
@@ -1726,6 +1733,14 @@ export default function Scene3DViewer() {
       return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
     }),
   ];
+  const switchgearOf = (id: string) => parseSwitchgear(objectProps[id]?.values.swg);
+  const setSwitchgear = (id: string, next: Cubicle[]) =>
+    setObjectProps((prev) => {
+      const cur = prev[id] ?? initPropsFor("alajaam");
+      return { ...prev, [id]: { ...cur, values: { ...cur.values, swg: JSON.stringify(next) } } };
+    });
+  bundleWires.push(...addedItems.filter((i) => i.type === "alajaam").flatMap((i) => switchgearWires(i.id, switchgearOf(i.id))));
+  const cubicleCurrent = (subId: string, k: number) => Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
   const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
   const circuit = solveCircuits(
     addedItems.filter((i) => i.type === "vsource").map((i) => {
@@ -1735,7 +1750,24 @@ export default function Scene3DViewer() {
     [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
     sceneId === "electriccar" ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
     addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
-  );
+  );  // Protection: closed breakers trip instantly when current exceeds I> / I>>.
+  const tripKey = addedItems.filter((i) => i.type === "alajaam").map((i) => switchgearOf(i.id).map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`).join(",")).join("|");
+  useEffect(() => {
+    for (const it of addedItems.filter((i) => i.type === "alajaam")) {
+      const cubs = switchgearOf(it.id);
+      let changed = false;
+      const next = cubs.map((c, k) => {
+        if (c.kind !== "cb" || !cubicleConducts(c)) return c;
+        const I = cubicleCurrent(it.id, k);
+        if (I <= c.pickupA) return c;
+        changed = true;
+        return { ...c, tripped: I > c.scA ? `I>> short circuit (${I.toFixed(0)} A)` : `I> overcurrent (${I.toFixed(0)} A)` };
+      });
+      if (changed) setSwitchgear(it.id, next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripKey]);
+
 
 
   // --- Shared routing for cables, lines and wires -----------------------------
@@ -2098,7 +2130,10 @@ export default function Scene3DViewer() {
                     </>
                   )}
                   {item.type === "alajaam" && (
-                    <Substation step={itemStep} />
+                    <>
+                      <Substation step={itemStep} />
+                      <SwitchgearModel cubicles={parseSwitchgear(objectProps[item.id]?.values.swg)} />
+                    </>
                   )}
                   {item.type === "transformer" && <TransformerModel />}
                   {item.type === "vsource" && (
