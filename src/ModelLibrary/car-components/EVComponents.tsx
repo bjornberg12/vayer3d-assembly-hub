@@ -23,6 +23,22 @@ export const PIN_COLORS: Record<PinRole, string> = {
   "dc+": "#dc2626", "dc-": "#111111", L1: "#7c4a1e", L2: "#1f1f1f", L3: "#9ca3af", N: "#2563eb", PE: "#84cc16",
   U: "#7c4a1e", V: "#1f1f1f", W: "#9ca3af", "12+": "#f87171", "12-": "#374151", sig: "#a855f7",
 };
+/** Shared pin terminal: role-coloured cap with a light collar so dark roles (L2, DC−) stay visible. */
+export function PinTerminal({ role, position, size = 0.012 }: { role: PinRole; position: [number, number, number]; size?: number }) {
+  const c = PIN_COLORS[role];
+  return (
+    <group position={position}>
+      <mesh>
+        <cylinderGeometry args={[size, size, size * 2.5, 12]} />
+        <meshStandardMaterial color={c} emissive={c} emissiveIntensity={0.35} metalness={0.2} roughness={0.45} />
+      </mesh>
+      <mesh position={[0, -size * 0.9, 0]}>
+        <cylinderGeometry args={[size * 1.45, size * 1.45, size * 0.5, 14]} />
+        <meshStandardMaterial color="#e5e7eb" emissive="#9ca3af" emissiveIntensity={0.25} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
 const PHASE: PinRole[] = ["L1", "L2", "L3", "U", "V", "W"];
 /** True when two pin roles should not normally be joined. */
 export function pinsIncompatible(a?: PinRole, b?: PinRole) {
@@ -312,10 +328,7 @@ export function EVPart({ part }: { part: EVPartRecord }) {
         </Part>
         {pinsOf(part.type).map((pin) => (
           <Part key={pin.id} name={`${EV_DEFS[part.type].name} · ${pin.label}`}>
-            <mesh position={pin.local}>
-              <cylinderGeometry args={[0.012, 0.012, 0.03, 10]} />
-              <meshStandardMaterial color={PIN_COLORS[pin.role]} metalness={0.4} roughness={0.4} />
-            </mesh>
+            <PinTerminal role={pin.role} position={pin.local} />
           </Part>
         ))}
       </PartOwner>
