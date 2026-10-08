@@ -5,7 +5,7 @@
  * Cables and lines attach to the whole side via the terminal ends "<id>#hv" / "<id>#lv".
  */
 import { Part } from "@/components/PartLabel";
-import type { PinDef } from "../car-components/EVComponents";
+import { PinTerminal, type PinDef } from "../car-components/EVComponents";
 
 export type VectorGroup = "Dyn11" | "YNyn0";
 
@@ -122,6 +122,7 @@ export function TransformerModel() {
           </group>
         );
       })}
+      {transformerPins().map((p) => <PinTerminal key={`pin-${p.id}`} role={p.role} position={p.local} size={0.03} />)}
     </Part>
   );
 }

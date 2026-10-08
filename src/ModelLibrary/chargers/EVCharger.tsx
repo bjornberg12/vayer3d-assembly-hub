@@ -63,6 +63,15 @@ const DARK = "#1f2937";
 const ACCENT = "#22c55e";
 
 export function EVCharger({ kind = "ac-wall" }: { kind?: string }) {
+  return (
+    <group>
+      <ChargerBody kind={kind} />
+      {chargerPins(kind).map((p) => <PinTerminal key={p.id} role={p.role} position={p.local} />)}
+    </group>
+  );
+}
+
+function ChargerBody({ kind }: { kind: string }) {
   if (kind === "dc-fast")
     return (
       <group>
