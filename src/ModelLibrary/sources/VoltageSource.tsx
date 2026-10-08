@@ -3,7 +3,7 @@
  * Model-specific values live in the object's property values (keys from SOURCE_PARAMS).
  */
 import { Part } from "@/components/PartLabel";
-import type { PinDef } from "../car-components/EVComponents";
+import { PinTerminal, type PinDef } from "../car-components/EVComponents";
 
 export type SourceKind = "AC" | "DC";
 
@@ -84,10 +84,7 @@ function Generator() {
         <meshStandardMaterial color="#111" emissive="#2a6" emissiveIntensity={0.4} />
       </mesh>
       {sourcePins("AC").map((p) => (
-        <mesh key={p.id} position={[p.local[0], 0.505, p.local[2]]}>
-          <cylinderGeometry args={[0.025, 0.025, 0.02, 16]} />
-          <meshStandardMaterial color="#222" />
-        </mesh>
+        <PinTerminal key={p.id} role={p.role} position={[p.local[0], 0.515, p.local[2]]} size={0.022} />
       ))}
     </Part>
   );
@@ -107,10 +104,7 @@ export function VoltageSource({ kind }: { kind: string }) {
         <meshStandardMaterial color="#f5c518" />
       </mesh>
       {sourcePins(kind).map((p) => (
-        <mesh key={p.id} position={[p.local[0], 0.505, p.local[2]]}>
-          <cylinderGeometry args={[0.025, 0.025, 0.02, 16]} />
-          <meshStandardMaterial color="#222" />
-        </mesh>
+        <PinTerminal key={p.id} role={p.role} position={[p.local[0], 0.515, p.local[2]]} size={0.022} />
       ))}
     </Part>
   );
