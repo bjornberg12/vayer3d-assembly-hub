@@ -3,7 +3,7 @@
  * Model-specific parameters are stored in the object's property values (keys from CHARGER_PARAMS).
  */
 import { Part } from "@/components/PartLabel";
-import { layoutPins, type PinDef } from "../car-components/EVComponents";
+import { layoutPins, PinTerminal, type PinDef } from "../car-components/EVComponents";
 
 export type ChargerKind = "ac-wall" | "ac-pedestal" | "dc-fast";
 
