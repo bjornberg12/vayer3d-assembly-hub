@@ -20,6 +20,8 @@ import {
 import {
   UndergroundCable,
   CABLE_SIZES,
+  cableSizeOf,
+  cableLabel,
   CONDUITS,
   cableRouteLength,
   cableRoutePointAt,
@@ -1587,7 +1589,7 @@ export default function Scene3DViewer() {
       if (!a || !b) return;
       list.push({
         id: `joint:${c.id}`,
-        name: `Cable joint #${idx + 1} (4×${c.size} mm²)`,
+        name: `Cable joint #${idx + 1} (${cableLabel(c.size)})`,
         point: c.waypoints?.length
           ? cableRoutePointAt(a.point, b.point, 0.7, c.waypoints, 0.5)
           : [
@@ -1723,9 +1725,10 @@ export default function Scene3DViewer() {
   const AL_RHO = 0.0282;
   const bundleWires = [
     ...cables.filter((c) => !cableLoose(c)).flatMap((c) => {
-      const area = CABLE_SIZES.find((z) => z.id === c.size)?.area ?? 95;
+      const sz = cableSizeOf(c.size);
+      const area = sz.area;
       const len = cableLengthOf(c);
-      return [0, 1, 2, 3].map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / area }));
+      return (sz.mv ? [0, 1, 2] : [0, 1, 2, 3]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / area }));
     }),
     ...connections.filter((c) => !parsePt(c.a) && !parsePt(c.b)).flatMap((c) => {
       const lt = lineTypeOf(c.type);
@@ -2952,14 +2955,14 @@ export default function Scene3DViewer() {
               {wiringSection === "cables" && (
               <>
               <div className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
-                Underground LV cable
+                Underground cable
               </div>
               <div className="px-4 pb-3">
                 <div className="mb-1 text-[11px] text-neutral-600">
                   Conductor size (L1, L2, L3, PEN)
                 </div>
                 <div className="grid grid-cols-4 gap-1">
-                  {CABLE_SIZES.map((s) => (
+                  {CABLE_SIZES.filter((s) => !s.mv).map((s) => (
                     <button
                       key={s.id}
                       onClick={() => setCableSize(s.id)}
@@ -2970,6 +2973,25 @@ export default function Scene3DViewer() {
                       }`}
                     >
                       {s.area}
+                    </button>
+                  ))}
+                </div>
+                <div className="mb-1 mt-2 text-[11px] text-neutral-600">
+                  Medium voltage up to 24 kV (AHXAMK-W, L1, L2, L3)
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {CABLE_SIZES.filter((s) => s.mv).map((s) => (
+                    <button
+                      key={s.id}
+                      onClick={() => setCableSize(s.id)}
+                      title={s.label}
+                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                        cableSize === s.id
+                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                      }`}
+                    >
+                      3×{s.area}
                     </button>
                   ))}
                 </div>
@@ -3032,7 +3054,7 @@ export default function Scene3DViewer() {
                             onClick={() => setSelectedCableId(c.id)}
                             className="min-w-0 flex-1 truncate text-left"
                           >
-                            4×{c.size} mm²
+                            {cableLabel(c.size)}
                             {c.conduit !== "none" ? ` · ${c.conduit}` : ""}
                             {" · "}
                             {cableLengthOf(c).toFixed(1)} m
@@ -3446,7 +3468,7 @@ export default function Scene3DViewer() {
           <div className="px-4 py-3 text-xs text-neutral-800">
             <div className="mb-2 flex items-start justify-between gap-2">
               <div className="font-semibold">
-                LV cable 4×{selectedCable.size} mm²
+                {cableSizeOf(selectedCable.size).mv ? "MV cable" : "LV cable"} {cableLabel(selectedCable.size)}
                 <div className="text-[10px] font-normal text-neutral-600">
                   {selectedCable.conduit === "none"
                     ? "No conduit · sand bed"
@@ -3662,7 +3684,7 @@ export default function Scene3DViewer() {
           <Link2 className="h-3.5 w-3.5" />
           <span>
             {cableFirst
-              ? `Click the ground to add corners (${cableDraft.length}), then click the end unit or double-click to end here — Backspace undo, Enter finish, Esc cancel · 4×${cableSize} mm²${
+              ? `Click the ground to add corners (${cableDraft.length}), then click the end unit or double-click to end here — Backspace undo, Enter finish, Esc cancel · ${cableLabel(cableSize)}${
                   cableConduit !== "none" ? ` in ${cableConduit} conduit` : ""
                 }`
               : "Click the first unit (substation / panel) or the ground to start"}
