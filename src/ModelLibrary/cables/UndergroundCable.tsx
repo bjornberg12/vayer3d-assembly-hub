@@ -6,7 +6,7 @@ import { Part } from "@/components/PartLabel";
 // Low voltage underground cable (4-core: L1, L2, L3, PEN)
 // ---------------------------------------------------------------------------
 
-export type CableSizeId = "70" | "95" | "120" | "240";
+export type CableSizeId = "70" | "95" | "120" | "240" | "mv95" | "mv150" | "mv240";
 
 export const CABLE_SIZES: {
   id: CableSizeId;
@@ -14,12 +14,20 @@ export const CABLE_SIZES: {
   label: string;
   coreD: number; // conductor diameter in meters
   outerD: number; // cable outer diameter in meters
+  /** Medium voltage (12/20/24 kV) triplex: 3 single cores, no neutral. */
+  mv?: boolean;
+  voltage: number; // max system voltage Um (V)
 }[] = [
-  { id: "70", area: 70, label: "4×70 mm²", coreD: 0.0094, outerD: 0.04 },
-  { id: "95", area: 95, label: "4×95 mm²", coreD: 0.011, outerD: 0.045 },
-  { id: "120", area: 120, label: "4×120 mm²", coreD: 0.0124, outerD: 0.05 },
-  { id: "240", area: 240, label: "4×240 mm²", coreD: 0.0175, outerD: 0.065 },
+  { id: "70", area: 70, voltage: 1000, label: "4×70 mm²", coreD: 0.0094, outerD: 0.04 },
+  { id: "95", area: 95, voltage: 1000, label: "4×95 mm²", coreD: 0.011, outerD: 0.045 },
+  { id: "120", area: 120, voltage: 1000, label: "4×120 mm²", coreD: 0.0124, outerD: 0.05 },
+  { id: "240", area: 240, voltage: 1000, label: "4×240 mm²", coreD: 0.0175, outerD: 0.065 },
+  { id: "mv95", area: 95, voltage: 24000, mv: true, label: "AHXAMK-W 3×1×95 mm² 24 kV", coreD: 0.011, outerD: 0.034 },
+  { id: "mv150", area: 150, voltage: 24000, mv: true, label: "AHXAMK-W 3×1×150 mm² 24 kV", coreD: 0.0142, outerD: 0.038 },
+  { id: "mv240", area: 240, voltage: 24000, mv: true, label: "AHXAMK-W 3×1×240 mm² 24 kV", coreD: 0.0178, outerD: 0.043 },
 ];
+export const cableSizeOf = (id?: string) => CABLE_SIZES.find((s) => s.id === id) ?? CABLE_SIZES[1];
+export const cableLabel = (id?: string) => cableSizeOf(id).label;
 
 export type ConduitId = "none" | "750N" | "1250N";
 
@@ -228,7 +236,7 @@ export function UndergroundCable({
   const insR = size.outerD / 2 / 2.1; // insulated core radius
   const ring = size.outerD / 2 - insR; // 2×2 bundle offset
 
-  const label = `LV cable 4×${size.area} mm² (L1, L2, L3, PEN)`;
+  const label = size.mv ? `MV cable ${size.label} (L1, L2, L3)` : `LV cable 4×${size.area} mm² (L1, L2, L3, PEN)`;
   const hitR = Math.max(size.outerD, conduit.outerD) / 2 + 0.06;
 
   return (
@@ -259,6 +267,20 @@ export function UndergroundCable({
         </group>
       )}
 
+      {size.mv ? (
+        // Triplex: three single cores (red sheath) twisted as a bundle
+        [0, 1, 2].map((k) => {
+          const a = (k / 3) * Math.PI * 2;
+          const r = size.outerD / 2;
+          return (
+            <Part key={k} name={`L${k + 1} single core — ${size.area} mm² Al, XLPE, 24 kV`}>
+              <group>
+                <TubeAlong curve={curve} radius={r} color="#c62828" offset={[Math.cos(a) * r * 1.15, Math.sin(a) * r * 1.15]} roughness={0.6} />
+              </group>
+            </Part>
+          );
+        })
+      ) : (<>
       {/* Outer sheath */}
       <Part name={label}>
         <TubeAlong curve={curve} radius={size.outerD / 2} color="#1f1f22" roughness={0.75} />
@@ -291,6 +313,8 @@ export function UndergroundCable({
           </Part>
         );
       })}
+
+      </>)}
 
       {/* Protective conduit pipe */}
       {conduit.id !== "none" && (
