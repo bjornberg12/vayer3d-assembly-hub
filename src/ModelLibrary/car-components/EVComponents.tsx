@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
 import { Part, PartOwner } from "@/components/PartLabel";
 import type { BaseDefaults } from "../properties";
 
