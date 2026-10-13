@@ -1993,7 +1993,7 @@ export default function Scene3DViewer() {
                 {sceneId === "electriccar" && <EVChassisGhost />}
                 {evParts.map((part) => (
                   <group key={part.id}>
-                    <EVPart part={part} />
+                    <EVPart part={part} running={circuit.partStatus[part.id]?.state === "on"} />
                     {(() => {
                       const st = circuit.partStatus[part.id]?.state;
                       if (!st || st === "off") return null;
