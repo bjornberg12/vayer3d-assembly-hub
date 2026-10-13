@@ -304,6 +304,8 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
           <cylinderGeometry args={[0.04, 0.04, 1.4, 12]} />
           <meshStandardMaterial {...M.black} />
         </mesh>
+        <Wheel x={-0.42} running={running} />
+        <Wheel x={1.02} running={running} />
       </>);
     case "inverter":
       return (<>
