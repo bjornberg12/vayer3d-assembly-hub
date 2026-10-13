@@ -355,7 +355,7 @@ export function EVPart({ part, running = false }: { part: EVPartRecord; running?
     <group position={part.position} rotation={[0, part.rotationY, 0]}>
       <PartOwner id={part.id}>
         <Part name={EV_DEFS[part.type].name}>
-          <Model type={part.type} />
+          <Model type={part.type} running={running} />
         </Part>
         {pinsOf(part.type).map((pin) => (
           <Part key={pin.id} name={`${EV_DEFS[part.type].name} · ${pin.label}`}>
