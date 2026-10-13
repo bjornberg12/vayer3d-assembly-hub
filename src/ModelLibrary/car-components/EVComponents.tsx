@@ -257,7 +257,35 @@ function Box({ size, pos, mat }: { size: [number, number, number]; pos: [number,
   );
 }
 
-function Model({ type }: { type: EVType }) {
+/** Opaque wheel (tyre + hub + spokes) that spins around the x-axis while the motor is powered. */
+function Wheel({ x, running }: { x: number; running: boolean }) {
+  const ref = useRef<THREE.Group>(null);
+  useFrame((_, dt) => {
+    if (running && ref.current) ref.current.rotation.x -= dt * 9;
+  });
+  return (
+    <group position={[x, 0.42, 0]}>
+      <group ref={ref}>
+        <mesh rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[0.17, 0.17, 0.09, 24]} />
+          <meshStandardMaterial color="#1b1b1b" roughness={0.85} metalness={0.05} />
+        </mesh>
+        <mesh rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.085, 0.085, 0.095, 18]} />
+          <meshStandardMaterial color="#c9ced4" metalness={0.8} roughness={0.3} />
+        </mesh>
+        {[0, 1, 2, 3, 4].map((i) => (
+          <mesh key={i} rotation={[(i * Math.PI) / 5, 0, 0]}>
+            <boxGeometry args={[0.1, 0.028, 0.3]} />
+            <meshStandardMaterial color="#8f959c" metalness={0.7} roughness={0.35} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  );
+}
+
+function Model({ type, running = false }: { type: EVType; running?: boolean }) {
   switch (type) {
     case "battery":
       return (<>
