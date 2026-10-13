@@ -350,7 +350,7 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
   }
 }
 
-export function EVPart({ part }: { part: EVPartRecord }) {
+export function EVPart({ part, running = false }: { part: EVPartRecord; running?: boolean }) {
   return (
     <group position={part.position} rotation={[0, part.rotationY, 0]}>
       <PartOwner id={part.id}>
