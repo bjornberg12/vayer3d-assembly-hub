@@ -1183,6 +1183,13 @@ export default function Scene3DViewer() {
     { type: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply" },
     { type: "transformer", name: "Transformer", subtitle: "3-phase, HV / LV pins" },
   ];
+  const ADD_GROUPS: { id: string; label: string; types: AddableType[] }[] = [
+    { id: "lines", label: "Power line poles", types: ["puitmast", "puitmast20"] },
+    { id: "dist", label: "Distribution & substations", types: ["jaotuskilp", "alajaam", "transformer"] },
+    { id: "sources", label: "Power sources", types: ["vsource"] },
+    { id: "charging", label: "EV charging", types: ["evcharger"] },
+  ];
+  const [addGroupOpen, setAddGroupOpen] = useState<Record<string, boolean>>({ lines: true });
   type AddedItem = {
     id: string;
     type: AddableType;
@@ -1336,9 +1343,9 @@ export default function Scene3DViewer() {
   };
 
   // --- Electric car internals ------------------------------------------------
-  const [evParts, setEVParts] = useState<EVPartRecord[]>(() => defaultEVLayout().parts);
+  const [evParts, setEVParts] = useState<EVPartRecord[]>([]);
   const [showFlow, setShowFlow] = useState(false);
-  const [evWires, setEVWires] = useState<EVWireRecord[]>(() => defaultEVLayout().wires);
+  const [evWires, setEVWires] = useState<EVWireRecord[]>([]);
   const [pendingEV, setPendingEV] = useState<EVType | null>(null);
   const [evWireMode, setEVWireMode] = useState(false);
   const [evWireFirst, setEVWireFirst] = useState<string | null>(null);
@@ -1371,7 +1378,7 @@ export default function Scene3DViewer() {
     const ITEM_FOOTPRINT: Record<string, [number, number]> = {
       evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
     };
-    const parts = sceneId === "electriccar" ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
+    const parts = true ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
     const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
     return [...parts, ...items];
   };
@@ -1417,13 +1424,13 @@ export default function Scene3DViewer() {
     if (pt) return [pt[0], 0.1, pt[1]];
     if (id.includes("#")) {
       const [oid, pin] = id.split("#");
-      const pp = sceneId === "electriccar" ? evParts.find((q) => q.id === oid) : undefined;
+      const pp = true ? evParts.find((q) => q.id === oid) : undefined;
       if (pp) return evPinWorld(pp, pin);
       const it = addedItems.find((i) => i.id === oid);
       const pd = it && pinDefsOfItem(it).find((q) => q.id === pin);
       return it && pd ? pinWorldOf(pd.local, it.position, it.rotationY) : null;
     }
-    const part = sceneId === "electriccar" ? evParts.find((q) => q.id === id) : undefined;
+    const part = true ? evParts.find((q) => q.id === id) : undefined;
     if (part) return terminalPoint(part);
     const item = addedItems.find((i) => i.id === id);
     if (item) return [item.position[0], 1.2, item.position[2]];
@@ -1751,7 +1758,7 @@ export default function Scene3DViewer() {
       return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
     }),
     [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
-    sceneId === "electriccar" ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
+    true ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
     addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
   );  // Protection: closed breakers trip instantly when current exceeds I> / I>>.
   const tripKey = addedItems.filter((i) => i.type === "alajaam").map((i) => switchgearOf(i.id).map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`).join(",")).join("|");
@@ -1779,7 +1786,7 @@ export default function Scene3DViewer() {
   const routeFirst =
     routingKind === "cable" ? cableFirst : routingKind === "line" ? connectFirst : routingKind === "wire" ? evWireFirst : null;
   const availableWirePins = [
-    ...(sceneId === "electriccar" ? evParts.map((part) => ({ id: part.id, pins: pinsOf(part.type), pos: part.position, rot: part.rotationY })) : []),
+    ...(true ? evParts.map((part) => ({ id: part.id, pins: pinsOf(part.type), pos: part.position, rot: part.rotationY })) : []),
     ...addedItems.filter((item) => PIN_ITEM_TYPES.includes(item.type)).map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
   ].flatMap((owner) => owner.pins.map((pin) => ({
     id: `${owner.id}#${pin.id}`,
@@ -1835,6 +1842,11 @@ export default function Scene3DViewer() {
 
   const selectScene = (id: SceneId) => {
     setSceneId(id);
+    if (id === "electriccar" && evParts.length === 0) {
+      const d = defaultEVLayout();
+      setEVParts(d.parts);
+      setEVWires(d.wires);
+    }
     setMenuOpen(false);
   };
 
@@ -1976,9 +1988,9 @@ export default function Scene3DViewer() {
             }}
             enabled={!rulerActive}
           >
-            {sceneId === "electriccar" && (
+            {(
               <group>
-                <EVChassisGhost />
+                {sceneId === "electriccar" && <EVChassisGhost />}
                 {evParts.map((part) => (
                   <group key={part.id}>
                     <EVPart part={part} />
@@ -2016,7 +2028,7 @@ export default function Scene3DViewer() {
               </group>
             )}
             {evWireMode && [
-              ...(sceneId === "electriccar" ? evParts.map((p) => ({ id: p.id, pins: pinsOf(p.type), pos: p.position, rot: p.rotationY })) : []),
+              ...(true ? evParts.map((p) => ({ id: p.id, pins: pinsOf(p.type), pos: p.position, rot: p.rotationY })) : []),
               ...addedItems.filter((i) => PIN_ITEM_TYPES.includes(i.type)).map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
             ].flatMap((o) =>
               o.pins.map((pin) => {
@@ -2759,29 +2771,45 @@ export default function Scene3DViewer() {
           {addOpen && (
             <DraggablePanel initialX={290} initialY={64} title="Add component" width={288} onClose={() => setAddOpen(false)}>
               <div className="flex flex-col pr-0.5">
-                <ul className="flex flex-col">
-                  {ADDABLES.map((a) => (
-                    <li key={a.type}>
-                      <button
-                        onClick={() => startPlacing(a.type)}
-                        className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm text-neutral-800 transition hover:bg-white/50"
-                      >
-                        <span className="flex flex-col">
-                          <span className="font-medium">{a.name}</span>
-                          <span className="text-xs font-normal text-neutral-600">
-                            {a.subtitle}
-                          </span>
-                        </span>
-                        <Plus className="h-4 w-4 text-neutral-600" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-                {sceneId === "electriccar" && (
+                {ADD_GROUPS.map((g) => (
+                  <div key={g.id} className="border-b border-white/30">
+                    <button
+                      onClick={() => setAddGroupOpen((o) => ({ ...o, [g.id]: !o[g.id] }))}
+                      className="flex w-full items-center justify-between px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-neutral-700 transition hover:bg-white/40"
+                    >
+                      <span>{g.label} ({g.types.length})</span>
+                      <span>{addGroupOpen[g.id] ? "−" : "+"}</span>
+                    </button>
+                    {addGroupOpen[g.id] && (
+                      <ul className="flex flex-col pb-1">
+                        {ADDABLES.filter((a) => g.types.includes(a.type)).map((a) => (
+                          <li key={a.type}>
+                            <button
+                              onClick={() => startPlacing(a.type)}
+                              className="flex w-full items-center justify-between gap-2 py-2 pl-6 pr-4 text-left text-sm text-neutral-800 transition hover:bg-white/50"
+                            >
+                              <span className="flex flex-col">
+                                <span className="font-medium">{a.name}</span>
+                                <span className="text-xs font-normal text-neutral-600">{a.subtitle}</span>
+                              </span>
+                              <Plus className="h-4 w-4 text-neutral-600" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+                {(
                   <>
-                    <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
-                      Electric car parts ({evParts.length} placed · {evWires.length} wires)
-                    </div>
+                    <button
+                      onClick={() => setAddGroupOpen((o) => ({ ...o, car: !o.car }))}
+                      className="flex w-full items-center justify-between px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-neutral-700 transition hover:bg-white/40"
+                    >
+                      <span>Electric car parts ({evParts.length} placed · {evWires.length} wires)</span>
+                      <span>{addGroupOpen.car ? "−" : "+"}</span>
+                    </button>
+                    {addGroupOpen.car && (<>
                     <ul className="flex flex-col">
                       {EV_TYPES.map((t) => (
                         <li key={t}>
@@ -2818,6 +2846,7 @@ export default function Scene3DViewer() {
                     >
                       Restore default drivetrain
                     </button>
+                    </>)}
                   </>
                 )}
 
