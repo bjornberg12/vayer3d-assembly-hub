@@ -1,3 +1,4 @@
+/// <reference types="bun" />
 import { describe, expect, test } from "bun:test";
 import { evPinWorld, evLoads, pinsOf, type EVPartRecord } from "./EVComponents";
 import { INVERTER_PINS } from "./inverterPins";
