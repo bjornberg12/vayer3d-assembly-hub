@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Part, PartOwner } from "@/components/PartLabel";
 import type { BaseDefaults } from "../properties";
+import { TractionInverter } from "./TractionInverter";
 
 export type EVType =
   | "battery"
@@ -308,10 +309,7 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
         <Wheel x={1.02} running={running} />
       </>);
     case "inverter":
-      return (<>
-        <Box size={[0.4, 0.14, 0.3]} pos={[-0.15, 0.62, 0]} mat="alu" />
-        <Box size={[0.4, 0.03, 0.3]} pos={[-0.15, 0.71, 0]} mat="housing" />
-      </>);
+      return <TractionInverter />;
     case "obc":
       return <Box size={[0.32, 0.12, 0.28]} pos={[0, 0.46, 0]} mat="alu" />;
     case "dcdc":
