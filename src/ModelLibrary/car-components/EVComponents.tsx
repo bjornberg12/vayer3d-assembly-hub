@@ -3,7 +3,8 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Part, PartOwner } from "@/components/PartLabel";
 import type { BaseDefaults } from "../properties";
-import { TractionInverter } from "./TractionInverter";
+import { TractionInverter, InverterTerminal } from "./TractionInverter";
+import { INVERTER_PINS } from "./inverterPins";
 
 export type EVType =
   | "battery"
@@ -153,7 +154,7 @@ export const EV_DEFS: Record<EVType, Def> = {
 };
 
 const PIN_TOPS: Record<EVType, number> = { battery: 0.48, motor: 0.58, inverter: 0.73, obc: 0.53, dcdc: 0.51, pdu: 0.55, chargeport: 0.85, aux12: 0.7, bms: 0.49, heater: 0.83, compressor: 0.69 };
-export const pinsOf = (t: EVType): PinDef[] => layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : t === "inverter" ? -0.15 : 0);
+export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : 0);
 export const ownerOfEnd = (id: string) => id.split("#")[0];
 
 export function pinWorldOf(local: [number, number, number], pos: [number, number, number], rotY: number): [number, number, number] {
@@ -357,7 +358,7 @@ export function EVPart({ part, running = false }: { part: EVPartRecord; running?
         </Part>
         {pinsOf(part.type).map((pin) => (
           <Part key={pin.id} name={`${EV_DEFS[part.type].name} · ${pin.label}`}>
-            <PinTerminal role={pin.role} position={pin.local} />
+            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : <PinTerminal role={pin.role} position={pin.local} />}
           </Part>
         ))}
       </PartOwner>
