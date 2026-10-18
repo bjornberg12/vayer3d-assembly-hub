@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { RoundedBox } from "@react-three/drei";
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { INVERTER_PINS } from "./inverterPins";
 
 const MATERIALS = {
   cast: { color: "#aab1b7", metalness: 0.65, roughness: 0.48 },
@@ -10,6 +11,41 @@ const MATERIALS = {
   seal: { color: "#24282b", metalness: 0.05, roughness: 0.85 },
   hv: { color: "#ed7625", metalness: 0.05, roughness: 0.42 },
 };
+
+/** Contact face is local origin; positive Y points out of the enclosure. */
+export function InverterTerminal({ pinId, color }: { pinId: string; color: string }) {
+  const pin = INVERTER_PINS.find((p) => p.id === pinId);
+  if (!pin) return null;
+  const control = pin.kind === "control", ground = pin.kind === "ground";
+  return (
+    <group position={pin.local} rotation={pin.rotation} name={`inverter-contact-${pin.id}`}>
+      {!ground && <RoundedBox args={[control ? 0.046 : 0.048, 0.027, control ? 0.034 : 0.046]} radius={0.006} smoothness={2} position={[0, -0.022, 0]} castShadow>
+        <meshStandardMaterial {...(control ? MATERIALS.seal : MATERIALS.hv)} />
+      </RoundedBox>}
+      <mesh position={[0, -0.008, 0]}>
+        <cylinderGeometry args={[ground ? 0.014 : 0.016, ground ? 0.014 : 0.016, 0.007, 20]} />
+        <meshStandardMaterial {...MATERIALS.seal} />
+      </mesh>
+      <mesh position={[0, -0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.006, ground ? 0.014 : 0.0145, 24]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.12} roughness={0.46} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, -0.003, 0]}>
+        <cylinderGeometry args={[0.0055, 0.0055, 0.007, ground ? 6 : 16]} />
+        <meshStandardMaterial {...MATERIALS.steel} />
+      </mesh>
+      {!ground && <mesh position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.0025, 0.0055, 16]} />
+        <meshStandardMaterial {...MATERIALS.steel} side={THREE.DoubleSide} />
+      </mesh>}
+      {!ground && <mesh position={[0, 0.0005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.0025, 12]} />
+        <meshStandardMaterial {...MATERIALS.seal} side={THREE.DoubleSide} />
+      </mesh>}
+      {control && [-0.014, 0.014].map((x) => <mesh key={x} position={[x, -0.006, 0]}><cylinderGeometry args={[0.002, 0.002, 0.006, 8]} /><meshStandardMaterial {...MATERIALS.steel} /></mesh>)}
+    </group>
+  );
+}
 
 /** Detailed liquid-cooled enclosure; wiring pins remain owned by EVComponents. */
 export function TractionInverter() {
@@ -69,15 +105,6 @@ export function TractionInverter() {
         <meshStandardMaterial {...MATERIALS.lid} />
       </RoundedBox>
       {detail.boltMesh && <mesh geometry={detail.boltMesh}><meshStandardMaterial {...MATERIALS.steel} /></mesh>}
-      {/* Sealed DC / three-phase connector bases directly below existing pins. */}
-      {[-0.24, -0.1275].map((x, i) => (
-        <RoundedBox key={x} args={[i === 0 ? 0.085 : 0.128, 0.02, 0.033]} radius={0.005} smoothness={2} position={[x, 0.716, 0]}>
-          <meshStandardMaterial {...MATERIALS.hv} />
-        </RoundedBox>
-      ))}
-      <RoundedBox args={[0.046, 0.017, 0.033]} radius={0.004} smoothness={2} position={[-0.2625, 0.718, 0.045]}>
-        <meshStandardMaterial {...MATERIALS.seal} />
-      </RoundedBox>
       {/* Coolant hose barbs, facing +Z, inside the original 0.4 × 0.3 footprint. */}
       {[-0.26, -0.07].map((x) => (
         <group key={x} position={[x, 0.611, 0.134]} rotation={[Math.PI / 2, 0, 0]}>
