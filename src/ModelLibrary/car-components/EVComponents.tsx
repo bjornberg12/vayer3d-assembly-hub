@@ -6,6 +6,7 @@ import type { BaseDefaults } from "../properties";
 import { TractionInverter, InverterTerminal } from "./TractionInverter";
 import { INVERTER_PINS } from "./inverterPins";
 import { HVJunctionBox } from "./HVJunctionBox";
+import { DCConverter } from "./DCConverter";
 
 export type EVType =
   | "battery"
@@ -315,7 +316,7 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
     case "obc":
       return <Box size={[0.32, 0.12, 0.28]} pos={[0, 0.46, 0]} mat="alu" />;
     case "dcdc":
-      return <Box size={[0.24, 0.1, 0.2]} pos={[0, 0.45, 0]} mat="housing" />;
+      return <DCConverter pins={pinsOf("dcdc")} />;
     case "pdu":
       return <HVJunctionBox pins={pinsOf("pdu")} />;
     case "chargeport":
