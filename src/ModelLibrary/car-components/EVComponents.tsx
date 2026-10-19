@@ -8,6 +8,8 @@ import { INVERTER_PINS } from "./inverterPins";
 import { HVJunctionBox } from "./HVJunctionBox";
 import { DCConverter, ConverterTerminal } from "./DCConverter";
 import { CONVERTER_PINS } from "./converterPins";
+import { AUX_BATTERY_PINS } from "./auxBatteryPins";
+import { AuxBattery, AuxBatteryTerminal } from "./AuxBattery";
 
 export type EVType =
   | "battery"
@@ -157,7 +159,7 @@ export const EV_DEFS: Record<EVType, Def> = {
 };
 
 const PIN_TOPS: Record<EVType, number> = { battery: 0.48, motor: 0.58, inverter: 0.73, obc: 0.53, dcdc: 0.51, pdu: 0.55, chargeport: 0.85, aux12: 0.7, bms: 0.49, heater: 0.83, compressor: 0.69 };
-export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : t === "dcdc" ? CONVERTER_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : 0);
+export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : t === "dcdc" ? CONVERTER_PINS : t === "aux12" ? AUX_BATTERY_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : 0);
 export const ownerOfEnd = (id: string) => id.split("#")[0];
 
 export function pinWorldOf(local: [number, number, number], pos: [number, number, number], rotY: number): [number, number, number] {
@@ -329,10 +331,7 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
         <Box size={[0.03, 0.18, 0.14]} pos={[-0.05, 0.75, 0]} mat="housing" />
       </>);
     case "aux12":
-      return (<>
-        <Box size={[0.25, 0.18, 0.17]} pos={[0, 0.6, 0]} mat="black" />
-        <mesh position={[-0.08, 0.705, 0]}><boxGeometry args={[0.03, 0.03, 0.03]} /><meshStandardMaterial color="#1e40af" /></mesh>
-      </>);
+      return <AuxBattery />;
     case "bms":
       return (<><Box size={[0.2, 0.02, 0.14]} pos={[0, 0.47, 0]} mat="green" /><Box size={[0.05, 0.015, 0.05]} pos={[0.03, 0.485, 0]} mat="black" /></>);
     case "heater":
@@ -361,7 +360,7 @@ export function EVPart({ part, running = false }: { part: EVPartRecord; running?
         </Part>
         {pinsOf(part.type).map((pin) => (
           <Part key={pin.id} name={`${EV_DEFS[part.type].name} · ${pin.label}`}>
-            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "dcdc" ? <ConverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : <PinTerminal role={pin.role} position={pin.local} />}
+            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "dcdc" ? <ConverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "aux12" ? <AuxBatteryTerminal pinId={pin.id} /> : <PinTerminal role={pin.role} position={pin.local} />}
           </Part>
         ))}
       </PartOwner>
