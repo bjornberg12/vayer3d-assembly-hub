@@ -6,7 +6,8 @@ import type { BaseDefaults } from "../properties";
 import { TractionInverter, InverterTerminal } from "./TractionInverter";
 import { INVERTER_PINS } from "./inverterPins";
 import { HVJunctionBox } from "./HVJunctionBox";
-import { DCConverter } from "./DCConverter";
+import { DCConverter, ConverterTerminal } from "./DCConverter";
+import { CONVERTER_PINS } from "./converterPins";
 
 export type EVType =
   | "battery"
@@ -132,7 +133,7 @@ export const EV_DEFS: Record<EVType, Def> = {
   obc: { name: "On-board charger", subtitle: "AC → DC charging", terminalY: 0.58, footprint: [0.32, 0.28],
     params: [],
     base: { active: ["mass", "ratedPower", "nominalVoltage", "phases", "frequency"], values: { mass: 6, material: "Aluminium", ratedPower: 11, nominalVoltage: 400, voltageKind: "AC", phases: 3, frequency: 50, ratedCurrent: 16 } } },
-  dcdc: { name: "DC-DC converter", subtitle: "HV → 12 V", terminalY: 0.55, footprint: [0.24, 0.2],
+  dcdc: { name: "DC-DC converter", subtitle: "HV → 12 V", terminalY: 0.55, footprint: [0.28, 0.23],
     params: [p("outVoltage", "Output voltage", "V", 12, 12, 48, 36)],
     base: { active: ["mass", "ratedPower", "nominalVoltage"], values: { mass: 3, material: "Aluminium", ratedPower: 2.5, nominalVoltage: 400, voltageKind: DC } } },
   pdu: { name: "HV junction box (PDU)", subtitle: "Fuses & contactors", terminalY: 0.6, footprint: [0.32, 0.24],
@@ -156,7 +157,7 @@ export const EV_DEFS: Record<EVType, Def> = {
 };
 
 const PIN_TOPS: Record<EVType, number> = { battery: 0.48, motor: 0.58, inverter: 0.73, obc: 0.53, dcdc: 0.51, pdu: 0.55, chargeport: 0.85, aux12: 0.7, bms: 0.49, heater: 0.83, compressor: 0.69 };
-export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : 0);
+export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : t === "dcdc" ? CONVERTER_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : 0);
 export const ownerOfEnd = (id: string) => id.split("#")[0];
 
 export function pinWorldOf(local: [number, number, number], pos: [number, number, number], rotY: number): [number, number, number] {
@@ -316,7 +317,7 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
     case "obc":
       return <Box size={[0.32, 0.12, 0.28]} pos={[0, 0.46, 0]} mat="alu" />;
     case "dcdc":
-      return <DCConverter pins={pinsOf("dcdc")} />;
+      return <DCConverter />;
     case "pdu":
       return <HVJunctionBox pins={pinsOf("pdu")} />;
     case "chargeport":
@@ -360,7 +361,7 @@ export function EVPart({ part, running = false }: { part: EVPartRecord; running?
         </Part>
         {pinsOf(part.type).map((pin) => (
           <Part key={pin.id} name={`${EV_DEFS[part.type].name} · ${pin.label}`}>
-            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : <PinTerminal role={pin.role} position={pin.local} />}
+            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "dcdc" ? <ConverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : <PinTerminal role={pin.role} position={pin.local} />}
           </Part>
         ))}
       </PartOwner>
