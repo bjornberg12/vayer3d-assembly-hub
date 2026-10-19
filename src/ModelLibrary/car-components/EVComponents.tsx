@@ -5,6 +5,7 @@ import { Part, PartOwner } from "@/components/PartLabel";
 import type { BaseDefaults } from "../properties";
 import { TractionInverter, InverterTerminal } from "./TractionInverter";
 import { INVERTER_PINS } from "./inverterPins";
+import { HVJunctionBox } from "./HVJunctionBox";
 
 export type EVType =
   | "battery"
@@ -316,7 +317,7 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
     case "dcdc":
       return <Box size={[0.24, 0.1, 0.2]} pos={[0, 0.45, 0]} mat="housing" />;
     case "pdu":
-      return <Box size={[0.32, 0.14, 0.24]} pos={[0, 0.47, 0]} mat="housing" />;
+      return <HVJunctionBox pins={pinsOf("pdu")} />;
     case "chargeport":
       return (<>
         <mesh position={[0, 0.75, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
