@@ -1,3 +1,5 @@
 - [x] Refine the 12V auxiliary battery housing and realistic terminal posts.
 - [x] Preserve endpoint IDs and the electrical equivalent; add compatibility tests.
 - [x] Run compatibility tests and visually inspect the battery and selectable terminal posts in the app.
+- [ ] Refine PTC heater and electric A/C compressor housings while preserving pins and simulation.
+- [ ] Check both thermal models in the scene and run regression tests.
