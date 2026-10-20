@@ -1,3 +1,3 @@
 - [x] Refine the 12V auxiliary battery housing and realistic terminal posts.
 - [x] Preserve endpoint IDs and the electrical equivalent; add compatibility tests.
-- [ ] Run tests and visually inspect the battery and connections in the app.
+- [x] Run compatibility tests and visually inspect the battery and selectable terminal posts in the app.
