@@ -10,6 +10,8 @@ import { DCConverter, ConverterTerminal } from "./DCConverter";
 import { CONVERTER_PINS } from "./converterPins";
 import { AUX_BATTERY_PINS } from "./auxBatteryPins";
 import { AuxBattery, AuxBatteryTerminal } from "./AuxBattery";
+import { PTCHeater } from "./PTCHeater";
+import { ACCompressor } from "./ACCompressor";
 
 export type EVType =
   | "battery"
@@ -335,19 +337,9 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
     case "bms":
       return (<><Box size={[0.2, 0.02, 0.14]} pos={[0, 0.47, 0]} mat="green" /><Box size={[0.05, 0.015, 0.05]} pos={[0.03, 0.485, 0]} mat="black" /></>);
     case "heater":
-      return (<>
-        <Box size={[0.26, 0.14, 0.06]} pos={[0, 0.75, 0]} mat="alu" />
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Box key={i} size={[0.01, 0.12, 0.065]} pos={[-0.1 + i * 0.05, 0.75, 0]} mat="housing" />
-        ))}
-      </>);
+      return <PTCHeater />;
     case "compressor":
-      return (<>
-        <mesh position={[0, 0.6, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.08, 0.08, 0.26, 20]} />
-          <meshStandardMaterial {...M.alu} />
-        </mesh>
-      </>);
+      return <ACCompressor />;
   }
 }
 
