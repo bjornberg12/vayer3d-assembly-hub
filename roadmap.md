@@ -3,3 +3,5 @@
 - [x] Run compatibility tests and visually inspect the battery and selectable terminal posts in the app.
 - [x] Refine PTC heater and electric A/C compressor housings while preserving pins and simulation.
 - [x] Check both thermal models in the scene and run regression tests.
+- [ ] Refine PTC heater HV, control and ground connections while preserving existing endpoints.
+- [ ] Test heater endpoint compatibility and inspect selectable connections in the scene.

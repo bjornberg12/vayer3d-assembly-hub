@@ -10,7 +10,8 @@ import { DCConverter, ConverterTerminal } from "./DCConverter";
 import { CONVERTER_PINS } from "./converterPins";
 import { AUX_BATTERY_PINS } from "./auxBatteryPins";
 import { AuxBattery, AuxBatteryTerminal } from "./AuxBattery";
-import { PTCHeater } from "./PTCHeater";
+import { PTCHeater, HeaterTerminal } from "./PTCHeater";
+import { HEATER_PINS } from "./heaterPins";
 import { ACCompressor } from "./ACCompressor";
 
 export type EVType =
@@ -152,7 +153,7 @@ export const EV_DEFS: Record<EVType, Def> = {
   bms: { name: "Battery management system", subtitle: "Cell monitoring", lowVoltage: true, terminalY: 0.5, footprint: [0.2, 0.14],
     params: [p("cells", "Cells in series", "", 96, 24, 216, 4), p("balanceCurrent", "Balancing current", "mA", 200, 50, 1000, 50)],
     base: { active: ["mass", "nominalVoltage"], values: { mass: 0.3, material: "PCB (FR-4)", nominalVoltage: 12, voltageKind: DC } } },
-  heater: { name: "PTC heater", subtitle: "Cabin / battery heating", terminalY: 0.85, footprint: [0.26, 0.14],
+  heater: { name: "PTC heater", subtitle: "Cabin / battery heating", terminalY: 0.85, footprint: [0.26, 0.19],
     params: [],
     base: { active: ["mass", "ratedPower", "nominalVoltage"], values: { mass: 2, material: "Aluminium / ceramic", ratedPower: 5, nominalVoltage: 400, voltageKind: DC } } },
   compressor: { name: "Electric A/C compressor", subtitle: "Thermal management", terminalY: 0.75, footprint: [0.28, 0.18],
@@ -161,7 +162,7 @@ export const EV_DEFS: Record<EVType, Def> = {
 };
 
 const PIN_TOPS: Record<EVType, number> = { battery: 0.48, motor: 0.58, inverter: 0.73, obc: 0.53, dcdc: 0.51, pdu: 0.55, chargeport: 0.85, aux12: 0.7, bms: 0.49, heater: 0.83, compressor: 0.69 };
-export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : t === "dcdc" ? CONVERTER_PINS : t === "aux12" ? AUX_BATTERY_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : 0);
+export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : t === "dcdc" ? CONVERTER_PINS : t === "aux12" ? AUX_BATTERY_PINS : t === "heater" ? HEATER_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : 0);
 export const ownerOfEnd = (id: string) => id.split("#")[0];
 
 export function pinWorldOf(local: [number, number, number], pos: [number, number, number], rotY: number): [number, number, number] {
@@ -352,7 +353,7 @@ export function EVPart({ part, running = false }: { part: EVPartRecord; running?
         </Part>
         {pinsOf(part.type).map((pin) => (
           <Part key={pin.id} name={`${EV_DEFS[part.type].name} · ${pin.label}`}>
-            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "dcdc" ? <ConverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "aux12" ? <AuxBatteryTerminal pinId={pin.id} /> : <PinTerminal role={pin.role} position={pin.local} />}
+            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "dcdc" ? <ConverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "aux12" ? <AuxBatteryTerminal pinId={pin.id} /> : part.type === "heater" ? <HeaterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : <PinTerminal role={pin.role} position={pin.local} />}
           </Part>
         ))}
       </PartOwner>
