@@ -2,6 +2,7 @@
 
 - Every 3D model lives in `src/ModelLibrary/<group>/` and is registered in `src/ModelLibrary/index.ts` (MODEL_REGISTRY, or EV_DEFS for car components) with basic-property defaults — keeps models, parameters and properties in one place.
 - Detailed car-part housings may use dedicated components within car-components, while EV_DEFS and pinsOf remain their registration and terminal authority — visual refinements must preserve existing wiring and simulation.
+- Traction motor casing details live in TractionMotor while EVComponents retains the solver-driven wheels — housing changes cannot alter the powered-wheel animation.
 - Thermal component housings share fittings, fasteners and connector shrouds through ThermalDetails; shrouds support the unchanged separately selectable pins — keeps detailing consistent without changing electrical endpoints.
 - Custom car-part connector layouts define stable endpoint IDs and contact-face coordinates in dedicated pin modules consumed by pinsOf and rendering; routing footprints include connector protrusions — keeps relocated contacts and existing wires aligned.
 - All models share the basic properties in `src/ModelLibrary/properties.ts`; models only choose which are active by default and add model-specific params on top — gives every object a uniform Properties panel.

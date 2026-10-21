@@ -13,6 +13,7 @@ import { AuxBattery, AuxBatteryTerminal } from "./AuxBattery";
 import { PTCHeater, HeaterTerminal } from "./PTCHeater";
 import { HEATER_PINS } from "./heaterPins";
 import { ACCompressor } from "./ACCompressor";
+import { TractionMotor } from "./TractionMotor";
 
 export type EVType =
   | "battery"
@@ -306,14 +307,7 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
       </>);
     case "motor":
       return (<>
-        <mesh position={[0.3, 0.42, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.15, 0.15, 0.4, 24]} />
-          <meshStandardMaterial {...M.alu} />
-        </mesh>
-        <mesh position={[0.3, 0.42, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.04, 0.04, 1.4, 12]} />
-          <meshStandardMaterial {...M.black} />
-        </mesh>
+        <TractionMotor />
         <Wheel x={-0.42} running={running} />
         <Wheel x={1.02} running={running} />
       </>);
