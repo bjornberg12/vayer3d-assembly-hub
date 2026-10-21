@@ -5,3 +5,5 @@
 - [x] Check both thermal models in the scene and run regression tests.
 - [x] Refine PTC heater HV, control and ground connections while preserving existing endpoints.
 - [x] Test heater endpoint compatibility and inspect selectable connections in the scene.
+- [ ] Refine the traction motor casing, end covers, cooling connections and axle details.
+- [ ] Verify the motor appearance, existing pins, simulation and turning-wheel compatibility.
