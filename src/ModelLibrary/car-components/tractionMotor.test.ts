@@ -1,6 +1,7 @@
 /// <reference types="bun" />
 import { describe, expect, test } from "bun:test";
 import { evLoads, evPinWorld, pinsOf, type EVPartRecord } from "./EVComponents";
+import { solveCircuits } from "../sources/solver";
 
 const motor: EVPartRecord = { id: "existing-motor", type: "motor", position: [0, 0, 0], rotationY: 0, params: {} };
 describe("traction motor visual refinement compatibility", () => {
@@ -21,5 +22,17 @@ describe("traction motor visual refinement compatibility", () => {
       { owner: motor.id, a: "existing-motor#v", b: "existing-motor#w", r: 3.2, ratedV: 400 },
       { owner: motor.id, a: "existing-motor#w", b: "existing-motor#u", r: 3.2, ratedV: 400 },
     ]);
+  });
+  test("the motor still produces the powered state that drives the wheels", () => {
+    const wires = ["u", "v", "w"].map((pin, i) => ({ id: `phase-${i}`, a: `supply#l${i + 1}`, b: `${motor.id}#${pin}`, r: 0.001 }));
+    const result = solveCircuits([{ id: "supply", kind: "AC", voltage: 400, internalR: 0 }], wires, evLoads(motor));
+    expect(result.partStatus[motor.id]?.state).toBe("on");
+    expect(result.partStatus[motor.id]?.powerW).toBeGreaterThan(149000);
+    expect(result.partStatus[motor.id]?.powerW).toBeLessThan(150000);
+    for (const wire of wires) {
+      expect(result.wireCurrent[wire.id]).toBeGreaterThan(215);
+      expect(result.wireCurrent[wire.id]).toBeLessThan(217);
+    }
+    expect(solveCircuits([], wires, evLoads(motor)).partStatus[motor.id]?.state).toBe("off");
   });
 });
