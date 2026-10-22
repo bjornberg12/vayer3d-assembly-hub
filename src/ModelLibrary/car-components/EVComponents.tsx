@@ -15,6 +15,7 @@ import { HEATER_PINS } from "./heaterPins";
 import { ACCompressor } from "./ACCompressor";
 import { TractionMotor, MotorTerminal } from "./TractionMotor";
 import { MOTOR_PINS } from "./motorPins";
+import { ChargePort } from "./ChargePort";
 
 export type EVType =
   | "battery"
@@ -321,13 +322,7 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
     case "pdu":
       return <HVJunctionBox pins={pinsOf("pdu")} />;
     case "chargeport":
-      return (<>
-        <mesh position={[0, 0.75, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.06, 0.06, 0.08, 20]} />
-          <meshStandardMaterial {...M.black} />
-        </mesh>
-        <Box size={[0.03, 0.18, 0.14]} pos={[-0.05, 0.75, 0]} mat="housing" />
-      </>);
+      return <ChargePort />;
     case "aux12":
       return <AuxBattery />;
     case "bms":
