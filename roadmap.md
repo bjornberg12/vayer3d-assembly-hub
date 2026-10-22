@@ -7,3 +7,5 @@
 - [x] Test heater endpoint compatibility and inspect selectable connections in the scene.
 - [x] Refine the traction motor casing, end covers, cooling connections and axle details.
 - [x] Verify the motor appearance, existing pins, simulation and turning-wheel compatibility.
+- [ ] Refine traction motor phase, ground and resolver connectors while preserving existing endpoints.
+- [ ] Test motor endpoint compatibility and inspect selectable connections in the scene.

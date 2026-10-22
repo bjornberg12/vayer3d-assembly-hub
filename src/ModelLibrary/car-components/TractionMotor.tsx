@@ -1,5 +1,30 @@
 import { RoundedBox, Text } from "@react-three/drei";
 import { THERMAL_MATERIALS as M, ThermalBolt, ThermalFitting } from "./ThermalDetails";
+import { MOTOR_PINS } from "./motorPins";
+
+/** Individually selectable phase lugs, ground stud and resolver plug face. */
+export function MotorTerminal({ pinId, color }: { pinId: string; color: string }) {
+  const pin = MOTOR_PINS.find((p) => p.id === pinId);
+  if (!pin) return null;
+  const ground = pin.kind === "ground", sensor = pin.kind === "sensor";
+  return <group name={`motor-contact-${pin.id}`} position={pin.local} rotation={pin.rotation}>
+    <mesh position={[0, -0.004, 0]}><cylinderGeometry args={[ground ? 0.011 : 0.013, ground ? 0.011 : 0.013, 0.003, 24]} /><meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.18} roughness={0.48} /></mesh>
+    {ground ? <>
+      <mesh position={[0, -0.008, 0]}><cylinderGeometry args={[0.012, 0.012, 0.005, 24]} /><meshStandardMaterial {...M.steel} /></mesh>
+      <mesh position={[0, -0.0025, 0]}><cylinderGeometry args={[0.0065, 0.0065, 0.004, 6]} /><meshStandardMaterial {...M.machined} /></mesh>
+      <mesh position={[0, -0.0002, 0]}><cylinderGeometry args={[0.0032, 0.0032, 0.001, 16]} /><meshStandardMaterial {...M.steel} /></mesh>
+    </> : sensor ? <>
+      <mesh position={[0, -0.006, 0]}><cylinderGeometry args={[0.012, 0.012, 0.006, 20]} /><meshStandardMaterial {...M.polymer} /></mesh>
+      <mesh position={[0, -0.002, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.012, 0.0014, 8, 24]} /><meshStandardMaterial {...M.seal} /></mesh>
+      {[-0.004, 0, 0.004].map((x) => <mesh key={x} position={[x, -0.0005, 0]}><cylinderGeometry args={[0.0012, 0.0012, 0.001, 10]} /><meshStandardMaterial {...M.machined} /></mesh>)}
+    </> : <>
+      <mesh position={[0, -0.008, 0]}><cylinderGeometry args={[0.015, 0.015, 0.005, 24]} /><meshStandardMaterial {...M.hv} /></mesh>
+      <mesh position={[0, -0.0025, 0]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.0125, 0.0015, 8, 24]} /><meshStandardMaterial {...M.hv} /></mesh>
+      <mesh position={[0, -0.001, 0]}><cylinderGeometry args={[0.0055, 0.0055, 0.002, 20]} /><meshStandardMaterial {...M.machined} /></mesh>
+      <mesh position={[0, 0.0001, 0]} rotation={[-Math.PI / 2, 0, 0]}><circleGeometry args={[0.0032, 18]} /><meshStandardMaterial {...M.seal} /></mesh>
+    </>}
+  </group>;
+}
 
 /** Liquid-cooled PMSM housing. The original axle centre and all five pin faces stay unchanged. */
 export function TractionMotor() {
