@@ -1,6 +1,7 @@
 /// <reference types="bun" />
 import { describe, expect, test } from "bun:test";
 import { evLoads, evPinWorld, pinsOf, type EVPartRecord } from "./EVComponents";
+import { MOTOR_PINS } from "./motorPins";
 import { solveCircuits } from "../sources/solver";
 
 const motor: EVPartRecord = { id: "existing-motor", type: "motor", position: [0, 0, 0], rotationY: 0, params: {} };
@@ -15,6 +16,18 @@ describe("traction motor visual refinement compatibility", () => {
       expect(world?.[1]).toBe(0.58);
       expect(world?.[2]).toBe(0);
     });
+  });
+  test("realistic connector layout keeps stable ids and tracks part movement", () => {
+    expect(pinsOf("motor")).toBe(MOTOR_PINS);
+    expect(MOTOR_PINS.map((pin) => pin.kind)).toEqual(["phase", "phase", "phase", "ground", "sensor"]);
+    const moved: EVPartRecord = { ...motor, position: [2, 0, -1], rotationY: Math.PI / 2 };
+    const u = evPinWorld(moved, "u");
+    expect(u?.[0]).toBeCloseTo(2);
+    expect(u?.[1]).toBeCloseTo(0.58);
+    expect(u?.[2]).toBeCloseTo(-1.21);
+    const sens = evPinWorld(moved, "sens");
+    expect(sens?.[0]).toBeCloseTo(2);
+    expect(sens?.[2]).toBeCloseTo(-1.39);
   });
   test("the existing 400 V three-phase 150 kW motor equivalent is preserved", () => {
     expect(evLoads(motor)).toEqual([

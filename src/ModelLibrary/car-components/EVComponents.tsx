@@ -13,7 +13,8 @@ import { AuxBattery, AuxBatteryTerminal } from "./AuxBattery";
 import { PTCHeater, HeaterTerminal } from "./PTCHeater";
 import { HEATER_PINS } from "./heaterPins";
 import { ACCompressor } from "./ACCompressor";
-import { TractionMotor } from "./TractionMotor";
+import { TractionMotor, MotorTerminal } from "./TractionMotor";
+import { MOTOR_PINS } from "./motorPins";
 
 export type EVType =
   | "battery"
@@ -163,7 +164,7 @@ export const EV_DEFS: Record<EVType, Def> = {
 };
 
 const PIN_TOPS: Record<EVType, number> = { battery: 0.48, motor: 0.58, inverter: 0.73, obc: 0.53, dcdc: 0.51, pdu: 0.55, chargeport: 0.85, aux12: 0.7, bms: 0.49, heater: 0.83, compressor: 0.69 };
-export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : t === "dcdc" ? CONVERTER_PINS : t === "aux12" ? AUX_BATTERY_PINS : t === "heater" ? HEATER_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t], t === "motor" ? 0.3 : 0);
+export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : t === "dcdc" ? CONVERTER_PINS : t === "aux12" ? AUX_BATTERY_PINS : t === "heater" ? HEATER_PINS : t === "motor" ? MOTOR_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t]);
 export const ownerOfEnd = (id: string) => id.split("#")[0];
 
 export function pinWorldOf(local: [number, number, number], pos: [number, number, number], rotY: number): [number, number, number] {
@@ -347,7 +348,7 @@ export function EVPart({ part, running = false }: { part: EVPartRecord; running?
         </Part>
         {pinsOf(part.type).map((pin) => (
           <Part key={pin.id} name={`${EV_DEFS[part.type].name} · ${pin.label}`}>
-            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "dcdc" ? <ConverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "aux12" ? <AuxBatteryTerminal pinId={pin.id} /> : part.type === "heater" ? <HeaterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : <PinTerminal role={pin.role} position={pin.local} />}
+            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "dcdc" ? <ConverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "aux12" ? <AuxBatteryTerminal pinId={pin.id} /> : part.type === "heater" ? <HeaterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "motor" ? <MotorTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : <PinTerminal role={pin.role} position={pin.local} />}
           </Part>
         ))}
       </PartOwner>
