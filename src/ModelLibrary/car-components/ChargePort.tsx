@@ -1,5 +1,28 @@
 import { RoundedBox, Text } from "@react-three/drei";
 import { THERMAL_MATERIALS as M, ThermalBolt } from "./ThermalDetails";
+import { CHARGEPORT_PINS } from "./chargeportPins";
+
+/**
+ * Individually selectable inlet contact: AC wells get a metal socket tube with a
+ * role-coloured ring, DC tubes a brass sleeve with a coloured centre, and the
+ * CP/PP signal wells a small coloured contact. Local +Y points out of the socket.
+ */
+export function ChargePortTerminal({ pinId, color }: { pinId: string; color: string }) {
+  const pin = CHARGEPORT_PINS.find((p) => p.id === pinId);
+  if (!pin) return null;
+  return <group name={`chargeport-contact-${pin.id}`} position={pin.local} rotation={pin.rotation}>
+    {pin.kind === "dc" ? <>
+      <mesh position={[0, -0.002, 0]}><cylinderGeometry args={[0.0075, 0.0075, 0.004, 20]} /><meshStandardMaterial color="#d8b26a" metalness={0.9} roughness={0.25} /></mesh>
+      <mesh position={[0, 0.0005, 0]}><cylinderGeometry args={[0.0032, 0.0032, 0.002, 16]} /><meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} roughness={0.45} /></mesh>
+    </> : pin.kind === "ac" ? <>
+      <mesh position={[0, -0.002, 0]}><cylinderGeometry args={[0.0055, 0.0055, 0.004, 18]} /><meshStandardMaterial {...M.machined} /></mesh>
+      <mesh position={[0, 0.0003, 0]}><cylinderGeometry args={[0.0035, 0.0035, 0.0018, 16]} /><meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} roughness={0.45} /></mesh>
+    </> : <>
+      <mesh position={[0, -0.001, 0]}><cylinderGeometry args={[0.0028, 0.0028, 0.003, 14]} /><meshStandardMaterial {...M.machined} /></mesh>
+      <mesh position={[0, 0.0008, 0]}><cylinderGeometry args={[0.0016, 0.0016, 0.0016, 12]} /><meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.35} roughness={0.45} /></mesh>
+    </>}
+  </group>;
+}
 
 /**
  * CCS2 (Combo 2) vehicle charge inlet: body-side mounting flange, a recessed
