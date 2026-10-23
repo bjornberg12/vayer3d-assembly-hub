@@ -12,6 +12,6 @@
 - [x] Refine the charge port into a realistic CCS2 inlet (flange, socket wells, hinged lid, cable glands) while preserving pins and simulation.
 - [x] Add charge port compatibility tests and run the car-component test suite.
 - [x] Visually inspect the charge port and its selectable contacts in the app.
-- [ ] Relocate charge port contacts to the CCS2 socket wells (stable IDs, kinds, rotations) while preserving wiring and simulation.
-- [ ] Update charge port compatibility tests and run the car-component test suite.
-- [ ] Visually inspect the relocated selectable contacts in the app.
+- [x] Relocate charge port contacts to the CCS2 socket wells (stable IDs, kinds, rotations) while preserving wiring and simulation.
+- [x] Update charge port compatibility tests and run the car-component test suite.
+- [x] Visually inspect the relocated selectable contacts in the app.
