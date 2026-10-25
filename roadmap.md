@@ -17,3 +17,4 @@
 - [x] Visually inspect the relocated selectable contacts in the app.
 - [x] Detail HV traction battery enclosure, cooling fittings and realistic selectable connectors.
 - [x] Verify battery endpoint compatibility, simulation and appearance in the scene.
+- [ ] Add a small green triangle for the active wiring pin target and verify it disappears off pins.
