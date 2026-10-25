@@ -24,7 +24,7 @@ describe("HV battery connector compatibility", () => {
     }
   });
   test("the relocated DC contacts still power the pack charging load", () => {
-    const wires = [{ id: "positive", a: "supply#p", b: `${pack.id}#dcp`, r: 0.001 }, { id: "negative", a: `${pack.id}#dcn`, b: "supply#n", r: 0.001 }];
+    const wires = [{ id: "positive", a: "supply#dcp", b: `${pack.id}#dcp`, r: 0.001 }, { id: "negative", a: `${pack.id}#dcn`, b: "supply#dcn", r: 0.001 }];
     const result = solveCircuits([{ id: "supply", kind: "DC", voltage: 400, internalR: 0 }], wires, evLoads(pack));
     expect(result.partStatus[pack.id]?.state).toBe("on");
     expect(result.partStatus[pack.id]?.powerW).toBeGreaterThan(10990);
