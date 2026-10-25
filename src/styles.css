@@ -45,6 +45,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-wiring-pin: var(--wiring-pin);
   --color-ring-offset-background: var(--background);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -63,6 +64,7 @@
 
 :root {
   --radius: 0.625rem;
+  --wiring-pin: oklch(0.72 0.22 145);
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
@@ -98,6 +100,7 @@
 }
 
 .dark {
+  --wiring-pin: oklch(0.79 0.22 145);
   --background: oklch(0.129 0.042 264.695);
   --foreground: oklch(0.984 0.003 247.858);
   --card: oklch(0.208 0.042 265.755);
