@@ -1348,6 +1348,7 @@ export default function Scene3DViewer() {
   const [evWires, setEVWires] = useState<EVWireRecord[]>([]);
   const [pendingEV, setPendingEV] = useState<EVType | null>(null);
   const [evWireMode, setEVWireMode] = useState(false);
+  const [hoveredWirePin, setHoveredWirePin] = useState<string | null>(null);
   const [evWireFirst, setEVWireFirst] = useState<string | null>(null);
   const evPropPart = propsOwnerId ? evParts.find((q) => q.id === propsOwnerId) ?? null : null;
   const evPropWire = propsOwnerId ? evWires.find((w) => w.id === propsOwnerId) ?? null : null;
@@ -2040,7 +2041,8 @@ export default function Scene3DViewer() {
                     position={pinWorldOf(pin.local, o.pos, o.rot)}
                     renderOrder={10}
                     onClick={(e) => { e.stopPropagation(); handleEVWireClick(endId); }}
-                    onPointerOver={(e) => { e.stopPropagation(); setPartLabel(`${pinInfo(endId)?.owner ?? ""} · ${pin.label}`); setPartLabelPos(pinWorldOf(pin.local, o.pos, o.rot)); }}
+                    onPointerOver={(e) => { e.stopPropagation(); setHoveredWirePin(endId); setPartLabel(`${pinInfo(endId)?.owner ?? ""} · ${pin.label}`); setPartLabelPos(pinWorldOf(pin.local, o.pos, o.rot)); }}
+                    onPointerOut={() => setHoveredWirePin((current) => current === endId ? null : current)}
                   >
                     <sphereGeometry args={[0.018, 12, 12]} />
                     <meshBasicMaterial color={evWireFirst === endId ? "#f59e0b" : PIN_COLORS[pin.role]} transparent opacity={used ? 0.55 : 0.95} depthTest={false} />
@@ -2048,6 +2050,19 @@ export default function Scene3DViewer() {
                 );
               })
             )}
+            {routingKind === "wire" && hoveredWirePin && (() => {
+              const pin = availableWirePins.find((candidate) => candidate.id === hoveredWirePin);
+              if (!pin) return null;
+              return (
+                <Html position={pin.point} center zIndexRange={[30, 20]} style={{ pointerEvents: "none" }}>
+                  <div
+                    aria-label="Wiring pin target"
+                    data-pin-target={pin.id}
+                    className="wiring-pin-triangle h-2.5 w-3 -translate-y-3 bg-wiring-pin"
+                  />
+                </Html>
+              );
+            })()}
             {showFlow && evWires.map((w) => {
               const flow = circuit.wireFlow[w.id];
               const a = wireEnd(w.a);
