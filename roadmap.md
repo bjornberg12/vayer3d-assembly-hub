@@ -15,3 +15,5 @@
 - [x] Relocate charge port contacts to the CCS2 socket wells (stable IDs, kinds, rotations) while preserving wiring and simulation.
 - [x] Update charge port compatibility tests and run the car-component test suite.
 - [x] Visually inspect the relocated selectable contacts in the app.
+- [ ] Detail HV traction battery enclosure, cooling fittings and realistic selectable connectors.
+- [ ] Verify battery endpoint compatibility, simulation and appearance in the scene.
