@@ -17,6 +17,8 @@ import { TractionMotor, MotorTerminal } from "./TractionMotor";
 import { MOTOR_PINS } from "./motorPins";
 import { ChargePort, ChargePortTerminal } from "./ChargePort";
 import { CHARGEPORT_PINS } from "./chargeportPins";
+import { TractionBattery, TractionBatteryTerminal } from "./TractionBattery";
+import { TRACTION_BATTERY_PINS } from "./tractionBatteryPins";
 
 export type EVType =
   | "battery"
@@ -130,7 +132,7 @@ const p = (key: string, label: string, unit: string, value: number, min: number,
 
 const DC = "DC";
 export const EV_DEFS: Record<EVType, Def> = {
-  battery: { name: "HV traction battery", subtitle: "Li-ion pack, underfloor", terminalY: 0.5, footprint: [1.5, 2.1],
+  battery: { name: "HV traction battery", subtitle: "Li-ion pack, underfloor", terminalY: 0.5, footprint: [1.62, 2.22],
     params: [p("capacity", "Capacity", "kWh", 75, 10, 200, 1), p("maxPower", "Max discharge", "kW", 250, 20, 600, 5)],
     base: { active: ["mass", "nominalVoltage", "ratedCurrent", "maxCurrent"], values: { mass: 450, material: "Li-ion NMC / aluminium", nominalVoltage: 400, voltageKind: DC, ratedCurrent: 250, maxCurrent: 625, height: 0.14, width: 1.5, depth: 2.1 } } },
   motor: { name: "Traction motor", subtitle: "PMSM drive unit", terminalY: 0.62, footprint: [0.55, 0.45],
@@ -166,7 +168,7 @@ export const EV_DEFS: Record<EVType, Def> = {
 };
 
 const PIN_TOPS: Record<EVType, number> = { battery: 0.48, motor: 0.58, inverter: 0.73, obc: 0.53, dcdc: 0.51, pdu: 0.55, chargeport: 0.85, aux12: 0.7, bms: 0.49, heater: 0.83, compressor: 0.69 };
-export const pinsOf = (t: EVType): PinDef[] => t === "inverter" ? INVERTER_PINS : t === "dcdc" ? CONVERTER_PINS : t === "aux12" ? AUX_BATTERY_PINS : t === "heater" ? HEATER_PINS : t === "motor" ? MOTOR_PINS : t === "chargeport" ? CHARGEPORT_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t]);
+export const pinsOf = (t: EVType): PinDef[] => t === "battery" ? TRACTION_BATTERY_PINS : t === "inverter" ? INVERTER_PINS : t === "dcdc" ? CONVERTER_PINS : t === "aux12" ? AUX_BATTERY_PINS : t === "heater" ? HEATER_PINS : t === "motor" ? MOTOR_PINS : t === "chargeport" ? CHARGEPORT_PINS : layoutPins(PIN_LISTS[t], PIN_TOPS[t]);
 export const ownerOfEnd = (id: string) => id.split("#")[0];
 
 export function pinWorldOf(local: [number, number, number], pos: [number, number, number], rotY: number): [number, number, number] {
@@ -302,12 +304,7 @@ function Wheel({ x, running }: { x: number; running: boolean }) {
 function Model({ type, running = false }: { type: EVType; running?: boolean }) {
   switch (type) {
     case "battery":
-      return (<>
-        <Box size={[1.5, 0.14, 2.1]} pos={[0, 0.38, 0]} mat="housing" />
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Box key={i} size={[1.3, 0.025, 0.28]} pos={[0, 0.465, -0.85 + i * 0.34]} mat="alu" />
-        ))}
-      </>);
+      return <TractionBattery />;
     case "motor":
       return (<>
         <TractionMotor />
@@ -344,7 +341,7 @@ export function EVPart({ part, running = false }: { part: EVPartRecord; running?
         </Part>
         {pinsOf(part.type).map((pin) => (
           <Part key={pin.id} name={`${EV_DEFS[part.type].name} · ${pin.label}`}>
-            {part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "dcdc" ? <ConverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "aux12" ? <AuxBatteryTerminal pinId={pin.id} /> : part.type === "heater" ? <HeaterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "motor" ? <MotorTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "chargeport" ? <ChargePortTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : <PinTerminal role={pin.role} position={pin.local} />}
+            {part.type === "battery" ? <TractionBatteryTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "inverter" ? <InverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "dcdc" ? <ConverterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "aux12" ? <AuxBatteryTerminal pinId={pin.id} /> : part.type === "heater" ? <HeaterTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "motor" ? <MotorTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : part.type === "chargeport" ? <ChargePortTerminal pinId={pin.id} color={PIN_COLORS[pin.role]} /> : <PinTerminal role={pin.role} position={pin.local} />}
           </Part>
         ))}
       </PartOwner>
