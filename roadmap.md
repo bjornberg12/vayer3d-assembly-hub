@@ -19,3 +19,5 @@
 - [x] Verify battery endpoint compatibility, simulation and appearance in the scene.
 - [x] Add a small green triangle on direct wiring-pin hover, with off-pin clearing.
 - [ ] Visually verify pin hover and off-pin clearing; blocked by repeated browser-check timeouts.
+- [ ] Refine the onboard charger housing while preserving its wiring pins and simulation.
+- [ ] Check onboard charger appearance and run car-component regression tests.

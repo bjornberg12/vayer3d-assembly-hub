@@ -19,6 +19,7 @@ import { ChargePort, ChargePortTerminal } from "./ChargePort";
 import { CHARGEPORT_PINS } from "./chargeportPins";
 import { TractionBattery, TractionBatteryTerminal } from "./TractionBattery";
 import { TRACTION_BATTERY_PINS } from "./tractionBatteryPins";
+import { OnboardCharger } from "./OnboardCharger";
 
 export type EVType =
   | "battery"
@@ -314,7 +315,7 @@ function Model({ type, running = false }: { type: EVType; running?: boolean }) {
     case "inverter":
       return <TractionInverter />;
     case "obc":
-      return <Box size={[0.32, 0.12, 0.28]} pos={[0, 0.46, 0]} mat="alu" />;
+      return <OnboardCharger />;
     case "dcdc":
       return <DCConverter />;
     case "pdu":
