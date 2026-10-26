@@ -38,14 +38,17 @@ export function OnboardCharger() {
     </RoundedBox>
     <mesh position={[-0.0225, 0.519, -0.021]}><boxGeometry args={[0.034, 0.006, 0.013]} /><meshStandardMaterial {...M.polymer} /></mesh>
     <RoundedBox args={[0.032, 0.012, 0.033]} radius={0.004} smoothness={2} position={[0.1125, 0.516, 0]}>
-      <meshStandardMaterial {...M.polymer} />
-    </RoundedBox>
-    <RoundedBox args={[0.08, 0.012, 0.033]} radius={0.004} smoothness={2} position={[0, 0.516, 0.045]} castShadow>
       <meshStandardMaterial {...M.hv} />
     </RoundedBox>
-    <mesh position={[0, 0.519, 0.068]}><boxGeometry args={[0.025, 0.007, 0.012]} /><meshStandardMaterial {...M.polymer} /></mesh>
+    <RoundedBox args={[0.035, 0.012, 0.033]} radius={0.004} smoothness={2} position={[-0.0225, 0.516, 0.045]} castShadow>
+      <meshStandardMaterial {...M.hv} />
+    </RoundedBox>
+    <RoundedBox args={[0.035, 0.012, 0.033]} radius={0.004} smoothness={2} position={[0.0225, 0.516, 0.045]} castShadow>
+      <meshStandardMaterial {...M.polymer} />
+    </RoundedBox>
+    <mesh position={[0.0225, 0.519, 0.068]}><boxGeometry args={[0.025, 0.007, 0.012]} /><meshStandardMaterial {...M.polymer} /></mesh>
     {/* Two coolant quick-connects with seals and visible bores. */}
-    {[-0.085, 0.085].map((x) => <ThermalFitting key={x} position={[x, 0.447, -0.112]} rotation={[-Math.PI / 2, 0, 0]} radius={0.01} />)}
+    {[-0.085, 0.085].map((x) => <ThermalFitting key={x} position={[x, 0.447, -0.117]} rotation={[Math.PI / 2, 0, 0]} radius={0.01} />)}
     <RoundedBox args={[0.158, 0.0018, 0.027]} radius={0.003} smoothness={2} position={[0, 0.5145, -0.071]}>
       <meshStandardMaterial {...M.polymer} />
     </RoundedBox>
