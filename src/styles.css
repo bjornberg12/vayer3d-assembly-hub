@@ -135,6 +135,10 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+.wiring-pin-triangle {
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
