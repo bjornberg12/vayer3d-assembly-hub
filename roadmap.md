@@ -21,5 +21,6 @@
 - [ ] Visually verify pin hover and off-pin clearing; blocked by repeated browser-check timeouts.
 - [x] Refine the onboard charger housing while preserving its wiring pins and simulation.
 - [x] Check onboard charger appearance and run car-component regression tests.
-- [ ] Automatically show solver-driven electrons on powered circuits with visible energy-transfer cues.
-- [ ] Test powered and unpowered flow behavior and verify a connected device in the scene.
+- [x] Automatically show solver-driven electrons and current arrows on small wires, with live device power readings.
+- [x] Test powered and unpowered flow behavior (19 tests pass).
+- [ ] Verify connected-device animation in the scene; browser wiring check did not complete successfully.
