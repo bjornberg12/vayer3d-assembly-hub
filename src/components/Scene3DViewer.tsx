@@ -1344,7 +1344,7 @@ export default function Scene3DViewer() {
 
   // --- Electric car internals ------------------------------------------------
   const [evParts, setEVParts] = useState<EVPartRecord[]>([]);
-  const [showFlow, setShowFlow] = useState(false);
+  const [showFlow, setShowFlow] = useState(true);
   const [evWires, setEVWires] = useState<EVWireRecord[]>([]);
   const [pendingEV, setPendingEV] = useState<EVType | null>(null);
   const [evWireMode, setEVWireMode] = useState(false);
@@ -1999,12 +1999,19 @@ export default function Scene3DViewer() {
                       const st = circuit.partStatus[part.id]?.state;
                       if (!st || st === "off") return null;
                       const col = st === "on" ? "#22c55e" : "#ef4444";
-                      return (
+                      return (<>
                         <mesh position={[part.position[0], part.position[1] + EV_DEFS[part.type].terminalY + 0.12, part.position[2]]} raycast={() => null}>
                           <sphereGeometry args={[0.035, 16, 12]} />
                           <meshBasicMaterial color={col} toneMapped={false} />
                         </mesh>
-                      );
+                        {showFlow && circuit.partStatus[part.id].powerW > 0 && (
+                          <Html position={[part.position[0], part.position[1] + EV_DEFS[part.type].terminalY + 0.2, part.position[2]]} center style={{ pointerEvents: "none" }}>
+                            <span className="whitespace-nowrap rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-foreground" data-device-power={part.id}>
+                              {(circuit.partStatus[part.id].powerW / 1000).toFixed(2)} kW
+                            </span>
+                          </Html>
+                        )}
+                      </>);
                     })()}
                     {moveMode && (
                       <mesh
@@ -3213,12 +3220,12 @@ export default function Scene3DViewer() {
                 </div>
               )}
               <div className="px-4 pb-2 pt-1">
-                <button
+                <Button
                   onClick={() => setShowFlow((f) => !f)}
                   className={`w-full rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${showFlow ? "border-sky-400 bg-sky-400/80 text-neutral-900" : "border-white/60 bg-white/45 text-neutral-800 hover:bg-white/70"}`}
                 >
-                  {showFlow ? "Hide electron flow" : "Simulate electron flow"}
-                </button>
+                  {showFlow ? "Hide electron flow" : "Show electron flow"}
+                </Button>
                 {showFlow && (
                   <div className="mt-1 text-[10px] leading-snug text-neutral-600">
                     <span className="font-semibold text-sky-600">Blue dots</span> = electrons (flow − → +). <span className="font-semibold text-amber-600">Amber arrows</span> = electric field / conventional current (+ → −). AC wires swing back and forth (slowed down). Only wires in a closed loop from a voltage source carry current.

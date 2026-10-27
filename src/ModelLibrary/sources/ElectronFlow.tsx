@@ -6,6 +6,7 @@
 import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
+import { flowSpeed } from "./flowMotion";
 
 export function ElectronFlow({
   curve,
@@ -31,7 +32,7 @@ export function ElectronFlow({
   const dummy = useMemo(() => new THREE.Object3D(), []);
   const seeds = useMemo(() => Array.from({ length: count }, (_, i) => ({ t: i / count, a: Math.random() * Math.PI * 2, r: Math.random() })), [count]);
   // Visual drift speed (m/s): grows logarithmically with current so tiny and huge currents stay readable.
-  const speed = current > 0 && Number.isFinite(current) ? Math.min(0.15 + Math.log10(1 + current) * 0.35, 2.5) : 0;
+  const speed = flowSpeed(current);
   const up = new THREE.Vector3(0, 1, 0);
 
   useFrame(({ clock }, dt) => {
@@ -51,6 +52,7 @@ export function ElectronFlow({
         const vert = new THREE.Vector3().crossVectors(side, tan).normalize();
         const rr = radius * 0.6 * s.r;
         dummy.position.copy(p).addScaledVector(side, Math.cos(s.a + t * 3) * rr).addScaledVector(vert, Math.sin(s.a + t * 3) * rr);
+        dummy.quaternion.identity();
         dummy.scale.setScalar(1);
         dummy.updateMatrix();
         e.setMatrixAt(i, dummy.matrix);
@@ -76,16 +78,16 @@ export function ElectronFlow({
   });
 
   if (speed === 0) return null;
-  const er = Math.max(radius * 0.35, 0.002);
+  const er = Math.max(radius * 0.55, 0.004);
   return (
-    <group raycast={() => null}>
-      <instancedMesh ref={eRef} args={[undefined, undefined, count]} raycast={() => null}>
+    <group name="powered-electron-flow" raycast={() => null}>
+      <instancedMesh ref={eRef} args={[undefined, undefined, count]} raycast={() => null} renderOrder={30} frustumCulled={false}>
         <sphereGeometry args={[er, 8, 6]} />
-        <meshBasicMaterial color="#38bdf8" toneMapped={false} />
+        <meshBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} toneMapped={false} />
       </instancedMesh>
-      <instancedMesh ref={aRef} args={[undefined, undefined, arrows]} raycast={() => null}>
+      <instancedMesh ref={aRef} args={[undefined, undefined, arrows]} raycast={() => null} renderOrder={29} frustumCulled={false}>
         <coneGeometry args={[radius * 1.6, radius * 4, 8]} />
-        <meshBasicMaterial color="#f59e0b" transparent opacity={0.75} depthTest={false} toneMapped={false} />
+        <meshBasicMaterial color="#f59e0b" transparent opacity={0.75} depthTest={false} depthWrite={false} toneMapped={false} />
       </instancedMesh>
     </group>
   );
