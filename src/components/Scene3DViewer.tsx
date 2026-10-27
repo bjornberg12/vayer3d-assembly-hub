@@ -1344,7 +1344,7 @@ export default function Scene3DViewer() {
 
   // --- Electric car internals ------------------------------------------------
   const [evParts, setEVParts] = useState<EVPartRecord[]>([]);
-  const [showFlow, setShowFlow] = useState(false);
+  const [showFlow, setShowFlow] = useState(true);
   const [evWires, setEVWires] = useState<EVWireRecord[]>([]);
   const [pendingEV, setPendingEV] = useState<EVType | null>(null);
   const [evWireMode, setEVWireMode] = useState(false);
@@ -3213,12 +3213,12 @@ export default function Scene3DViewer() {
                 </div>
               )}
               <div className="px-4 pb-2 pt-1">
-                <button
+                <Button
                   onClick={() => setShowFlow((f) => !f)}
                   className={`w-full rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${showFlow ? "border-sky-400 bg-sky-400/80 text-neutral-900" : "border-white/60 bg-white/45 text-neutral-800 hover:bg-white/70"}`}
                 >
-                  {showFlow ? "Hide electron flow" : "Simulate electron flow"}
-                </button>
+                  {showFlow ? "Hide electron flow" : "Show electron flow"}
+                </Button>
                 {showFlow && (
                   <div className="mt-1 text-[10px] leading-snug text-neutral-600">
                     <span className="font-semibold text-sky-600">Blue dots</span> = electrons (flow − → +). <span className="font-semibold text-amber-600">Amber arrows</span> = electric field / conventional current (+ → −). AC wires swing back and forth (slowed down). Only wires in a closed loop from a voltage source carry current.
