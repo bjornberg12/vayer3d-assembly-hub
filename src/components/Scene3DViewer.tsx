@@ -1999,12 +1999,19 @@ export default function Scene3DViewer() {
                       const st = circuit.partStatus[part.id]?.state;
                       if (!st || st === "off") return null;
                       const col = st === "on" ? "#22c55e" : "#ef4444";
-                      return (
+                      return (<>
                         <mesh position={[part.position[0], part.position[1] + EV_DEFS[part.type].terminalY + 0.12, part.position[2]]} raycast={() => null}>
                           <sphereGeometry args={[0.035, 16, 12]} />
                           <meshBasicMaterial color={col} toneMapped={false} />
                         </mesh>
-                      );
+                        {showFlow && circuit.partStatus[part.id].powerW > 0 && (
+                          <Html position={[part.position[0], part.position[1] + EV_DEFS[part.type].terminalY + 0.2, part.position[2]]} center style={{ pointerEvents: "none" }}>
+                            <span className="whitespace-nowrap rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-foreground" data-device-power={part.id}>
+                              {(circuit.partStatus[part.id].powerW / 1000).toFixed(2)} kW
+                            </span>
+                          </Html>
+                        )}
+                      </>);
                     })()}
                     {moveMode && (
                       <mesh
