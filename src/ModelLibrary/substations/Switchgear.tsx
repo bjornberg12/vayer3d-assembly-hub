@@ -1,8 +1,8 @@
 /**
  * MV (10 kV) switchgear inside the kiosk substation: a row of ring-main cubicles
  * on a common 3-phase busbar. Each cubicle has a main switch (load-break switch
- * or circuit breaker), an earthing switch, protection settings (breakers) and an
- * inspection record. Stored as JSON in the substation's property value "swg".
+ * or circuit breaker), an earthing switch and protection settings (breakers).
+ * Stored as JSON in the substation's property value "swg".
  * Each cubicle exposes a 3-phase terminal end "<substation>#mv<k>" for cables/lines.
  */
 import { Part } from "@/components/PartLabel";
@@ -18,12 +18,6 @@ export type Cubicle = {
   tripped?: string; // trip reason
   pickupA: number; // I> overcurrent pickup
   scA: number; // I>> short-circuit pickup
-  // inspection record
-  insulationMOhm?: number;
-  gasBar?: number;
-  visualOk?: boolean;
-  tripTestA?: number;
-  tripTestResult?: "pass" | "fail";
 };
 
 export const CUBICLE_KIND_LABEL: Record<CubicleKind, string> = {
@@ -74,27 +68,6 @@ export function switchgearWires(subId: string, cubicles: Cubicle[]): SolverWire[
   return out;
 }
 
-export type ChecklistItem = { id: string; label: string; status: "pass" | "fail" | "todo"; detail: string };
-
-/** Inspection / commissioning checklist for one cubicle. */
-export function cubicleChecklist(c: Cubicle, live: boolean, loadA: number): ChecklistItem[] {
-  const ins = c.insulationMOhm, gas = c.gasBar;
-  const items: ChecklistItem[] = [
-    { id: "visual", label: "Visual inspection (no damage, clean, labels)", status: c.visualOk === undefined ? "todo" : c.visualOk ? "pass" : "fail", detail: c.visualOk === undefined ? "Not done" : c.visualOk ? "OK" : "Defect noted" },
-    { id: "gas", label: "SF6 gas pressure ≥ 1.2 bar", status: gas === undefined ? "todo" : gas >= 1.2 ? "pass" : "fail", detail: gas === undefined ? "Not measured" : `${gas.toFixed(2)} bar` },
-    { id: "ins", label: "Insulation resistance ≥ 1000 MΩ (5 kV test)", status: ins === undefined ? "todo" : ins >= 1000 ? "pass" : "fail", detail: ins === undefined ? "Not measured" : `${ins} MΩ` },
-    { id: "interlock", label: "Interlock: earthing switch blocked while main switch closed", status: c.closed && c.earthed ? "fail" : "pass", detail: c.closed && c.earthed ? "Both closed!" : "Verified" },
-    { id: "dead", label: "Earthed only when de-energised", status: c.earthed && live ? "fail" : "pass", detail: c.earthed ? (live ? "Earthed on a live circuit" : "Dead and earthed") : "Not earthed" },
-  ];
-  if (c.kind === "cb") {
-    items.push(
-      { id: "settings", label: "Protection: I> below I>>", status: c.pickupA < c.scA ? "pass" : "fail", detail: `I> ${c.pickupA} A · I>> ${c.scA} A` },
-      { id: "load", label: "I> above present load current", status: c.pickupA > loadA ? "pass" : "fail", detail: `Load ${loadA.toFixed(1)} A` },
-      { id: "trip", label: "Secondary injection trip test", status: c.tripTestResult ? c.tripTestResult : "todo", detail: c.tripTestA ? `${c.tripTestA} A injected → ${c.tripTestResult === "pass" ? "tripped" : "no trip"}` : "Not tested" },
-    );
-  }
-  return items;
-}
 
 export function SwitchgearModel({ cubicles }: { cubicles: Cubicle[] }) {
   return (
