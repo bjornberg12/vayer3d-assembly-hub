@@ -38,7 +38,7 @@ import { ElectronFlow, wireCurve as evWireCurve, evLoads, type PartStatus } from
 import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
 import { TransformerModel, transformerPins, transformerDefaults, transformerModel, transformerTerminalLocals, TRANSFORMER_PARAMS, type VectorGroup } from "@/ModelLibrary";
 import { GISModel, parseGIS, gisTerminalLocals, relayAutoOn } from "@/ModelLibrary/substations/GIS";
-import { SwitchgearModel, parseSwitchgear, switchgearWires, cubicleTerminalLocals, cubicleConducts, cubicleChecklist, makeCubicle, CUBICLE_KIND_LABEL, type Cubicle, type CubicleKind } from "@/ModelLibrary";
+import { SwitchgearModel, parseSwitchgear, switchgearWires, cubicleTerminalLocals, cubicleConducts, makeCubicle, CUBICLE_KIND_LABEL, type Cubicle, type CubicleKind } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
   EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
@@ -3952,9 +3952,6 @@ export default function Scene3DViewer() {
                   <div className="text-[10px] text-neutral-600">Each cubicle has a 10 kV connector on the front wall for cables and lines. All cubicles share one busbar.</div>
                   {cubs.map((c, k) => {
                     const I = cubicleCurrent(sid, k);
-                    const live = busLive || I > 0;
-                    const checks = cubicleChecklist(c, live, I);
-                    const passed = checks.filter((x) => x.status === "pass").length;
                     return (
                       <div key={c.id} className={`space-y-1.5 rounded-lg border p-2 ${c.tripped ? "border-orange-400 bg-orange-100/50" : "border-white/50 bg-white/30"}`}>
                         <div className="flex items-center gap-2">
@@ -3983,36 +3980,6 @@ export default function Scene3DViewer() {
                             <input type="number" min={1} step={10} value={c.scA} onChange={(e) => setC(k, { scA: Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">A</span>
                           </div>
                         )}
-                        <details className="rounded-md border border-white/50 bg-white/35 px-2 py-1">
-                          <summary className="cursor-pointer text-[11px] font-semibold">Inspection checklist ({passed}/{checks.length} pass)</summary>
-                          <div className="mt-1 space-y-1">
-                            <label className="flex items-center gap-2 text-[11px]"><input type="checkbox" checked={!!c.visualOk} onChange={(e) => setC(k, { visualOk: e.target.checked })} /> Visual inspection OK</label>
-                            <div className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2">
-                              <span className="text-[11px]">SF6 pressure</span>
-                              <input type="number" step={0.05} value={c.gasBar ?? ""} onChange={(e) => setC(k, { gasBar: e.target.value === "" ? undefined : Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">bar</span>
-                              <span className="text-[11px]">Insulation resistance</span>
-                              <input type="number" step={100} value={c.insulationMOhm ?? ""} onChange={(e) => setC(k, { insulationMOhm: e.target.value === "" ? undefined : Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">MΩ</span>
-                              {c.kind === "cb" && <>
-                                <span className="text-[11px]">Trip test current</span>
-                                <input type="number" step={5} value={c.tripTestA ?? ""} onChange={(e) => setC(k, { tripTestA: e.target.value === "" ? undefined : Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">A</span>
-                              </>}
-                            </div>
-                            {c.kind === "cb" && (
-                              <button className={btn(false)} disabled={!c.tripTestA || !c.closed || !!c.tripped}
-                                onClick={() => { const t = c.tripTestA ?? 0; const ok = t > c.pickupA; setC(k, { tripTestResult: ok ? "pass" : "fail", tripped: ok ? `Test trip (${t} A injected)` : undefined }); }}>
-                                Inject test current
-                              </button>
-                            )}
-                            <ul className="space-y-0.5">
-                              {checks.map((x) => (
-                                <li key={x.id} className="flex gap-1.5 text-[10px] leading-snug">
-                                  <span className={`font-bold ${x.status === "pass" ? "text-green-700" : x.status === "fail" ? "text-red-700" : "text-neutral-400"}`}>{x.status === "pass" ? "✓" : x.status === "fail" ? "✗" : "○"}</span>
-                                  <span>{x.label} — <span className="text-neutral-500">{x.detail}</span></span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </details>
                       </div>
                     );
                   })}
