@@ -56,7 +56,7 @@ export function GISModel({ cubicles, relayAuto }: { cubicles: Cubicle[]; relayAu
   const n = Math.max(1, cubicles.length);
   const W = n * GIS_BAY_W;
   const fz = BAY_D / 2;
-  const panelY = BAY_H + 0.05;
+  const panelY = BAY_H;
   const PH = 0.8;
   return (
     <group>
