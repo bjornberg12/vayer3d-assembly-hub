@@ -35,7 +35,7 @@ export type ModelCard = {
   base: BaseDefaults;
 };
 
-export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer", ModelCard> = {
+export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer" | "gis", ModelCard> = {
   puitmast: {
     id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole", group: "electrical-posts",
     steps: ASSEMBLY_STEPS,
@@ -55,6 +55,10 @@ export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "
     id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation", group: "substations",
     steps: SUBSTATION_STEPS,
     base: { active: ["modelId", "mass", "material", "height", "width", "depth", "nominalVoltage", "ratedPower"], values: { modelId: "KAJ-10/0.4", mass: 9500, material: "Concrete / steel", height: 2.5, width: 3.5, depth: 2.2, nominalVoltage: 10000, voltageKind: "AC", ratedPower: 630, frequency: 50, phases: 3 } },
+  },
+  gis: {
+    id: "gis", name: "MV GIS + automation", subtitle: "Gas-insulated switchgear", group: "substations",
+    base: { active: ["modelId", "mass", "height", "width", "depth", "nominalVoltage", "ratedCurrent"], values: { modelId: "GIS-24-630", mass: 1800, material: "Steel / SF6", height: 3.0, width: 2.4, depth: 1.0, nominalVoltage: 20000, voltageKind: "AC", ratedCurrent: 630, frequency: 50, phases: 3 } },
   },
   evcharger: {
     id: "evcharger", name: "EV charger", subtitle: "Electric car charger", group: "chargers",

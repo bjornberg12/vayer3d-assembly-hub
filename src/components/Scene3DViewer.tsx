@@ -37,6 +37,7 @@ import { BasePropsEditor } from "./BasePropsEditor";
 import { ElectronFlow, wireCurve as evWireCurve, evLoads, type PartStatus } from "@/ModelLibrary";
 import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
 import { TransformerModel, transformerPins, transformerDefaults, transformerModel, transformerTerminalLocals, TRANSFORMER_PARAMS, type VectorGroup } from "@/ModelLibrary";
+import { GISModel, parseGIS, gisTerminalLocals, relayAutoOn } from "@/ModelLibrary/substations/GIS";
 import { SwitchgearModel, parseSwitchgear, switchgearWires, cubicleTerminalLocals, cubicleConducts, cubicleChecklist, makeCubicle, CUBICLE_KIND_LABEL, type Cubicle, type CubicleKind } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
@@ -1172,20 +1173,21 @@ export default function Scene3DViewer() {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cablesOpen, setCablesOpen] = useState(false);
-  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer";
+  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "gis" | "evcharger" | "vsource" | "transformer";
   const PIN_ITEM_TYPES: string[] = ["evcharger", "vsource", "transformer"];
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
     { type: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
     { type: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
+    { type: "gis", name: "MV GIS + automation", subtitle: "Gas-insulated switchgear with relay panel" },
     { type: "evcharger", name: "EV charger", subtitle: "AC / DC car charger" },
     { type: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply" },
     { type: "transformer", name: "Transformer", subtitle: "3-phase, HV / LV pins" },
   ];
   const ADD_GROUPS: { id: string; label: string; types: AddableType[] }[] = [
     { id: "lines", label: "Power line poles", types: ["puitmast", "puitmast20"] },
-    { id: "dist", label: "Distribution & substations", types: ["jaotuskilp", "alajaam", "transformer"] },
+    { id: "dist", label: "Distribution & substations", types: ["jaotuskilp", "alajaam", "gis", "transformer"] },
     { id: "sources", label: "Power sources", types: ["vsource"] },
     { id: "charging", label: "EV charging", types: ["evcharger"] },
   ];
@@ -1377,7 +1379,7 @@ export default function Scene3DViewer() {
       return { minX: pos[0] - halfX, maxX: pos[0] + halfX, minZ: pos[2] - halfZ, maxZ: pos[2] + halfZ };
     };
     const ITEM_FOOTPRINT: Record<string, [number, number]> = {
-      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
+      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], gis: [2.6, 1.2], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
     };
     const parts = true ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
     const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
@@ -1564,6 +1566,12 @@ export default function Scene3DViewer() {
           const ph = world(cubicleTerminalLocals(k, cubs.length));
           out.push({ id: `${i.id}#mv${k + 1}`, name: `Alajaam #${idx + 1} · ${c.label} (10 kV)`, point: ph[1], phases: ph });
         });
+      } else if (i.type === "gis") {
+        const cubs = parseGIS(objectProps[i.id]?.values.swg);
+        cubs.forEach((c, k) => {
+          const ph = world(gisTerminalLocals(k, cubs.length));
+          out.push({ id: `${i.id}#mv${k + 1}`, name: `GIS #${idx + 1} · ${c.label} (MV)`, point: ph[1], phases: ph });
+        });
       } else if (i.type === "vsource" && String(objectProps[i.id]?.values.sourceKind ?? "AC") !== "DC") {
         const ph = world(sourcePins("AC").slice(0, 3).map((p) => p.local));
         out.push({ id: `${i.id}#ac`, name: `Voltage source #${idx + 1}`, point: ph[1], phases: ph });
@@ -1744,13 +1752,14 @@ export default function Scene3DViewer() {
       return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
     }),
   ];
-  const switchgearOf = (id: string) => parseSwitchgear(objectProps[id]?.values.swg);
+  const isSwg = (t: string) => t === "alajaam" || t === "gis";
+  const switchgearOf = (id: string) => (addedItems.find((i) => i.id === id)?.type === "gis" ? parseGIS : parseSwitchgear)(objectProps[id]?.values.swg);
   const setSwitchgear = (id: string, next: Cubicle[]) =>
     setObjectProps((prev) => {
-      const cur = prev[id] ?? initPropsFor("alajaam");
+      const cur = prev[id] ?? initPropsFor(addedItems.find((i) => i.id === id)?.type ?? "alajaam");
       return { ...prev, [id]: { ...cur, values: { ...cur.values, swg: JSON.stringify(next) } } };
     });
-  bundleWires.push(...addedItems.filter((i) => i.type === "alajaam").flatMap((i) => switchgearWires(i.id, switchgearOf(i.id))));
+  bundleWires.push(...addedItems.filter((i) => isSwg(i.type)).flatMap((i) => switchgearWires(i.id, switchgearOf(i.id))));
   const cubicleCurrent = (subId: string, k: number) => Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
   const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
   const circuit = solveCircuits(
@@ -1762,13 +1771,14 @@ export default function Scene3DViewer() {
     true ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
     addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
   );  // Protection: closed breakers trip instantly when current exceeds I> / I>>.
-  const tripKey = addedItems.filter((i) => i.type === "alajaam").map((i) => switchgearOf(i.id).map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`).join(",")).join("|");
+  const tripKey = addedItems.filter((i) => isSwg(i.type)).map((i) => switchgearOf(i.id).map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`).join(",")).join("|");
   useEffect(() => {
-    for (const it of addedItems.filter((i) => i.type === "alajaam")) {
+    for (const it of addedItems.filter((i) => isSwg(i.type))) {
       const cubs = switchgearOf(it.id);
       let changed = false;
       const next = cubs.map((c, k) => {
         if (c.kind !== "cb" || !cubicleConducts(c)) return c;
+        if (it.type === "gis" && !relayAutoOn(objectProps[it.id]?.values.relayAuto)) return c;
         const I = cubicleCurrent(it.id, k);
         if (I <= c.pickupA) return c;
         changed = true;
@@ -1777,7 +1787,7 @@ export default function Scene3DViewer() {
       if (changed) setSwitchgear(it.id, next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tripKey]);
+  }, [tripKey, addedItems.map((i) => String(objectProps[i.id]?.values.relayAuto ?? "")).join()]);
 
 
 
@@ -2171,6 +2181,9 @@ export default function Scene3DViewer() {
                       <Substation step={itemStep} />
                       <SwitchgearModel cubicles={parseSwitchgear(objectProps[item.id]?.values.swg)} />
                     </>
+                  )}
+                  {item.type === "gis" && (
+                    <GISModel cubicles={parseGIS(objectProps[item.id]?.values.swg)} relayAuto={relayAutoOn(objectProps[item.id]?.values.relayAuto)} />
                   )}
                   {item.type === "transformer" && <TransformerModel />}
                   {item.type === "vsource" && (
@@ -3914,7 +3927,7 @@ export default function Scene3DViewer() {
                 }
               />
             )}
-            {propsModelId === "alajaam" && propsOwnerId && (() => {
+            {(propsModelId === "alajaam" || propsModelId === "gis") && propsOwnerId && (() => {
               const sid = propsOwnerId;
               const cubs = switchgearOf(sid);
               const setC = (k: number, patch: Partial<Cubicle>) => setSwitchgear(sid, cubs.map((c, i) => (i === k ? { ...c, ...patch } : c)));
@@ -3923,7 +3936,19 @@ export default function Scene3DViewer() {
               const btn = (on: boolean) => `rounded-md px-2 py-1 text-[11px] font-semibold transition ${on ? "bg-neutral-800 text-white" : "border border-white/60 bg-white/50 text-neutral-800 hover:bg-white/80"}`;
               return (
                 <div className="space-y-2 text-xs text-neutral-800">
-                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">MV switchgear (10 kV)</div>
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">{propsModelId === "gis" ? "GIS feeders & relay automation" : "MV switchgear (10 kV)"}</div>
+                  {propsModelId === "gis" && (() => {
+                    const auto = relayAutoOn(currentProps.values.relayAuto);
+                    return (
+                      <div className="flex items-center justify-between rounded-lg border border-white/60 bg-white/50 p-2">
+                        <div>
+                          <div className="font-semibold">Relay automation {auto ? "ON" : "OFF"}</div>
+                          <div className="text-[10px] text-neutral-600">{auto ? "RTU, switch, router and antenna online; breakers trip on I> / I>>." : "Protection relays disabled; breakers will not trip automatically."}</div>
+                        </div>
+                        <button className={btn(auto)} onClick={() => setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...currentProps.values, relayAuto: auto ? "0" : "1" } } }))}>{auto ? "Turn off" : "Turn on"}</button>
+                      </div>
+                    );
+                  })()}
                   <div className="text-[10px] text-neutral-600">Each cubicle has a 10 kV connector on the front wall for cables and lines. All cubicles share one busbar.</div>
                   {cubs.map((c, k) => {
                     const I = cubicleCurrent(sid, k);
