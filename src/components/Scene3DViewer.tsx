@@ -3952,7 +3952,6 @@ export default function Scene3DViewer() {
                   <div className="text-[10px] text-neutral-600">Each cubicle has a 10 kV connector on the front wall for cables and lines. All cubicles share one busbar.</div>
                   {cubs.map((c, k) => {
                     const I = cubicleCurrent(sid, k);
-                    const live = busLive || I > 0;
                     return (
                       <div key={c.id} className={`space-y-1.5 rounded-lg border p-2 ${c.tripped ? "border-orange-400 bg-orange-100/50" : "border-white/50 bg-white/30"}`}>
                         <div className="flex items-center gap-2">
