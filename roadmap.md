@@ -24,5 +24,5 @@
 - [x] Automatically show solver-driven electrons and current arrows on small wires, with live device power readings.
 - [x] Test powered and unpowered flow behavior (19 tests pass).
 - [ ] Verify connected-device animation in the scene; browser wiring check did not complete successfully.
-- [ ] Refine the battery management system housing and realistic harness contacts, retaining existing wiring and simulation.
-- [ ] Test BMS endpoint compatibility and visually verify the model and connections.
+- [x] Refine the battery management system housing and realistic harness contacts, retaining existing wiring and simulation.
+- [x] Test BMS endpoint compatibility (22 regression tests pass) and visually verify the model and visible connector faces; no runtime errors.
