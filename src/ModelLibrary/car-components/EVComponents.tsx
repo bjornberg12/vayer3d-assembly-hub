@@ -259,23 +259,6 @@ export function wireCurve(a: [number, number, number], b: [number, number, numbe
   ]);
 }
 
-const M = {
-  housing: { color: "#3a3f45", metalness: 0.6, roughness: 0.45 },
-  alu: { color: "#b9bec4", metalness: 0.85, roughness: 0.3 },
-  orange: { color: "#f07a1a", metalness: 0.1, roughness: 0.5 },
-  black: { color: "#161616", metalness: 0.2, roughness: 0.7 },
-  green: { color: "#1f7a3a", metalness: 0.2, roughness: 0.6 },
-};
-
-function Box({ size, pos, mat }: { size: [number, number, number]; pos: [number, number, number]; mat: keyof typeof M }) {
-  return (
-    <mesh position={pos} castShadow receiveShadow>
-      <boxGeometry args={size} />
-      <meshStandardMaterial {...M[mat]} />
-    </mesh>
-  );
-}
-
 /** Opaque wheel (tyre + hub + spokes) that spins around the x-axis while the motor is powered. */
 function Wheel({ x, running }: { x: number; running: boolean }) {
   const ref = useRef<THREE.Group>(null);
