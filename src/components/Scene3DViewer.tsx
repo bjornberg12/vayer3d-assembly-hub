@@ -3931,7 +3931,6 @@ export default function Scene3DViewer() {
               const sid = propsOwnerId;
               const cubs = switchgearOf(sid);
               const setC = (k: number, patch: Partial<Cubicle>) => setSwitchgear(sid, cubs.map((c, i) => (i === k ? { ...c, ...patch } : c)));
-              const busLive = cubs.some((c, k) => cubicleConducts(c) && cubicleCurrent(sid, k) > 0) || cubs.some((_, k) => cubicleCurrent(sid, k) > 0);
               const inp = "w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30";
               const btn = (on: boolean) => `rounded-md px-2 py-1 text-[11px] font-semibold transition ${on ? "bg-neutral-800 text-white" : "border border-white/60 bg-white/50 text-neutral-800 hover:bg-white/80"}`;
               return (
