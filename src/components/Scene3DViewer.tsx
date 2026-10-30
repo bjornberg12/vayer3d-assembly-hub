@@ -37,6 +37,7 @@ import { BasePropsEditor } from "./BasePropsEditor";
 import { ElectronFlow, wireCurve as evWireCurve, evLoads, type PartStatus } from "@/ModelLibrary";
 import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
 import { TransformerModel, transformerPins, transformerDefaults, transformerModel, transformerTerminalLocals, TRANSFORMER_PARAMS, type VectorGroup } from "@/ModelLibrary";
+import { LVPanelModel, parseLVPanel, lvPanelPins, lvPanelWires, lvPanelLoads, lvCableEnds, lvBreakerWireId, lvTripReason, lvSpdOwner, lvConducts, makeLVDevice, LV_KIND_INFO, type LVDevice, type LVKind, type LVPhase } from "@/ModelLibrary/distribution/LVPanel";
 import { GISModel, parseGIS, gisTerminalLocals, relayAutoOn } from "@/ModelLibrary/substations/GIS";
 import { SwitchgearModel, parseSwitchgear, switchgearWires, cubicleTerminalLocals, cubicleConducts, makeCubicle, CUBICLE_KIND_LABEL, type Cubicle, type CubicleKind } from "@/ModelLibrary";
 import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
@@ -1173,13 +1174,14 @@ export default function Scene3DViewer() {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cablesOpen, setCablesOpen] = useState(false);
-  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "gis" | "evcharger" | "vsource" | "transformer";
-  const PIN_ITEM_TYPES: string[] = ["evcharger", "vsource", "transformer"];
+  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "gis" | "lvpanel" | "evcharger" | "vsource" | "transformer";
+  const PIN_ITEM_TYPES: string[] = ["evcharger", "vsource", "transformer", "lvpanel"];
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
     { type: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
     { type: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
+    { type: "lvpanel", name: "LV panel 0.4 kV", subtitle: "MCCB, MCB, SPD and control breakers" },
     { type: "gis", name: "MV GIS + automation", subtitle: "Gas-insulated switchgear with relay panel" },
     { type: "evcharger", name: "EV charger", subtitle: "AC / DC car charger" },
     { type: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply" },
@@ -1187,7 +1189,7 @@ export default function Scene3DViewer() {
   ];
   const ADD_GROUPS: { id: string; label: string; types: AddableType[] }[] = [
     { id: "lines", label: "Power line poles", types: ["puitmast", "puitmast20"] },
-    { id: "dist", label: "Distribution & substations", types: ["jaotuskilp", "alajaam", "gis", "transformer"] },
+    { id: "dist", label: "Distribution & substations", types: ["jaotuskilp", "lvpanel", "alajaam", "gis", "transformer"] },
     { id: "sources", label: "Power sources", types: ["vsource"] },
     { id: "charging", label: "EV charging", types: ["evcharger"] },
   ];
@@ -1379,7 +1381,7 @@ export default function Scene3DViewer() {
       return { minX: pos[0] - halfX, maxX: pos[0] + halfX, minZ: pos[2] - halfZ, maxZ: pos[2] + halfZ };
     };
     const ITEM_FOOTPRINT: Record<string, [number, number]> = {
-      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], gis: [2.6, 1.2], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
+      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], gis: [2.6, 1.2], lvpanel: [0.85, 0.35], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
     };
     const parts = true ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
     const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
@@ -1441,6 +1443,7 @@ export default function Scene3DViewer() {
   };
   function pinDefsOfItem(it: { id: string; type: string }): PinDef[] {
     if (it.type === "transformer") return transformerPins();
+    if (it.type === "lvpanel") return lvPanelPins(parseLVPanel(objectProps[it.id]?.values.lvdev));
     if (it.type === "vsource") return sourcePins(String(objectProps[it.id]?.values.sourceKind ?? "AC"));
     return it.type === "evcharger" ? chargerPins(String(objectProps[it.id]?.values.chargerType ?? "ac-wall")) : [];
   }
@@ -1452,7 +1455,7 @@ export default function Scene3DViewer() {
     if (pp) { const pin = pinsOf(pp.type).find((q) => q.id === pid); return pin ? { pin, owner: EV_DEFS[pp.type].name } : null; }
     const it = addedItems.find((i) => i.id === oid);
     const pin = it && pinDefsOfItem(it).find((q) => q.id === pid);
-    return pin ? { pin, owner: it?.type === "transformer" ? "Transformer" : it?.type === "vsource" ? "Voltage source" : "EV charger" } : null;
+    return pin ? { pin, owner: it?.type === "lvpanel" ? "LV panel" : it?.type === "transformer" ? "Transformer" : it?.type === "vsource" ? "Voltage source" : "EV charger" } : null;
   };
   const endName = (id: string) => {
     const pi = pinInfo(id);
@@ -1571,6 +1574,14 @@ export default function Scene3DViewer() {
         cubs.forEach((c, k) => {
           const ph = world(gisTerminalLocals(k, cubs.length));
           out.push({ id: `${i.id}#mv${k + 1}`, name: `GIS #${idx + 1} · ${c.label} (MV)`, point: ph[1], phases: ph });
+        });
+      } else if (i.type === "lvpanel") {
+        const devs = parseLVPanel(objectProps[i.id]?.values.lvdev);
+        const inc = world(lvPanelPins(devs).slice(0, 3).map((p) => p.local));
+        out.push({ id: `${i.id}#ac`, name: `LV panel #${idx + 1} · Incoming`, point: inc[1], phases: inc });
+        lvCableEnds(devs).forEach(({ dev, phases }) => {
+          const ph = world(phases);
+          out.push({ id: `${i.id}#o${dev.id}`, name: `LV panel #${idx + 1} · ${dev.label} out`, point: ph[1], phases: ph });
         });
       } else if (i.type === "vsource" && String(objectProps[i.id]?.values.sourceKind ?? "AC") !== "DC") {
         const ph = world(sourcePins("AC").slice(0, 3).map((p) => p.local));
@@ -1759,6 +1770,15 @@ export default function Scene3DViewer() {
       const cur = prev[id] ?? initPropsFor(addedItems.find((i) => i.id === id)?.type ?? "alajaam");
       return { ...prev, [id]: { ...cur, values: { ...cur.values, swg: JSON.stringify(next) } } };
     });
+  const lvDevsOf = (id: string) => parseLVPanel(objectProps[id]?.values.lvdev);
+  const setLVDevs = (id: string, next: LVDevice[]) =>
+    setObjectProps((prev) => {
+      const cur = prev[id] ?? initPropsFor("lvpanel");
+      return { ...prev, [id]: { ...cur, values: { ...cur.values, lvdev: JSON.stringify(next) } } };
+    });
+  const lvPanels = addedItems.filter((i) => i.type === "lvpanel");
+  bundleWires.push(...lvPanels.flatMap((i) => lvPanelWires(i.id, lvDevsOf(i.id))));
+  const lvDevCurrent = (pid: string, d: LVDevice) => Math.max(0, ...Array.from({ length: d.poles }, (_, p) => circuit.wireCurrent[lvBreakerWireId(pid, d.id, p)] ?? 0));
   bundleWires.push(...addedItems.filter((i) => isSwg(i.type)).flatMap((i) => switchgearWires(i.id, switchgearOf(i.id))));
   const cubicleCurrent = (subId: string, k: number) => Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
   const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
@@ -1768,7 +1788,7 @@ export default function Scene3DViewer() {
       return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
     }),
     [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
-    true ? evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)) : [],
+    [...evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)), ...lvPanels.flatMap((i) => lvPanelLoads(i.id, lvDevsOf(i.id)))],
     addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
   );  // Protection: closed breakers trip instantly when current exceeds I> / I>>.
   const tripKey = addedItems.filter((i) => isSwg(i.type)).map((i) => switchgearOf(i.id).map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`).join(",")).join("|");
@@ -1790,6 +1810,23 @@ export default function Scene3DViewer() {
   }, [tripKey, addedItems.map((i) => String(objectProps[i.id]?.values.relayAuto ?? "")).join()]);
 
 
+
+  // LV panel protection: MCCB / MCB trip from solver pole currents.
+  const lvTripKey = lvPanels.map((i) => lvDevsOf(i.id).map((d) => `${d.id}:${lvDevCurrent(i.id, d).toFixed(2)}`).join(",")).join("|");
+  useEffect(() => {
+    for (const it of lvPanels) {
+      const devs = lvDevsOf(it.id);
+      let changed = false;
+      const next = devs.map((d) => {
+        const why = lvTripReason(d, lvDevCurrent(it.id, d));
+        if (!why) return d;
+        changed = true;
+        return { ...d, tripped: why };
+      });
+      if (changed) setLVDevs(it.id, next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lvTripKey]);
 
   // --- Shared routing for cables, lines and wires -----------------------------
   const routingKind: "cable" | "line" | "wire" | null =
@@ -2184,6 +2221,12 @@ export default function Scene3DViewer() {
                   )}
                   {item.type === "gis" && (
                     <GISModel cubicles={parseGIS(objectProps[item.id]?.values.swg)} relayAuto={relayAutoOn(objectProps[item.id]?.values.relayAuto)} />
+                  )}
+                  {item.type === "lvpanel" && (
+                    <LVPanelModel
+                      devices={lvDevsOf(item.id)}
+                      spdOk={Object.fromEntries(lvDevsOf(item.id).filter((d) => d.kind === "spd").map((d) => [d.id, circuit.partStatus[lvSpdOwner(item.id, d.id)]?.state === "on"]))}
+                    />
                   )}
                   {item.type === "transformer" && <TransformerModel />}
                   {item.type === "vsource" && (
@@ -3985,6 +4028,70 @@ export default function Scene3DViewer() {
                   <div className="flex gap-1">
                     <button className={btn(false)} onClick={() => setSwitchgear(sid, [...cubs, makeCubicle("lbs", cubs.filter((c) => c.kind === "lbs").length + 1)])}>+ Cable cubicle</button>
                     <button className={btn(false)} onClick={() => setSwitchgear(sid, [...cubs, makeCubicle("cb", cubs.filter((c) => c.kind === "cb").length + 1)])}>+ Breaker cubicle</button>
+                  </div>
+                </div>
+              );
+            })()}
+            {propsModelId === "lvpanel" && propsOwnerId && (() => {
+              const pid = propsOwnerId;
+              const devs = lvDevsOf(pid);
+              const setD = (k: number, patch: Partial<LVDevice>) => setLVDevs(pid, devs.map((d, i) => (i === k ? { ...d, ...patch } : d)));
+              const move = (k: number, dir: number) => {
+                const j = k + dir;
+                if (j < 0 || j >= devs.length) return;
+                const n = [...devs];
+                [n[k], n[j]] = [n[j], n[k]];
+                setLVDevs(pid, n);
+              };
+              const inp = "w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30";
+              const btn = (on: boolean) => `rounded-md px-2 py-1 text-[11px] font-semibold transition ${on ? "bg-neutral-800 text-white" : "border border-white/60 bg-white/50 text-neutral-800 hover:bg-white/80"}`;
+              const count = (k: LVKind) => devs.filter((d) => d.kind === k).length + 1;
+              return (
+                <div className="space-y-2 text-xs text-neutral-800">
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">LV panel devices (0.4 kV)</div>
+                  <div className="text-[10px] text-neutral-600">Feed the panel with a cable or line to its incoming connector, or wires to the L1 L2 L3 N PE pins at the top. Wire loads from breaker output pins (bottom of each device) to the N and PE bars. Devices set to "Manual wiring" get no busbar link — wire their input pins yourself.</div>
+                  {devs.map((d, k) => {
+                    const info = LV_KIND_INFO[d.kind];
+                    const I = lvDevCurrent(pid, d);
+                    const spd = d.kind === "spd" ? circuit.partStatus[lvSpdOwner(pid, d.id)] : undefined;
+                    return (
+                      <div key={d.id} className={`space-y-1.5 rounded-lg border p-2 ${d.tripped ? "border-orange-400 bg-orange-100/50" : "border-white/50 bg-white/30"}`}>
+                        <div className="flex items-center gap-1">
+                          <input value={d.label} onChange={(e) => setD(k, { label: e.target.value })} className={inp} />
+                          <button aria-label="Move left" onClick={() => move(k, -1)} className="rounded px-1 text-neutral-600">←</button>
+                          <button aria-label="Move right" onClick={() => move(k, 1)} className="rounded px-1 text-neutral-600">→</button>
+                          <button aria-label="Remove device" onClick={() => setLVDevs(pid, devs.filter((_, i) => i !== k))} className="rounded p-1 text-neutral-600 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
+                        </div>
+                        <div className="text-[10px] text-neutral-600">{info.label}</div>
+                        <div className="grid grid-cols-3 gap-1">
+                          <select aria-label="Rating" value={d.rating} onChange={(e) => setD(k, { rating: Number(e.target.value), tripped: undefined })} className={inp}>
+                            {info.ratings.map((r) => <option key={r} value={r}>{d.kind === "spd" ? `${r} kA` : `${r} A`}</option>)}
+                          </select>
+                          <select aria-label="Poles" value={d.poles} onChange={(e) => setD(k, { poles: Number(e.target.value) as 1 | 3 })} className={inp} disabled={info.poles.length < 2}>
+                            {info.poles.map((p) => <option key={p} value={p}>{p === 3 ? "3P" : "1P"}</option>)}
+                          </select>
+                          <select aria-label="Phase" value={d.poles === 3 ? "3" : d.phase} disabled={d.poles === 3} onChange={(e) => setD(k, { phase: e.target.value as LVPhase })} className={inp}>
+                            {d.poles === 3 ? <option value="3">L1 L2 L3</option> : (["L1", "L2", "L3"] as LVPhase[]).map((ph) => <option key={ph} value={ph}>{ph}</option>)}
+                          </select>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          <button className={btn(d.feed === "bus")} onClick={() => setD(k, { feed: d.feed === "bus" ? "manual" : "bus" })}>{d.feed === "bus" ? "Fed from busbar" : "Manual wiring"}</button>
+                          {d.kind !== "spd" && <button className={btn(d.closed && !d.tripped)} onClick={() => setD(k, { closed: !d.closed, tripped: undefined })}>{d.closed && !d.tripped ? "ON — switch off" : "OFF — switch on"}</button>}
+                          {d.tripped && <button className={btn(false)} onClick={() => setD(k, { tripped: undefined, closed: false })}>Reset trip</button>}
+                        </div>
+                        <div className="font-mono text-[10px] text-neutral-700">
+                          {d.kind === "spd"
+                            ? `${spd?.state === "on" ? "Protecting" : spd?.state === "over" ? "Overvoltage!" : "No voltage"} · U = ${(spd?.voltage ?? 0).toFixed(0)} V`
+                            : <>{d.tripped ? <strong className="text-orange-700">TRIPPED: {d.tripped}</strong> : lvConducts(d) ? "ON" : "OFF"} · I = {I.toFixed(2)} A / In {d.rating} A</>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div className="flex flex-wrap gap-1">
+                    <button className={btn(false)} onClick={() => setLVDevs(pid, [...devs, makeLVDevice("mccb", count("mccb"))])}>+ MCCB</button>
+                    <button className={btn(false)} onClick={() => setLVDevs(pid, [...devs, makeLVDevice("mcb", count("mcb"))])}>+ MCB</button>
+                    <button className={btn(false)} onClick={() => setLVDevs(pid, [...devs, makeLVDevice("mini", count("mini"))])}>+ Small breaker</button>
+                    <button className={btn(false)} onClick={() => setLVDevs(pid, [...devs, makeLVDevice("spd", count("spd"))])}>+ SPD</button>
                   </div>
                 </div>
               );
