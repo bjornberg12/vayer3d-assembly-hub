@@ -35,7 +35,7 @@ export type ModelCard = {
   base: BaseDefaults;
 };
 
-export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer" | "gis", ModelCard> = {
+export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer" | "gis" | "lvpanel", ModelCard> = {
   puitmast: {
     id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole", group: "electrical-posts",
     steps: ASSEMBLY_STEPS,
@@ -55,6 +55,10 @@ export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "
     id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation", group: "substations",
     steps: SUBSTATION_STEPS,
     base: { active: ["modelId", "mass", "material", "height", "width", "depth", "nominalVoltage", "ratedPower"], values: { modelId: "KAJ-10/0.4", mass: 9500, material: "Concrete / steel", height: 2.5, width: 3.5, depth: 2.2, nominalVoltage: 10000, voltageKind: "AC", ratedPower: 630, frequency: 50, phases: 3 } },
+  },
+  lvpanel: {
+    id: "lvpanel", name: "LV panel 0.4 kV", subtitle: "Low-voltage distribution panel", group: "distribution",
+    base: { active: ["modelId", "mass", "height", "width", "depth", "nominalVoltage", "ratedCurrent"], values: { modelId: "LVP-400-250", mass: 60, material: "Painted steel", height: 1.6, width: 0.8, depth: 0.25, nominalVoltage: 400, voltageKind: "AC", ratedCurrent: 250, frequency: 50, phases: 3 } },
   },
   gis: {
     id: "gis", name: "MV GIS + automation", subtitle: "Gas-insulated switchgear", group: "substations",
@@ -87,3 +91,4 @@ export * from "./sources/solver";
 export * from "./sources/ElectronFlow";
 export * from "./transformers/Transformer";
 export * from "./substations/Switchgear";
+export * from "./distribution/LVPanel";
