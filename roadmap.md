@@ -26,3 +26,6 @@
 - [ ] Verify connected-device animation in the scene; browser wiring check did not complete successfully.
 - [x] Refine the battery management system housing and realistic harness contacts, retaining existing wiring and simulation.
 - [x] Test BMS endpoint compatibility (22 regression tests pass) and visually verify the model and visible connector faces; no runtime errors.
+
+## LV panel
+- [x] LV panel with MCCB, MCB, small breaker and SPD devices, phase choice, busbar or manual feed, outgoing pins/cable ends, solver trips
