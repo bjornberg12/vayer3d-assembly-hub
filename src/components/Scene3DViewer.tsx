@@ -50,6 +50,9 @@ import {
 } from "@/ModelLibrary";
 import { DraggablePanel } from "./DraggablePanel";
 import { Button } from "./ui/button";
+import { InstrumentModel } from "@/ModelLibrary/measurement/InstrumentModel";
+import { InstrumentEditor } from "@/ModelLibrary/measurement/InstrumentEditor";
+import { instrumentDefaults, instrumentPins, instrumentReading, type InstrumentKind } from "@/ModelLibrary/measurement/instruments";
 import {
   WeatherEffects,
   DEFAULT_WEATHER,
@@ -1174,8 +1177,9 @@ export default function Scene3DViewer() {
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cablesOpen, setCablesOpen] = useState(false);
-  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "gis" | "lvpanel" | "evcharger" | "vsource" | "transformer";
-  const PIN_ITEM_TYPES: string[] = ["evcharger", "vsource", "transformer", "lvpanel"];
+  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "gis" | "lvpanel" | "evcharger" | "vsource" | "transformer" | "ct" | "vt";
+  const PIN_ITEM_TYPES: string[] = ["evcharger", "vsource", "transformer", "lvpanel", "ct", "vt"];
+  const isInstrument = (t: string): t is InstrumentKind => t === "ct" || t === "vt";
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
@@ -1185,11 +1189,14 @@ export default function Scene3DViewer() {
     { type: "gis", name: "MV GIS + automation", subtitle: "Gas-insulated switchgear with relay panel" },
     { type: "evcharger", name: "EV charger", subtitle: "AC / DC car charger" },
     { type: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply" },
+    { type: "ct", name: "Current transformer (CT)", subtitle: "Split-core CT + analog transmitter" },
+    { type: "vt", name: "Voltage transformer (VT)", subtitle: "VT + analog transmitter" },
     { type: "transformer", name: "Transformer", subtitle: "3-phase, HV / LV pins" },
   ];
   const ADD_GROUPS: { id: string; label: string; types: AddableType[] }[] = [
     { id: "lines", label: "Power line poles", types: ["puitmast", "puitmast20"] },
     { id: "dist", label: "Distribution & substations", types: ["jaotuskilp", "lvpanel", "alajaam", "gis", "transformer"] },
+    { id: "measurement", label: "Measurement transformers", types: ["ct", "vt"] },
     { id: "sources", label: "Power sources", types: ["vsource"] },
     { id: "charging", label: "EV charging", types: ["evcharger"] },
   ];
@@ -1381,7 +1388,7 @@ export default function Scene3DViewer() {
       return { minX: pos[0] - halfX, maxX: pos[0] + halfX, minZ: pos[2] - halfZ, maxZ: pos[2] + halfZ };
     };
     const ITEM_FOOTPRINT: Record<string, [number, number]> = {
-      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], gis: [2.6, 1.2], lvpanel: [0.85, 0.35], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
+      ct: [0.32, 0.18], vt: [0.32, 0.18], evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], gis: [2.6, 1.2], lvpanel: [0.85, 0.35], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
     };
     const parts = true ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
     const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
@@ -1442,6 +1449,7 @@ export default function Scene3DViewer() {
     return null;
   };
   function pinDefsOfItem(it: { id: string; type: string }): PinDef[] {
+    if (isInstrument(it.type)) return instrumentPins(it.type);
     if (it.type === "transformer") return transformerPins();
     if (it.type === "lvpanel") return lvPanelPins(parseLVPanel(objectProps[it.id]?.values.lvdev));
     if (it.type === "vsource") return sourcePins(String(objectProps[it.id]?.values.sourceKind ?? "AC"));
@@ -1455,7 +1463,7 @@ export default function Scene3DViewer() {
     if (pp) { const pin = pinsOf(pp.type).find((q) => q.id === pid); return pin ? { pin, owner: EV_DEFS[pp.type].name } : null; }
     const it = addedItems.find((i) => i.id === oid);
     const pin = it && pinDefsOfItem(it).find((q) => q.id === pid);
-    return pin ? { pin, owner: it?.type === "lvpanel" ? "LV panel" : it?.type === "transformer" ? "Transformer" : it?.type === "vsource" ? "Voltage source" : "EV charger" } : null;
+    return pin ? { pin, owner: it && isInstrument(it.type) ? (it.type === "ct" ? "CT" : "VT") : it?.type === "lvpanel" ? "LV panel" : it?.type === "transformer" ? "Transformer" : it?.type === "vsource" ? "Voltage source" : "EV charger" } : null;
   };
   const endName = (id: string) => {
     const pi = pinInfo(id);
@@ -1782,15 +1790,80 @@ export default function Scene3DViewer() {
   bundleWires.push(...addedItems.filter((i) => isSwg(i.type)).flatMap((i) => switchgearWires(i.id, switchgearOf(i.id))));
   const cubicleCurrent = (subId: string, k: number) => Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
   const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
-  const circuit = solveCircuits(
+  const primaryCircuit = solveCircuits(
     addedItems.filter((i) => i.type === "vsource").map((i) => {
       const v = objectProps[i.id]?.values ?? sourceDefaults("AC");
       return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
     }),
     [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
-    [...evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)), ...lvPanels.flatMap((i) => lvPanelLoads(i.id, lvDevsOf(i.id)))],
+    [...evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)), ...lvPanels.flatMap((i) => lvPanelLoads(i.id, lvDevsOf(i.id))), ...addedItems.filter((i) => i.type === "vt").map((i) => ({ owner: `${i.id}:primary`, a: `${i.id}#p1`, b: `${i.id}#p2`, r: 1e9, ratedV: Number(objectProps[i.id]?.values.primaryRange ?? 10000) }))],
     addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
-  );  // Protection: closed breakers trip instantly when current exceeds I> / I>>.
+  );
+  const instrumentHosts = [
+    ...evWires.filter((w) => !addedItems.some((i) => isInstrument(i.type) && (ownerOfEnd(w.a) === i.id || ownerOfEnd(w.b) === i.id))).map((w, k) => ({ id: w.id, label: `Wire ${k + 1} · ${endName(w.a)} → ${endName(w.b)}`, conductors: 1 })),
+    ...cables.map((c, k) => ({ id: c.id, label: `Cable ${k + 1} · ${cableLabel(c.size)}`, conductors: cableSizeOf(c.size).mv ? 3 : 4 })),
+  ];
+  const hostBranch = (host: string, core: number) => {
+    const w = evWires.find((w) => w.id === host);
+    if (w) return { id: w.id, a: w.a, b: w.b };
+    return bundleWires.find((w) => w.id === `${host}~${core}`) ?? null;
+  };
+  const hostPoint = (host: string, t: number): [number, number, number] | null => {
+    const w = evWires.find((w) => w.id === host);
+    if (w) {
+      const a = wireEnd(w.a), b = wireEnd(w.b);
+      if (!a || !b) return null;
+      const curve = w.routingMode === "auto" ? roundedOrthogonalCurve(a, b, w.waypoints ?? []) : w.waypoints?.length || parsePt(w.a) || parsePt(w.b) ? routedWireCurve(a, b, w.waypoints ?? []) : evWireCurve(a, b);
+      return curve.getPointAt(t).toArray() as [number, number, number];
+    }
+    const c = cables.find((c) => c.id === host);
+    const a = c && cableEndpoints.find((e) => e.id === c.a), b = c && cableEndpoints.find((e) => e.id === c.b);
+    return c && a && b ? cableRoutePointAt(a.point, b.point, 0.7, c.waypoints, t) : null;
+  };
+  const instruments = addedItems.filter((i) => isInstrument(i.type));
+  const instrumentReadings = Object.fromEntries(instruments.map((i) => {
+    const v = { ...instrumentDefaults(i.type as InstrumentKind), ...objectProps[i.id]?.values };
+    const branch = hostBranch(String(v.host), Number(v.conductor));
+    let primary: number | null = null, ac = true;
+    if (i.type === "ct" && branch) {
+      primary = primaryCircuit.wireCurrent[branch.id] ?? 0;
+      ac = primaryCircuit.wireFlow[branch.id]?.ac ?? true;
+    } else if (i.type === "vt") {
+      const ref = String(v.reference || `${i.id}#p2`);
+      const refConnected = Boolean(v.reference) || evWires.some((w) => w.a === ref || w.b === ref);
+      const p1Connected = evWires.some((w) => w.a === `${i.id}#p1` || w.b === `${i.id}#p1`);
+      if (refConnected && (branch || p1Connected)) {
+        const voltage = branch ? primaryCircuit.voltageAlong(branch.a, branch.b, Number(v.fraction), ref) : primaryCircuit.voltageBetween(`${i.id}#p1`, ref);
+        primary = voltage.ac + voltage.dc; ac = voltage.dc < 0.001 || voltage.ac > voltage.dc;
+      }
+    }
+    return [i.id, instrumentReading(i.type as InstrumentKind, v, primary, ac)];
+  }));
+  const signals = instruments.map((i) => {
+    const r = instrumentReadings[i.id];
+    const v = { ...instrumentDefaults(i.type as InstrumentKind), ...objectProps[i.id]?.values };
+    return { id: i.id, a: `${i.id}#outp`, b: `${i.id}#outn`, value: r.output,
+      mode: r.mode === "4-20mA" ? "current" as const : "voltage" as const,
+      resistance: r.mode === "4-20mA" ? Number(v.complianceV) / Math.max(r.output, 1e-9) : Number(v.outputR) };
+  });
+  // Analog secondary circuits are galvanically isolated from the measured primary.
+  const analog = solveCircuits([], evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), [], [], signals);
+  const circuit = { ...primaryCircuit, wireCurrent: { ...primaryCircuit.wireCurrent, ...analog.wireCurrent }, wireFlow: { ...primaryCircuit.wireFlow, ...analog.wireFlow } };
+  const mountKey = instruments.map((i) => {
+    const v = objectProps[i.id]?.values;
+    const p = hostPoint(String(v?.host ?? ""), Number(v?.fraction ?? 0.5));
+    return `${i.id}:${p?.join() ?? "none"}`;
+  }).join("|");
+  useEffect(() => {
+    setAddedItems((prev) => prev.map((i) => {
+      if (!isInstrument(i.type)) return i;
+      const v = objectProps[i.id]?.values;
+      const p = hostPoint(String(v?.host ?? ""), Number(v?.fraction ?? 0.5));
+      return p && p.some((n, k) => Math.abs(n - i.position[k]) > 1e-5) ? { ...i, position: p } : i;
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mountKey]);
+  // Protection: closed breakers trip instantly when current exceeds I> / I>>.
   const tripKey = addedItems.filter((i) => isSwg(i.type)).map((i) => switchgearOf(i.id).map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`).join(",")).join("|");
   useEffect(() => {
     for (const it of addedItems.filter((i) => isSwg(i.type))) {
@@ -2228,6 +2301,7 @@ export default function Scene3DViewer() {
                       spdOk={Object.fromEntries(lvDevsOf(item.id).filter((d) => d.kind === "spd").map((d) => [d.id, circuit.partStatus[lvSpdOwner(item.id, d.id)]?.state === "on"]))}
                     />
                   )}
+                  {isInstrument(item.type) && <InstrumentModel kind={item.type} />}
                   {item.type === "transformer" && <TransformerModel />}
                   {item.type === "vsource" && (
                     <VoltageSource kind={String(objectProps[item.id]?.values.sourceKind ?? "AC")} />
@@ -4096,6 +4170,18 @@ export default function Scene3DViewer() {
                 </div>
               );
             })()}
+            {isInstrument(propsModelId) && propsOwnerId && <InstrumentEditor
+              kind={propsModelId} values={currentProps.values} hosts={instrumentHosts}
+              references={[
+                ...addedItems.filter((i) => !isInstrument(i.type)).flatMap((i) => pinDefsOfItem(i).map((p) => ({ id: `${i.id}#${p.id}`, label: `${endName(`${i.id}#${p.id}`)}` }))),
+                ...evParts.flatMap((i) => pinsOf(i.type).map((p) => ({ id: `${i.id}#${p.id}`, label: endName(`${i.id}#${p.id}`) }))),
+              ]}
+              reading={instrumentReadings[propsOwnerId]}
+              terminalV={analog.voltageBetween(`${propsOwnerId}#outp`, `${propsOwnerId}#outn`).dc}
+              terminalI={Math.max(0, ...evWires.filter((w) => w.a === `${propsOwnerId}#outp` || w.b === `${propsOwnerId}#outp`).map((w) => analog.wireCurrent[w.id] ?? 0))}
+              setValues={(patch) => setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...instrumentDefaults(propsModelId), ...currentProps.values, ...patch } } }))}
+              remove={() => { removeItem(propsOwnerId); setPropsTarget(null); setPropsOwnerId(null); }}
+            />}
             {propsModelId === "transformer" && propsOwnerId && (() => {
               const v = { ...transformerDefaults(), ...currentProps.values };
               const setV = (patch: Record<string, string | number>) =>
