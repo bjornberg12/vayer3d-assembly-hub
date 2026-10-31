@@ -1,5 +1,7 @@
 # Project rules
 
+- CT/VT instruments live in ModelLibrary/measurement, reference an existing conductor by stable host ID/core and route fraction, and emit isolated conditioned DC analog signals from solver measurements; VTs require an explicit voltage reference — prevents phantom voltage measurements and preserves primary wiring.
+
 - Every 3D model lives in `src/ModelLibrary/<group>/` and is registered in `src/ModelLibrary/index.ts` (MODEL_REGISTRY, or EV_DEFS for car components) with basic-property defaults — keeps models, parameters and properties in one place.
 - Detailed car-part housings may use dedicated components within car-components, while EV_DEFS and pinsOf remain their registration and terminal authority — visual refinements must preserve existing wiring and simulation.
 - Traction motor casing details live in TractionMotor while EVComponents retains the solver-driven wheels — housing changes cannot alter the powered-wheel animation.
