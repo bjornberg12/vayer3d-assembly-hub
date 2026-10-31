@@ -29,3 +29,8 @@
 
 ## LV panel
 - [x] LV panel with MCCB, MCB, small breaker and SPD devices, phase choice, busbar or manual feed, outgoing pins/cable ends, solver trips
+
+## Measurement transformers
+- [ ] Add CT and VT models, cable/wire mounting, and selectable primary/secondary pins.
+- [ ] Add live ratio measurements and isolated secondary or conditioned analog outputs.
+- [ ] Test scaling, loading, isolation and missing/open primary behavior; inspect the app.

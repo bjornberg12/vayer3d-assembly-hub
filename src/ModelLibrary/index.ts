@@ -11,6 +11,7 @@ import { EV_DEFS, type EVType } from "./car-components/EVComponents";
 import { chargerDefaults } from "./chargers/EVCharger";
 import { sourceDefaults } from "./sources/VoltageSource";
 import { transformerDefaults } from "./transformers/Transformer";
+import { instrumentDefaults } from "./measurement/instruments";
 import { initObjectProps, type BaseDefaults, type ObjectProps } from "./properties";
 
 export * from "./properties";
@@ -24,7 +25,7 @@ export * from "./cables/catalog";
 export * from "./car-components/EVComponents";
 export * from "./chargers/EVCharger";
 
-export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "chargers" | "sources" | "transformers" | "car-components";
+export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "chargers" | "sources" | "transformers" | "measurement" | "car-components";
 
 export type ModelCard = {
   id: string;
@@ -35,7 +36,9 @@ export type ModelCard = {
   base: BaseDefaults;
 };
 
-export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer" | "gis" | "lvpanel", ModelCard> = {
+export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer" | "gis" | "lvpanel" | "ct" | "vt", ModelCard> = {
+  ct: { id: "ct", name: "Current transformer (CT)", subtitle: "Split-core CT + RMS transmitter", group: "measurement", base: { active: ["modelId", "mass", "material", "height", "width", "depth"], values: instrumentDefaults("ct") } },
+  vt: { id: "vt", name: "Voltage transformer (VT)", subtitle: "VT + RMS transmitter", group: "measurement", base: { active: ["modelId", "mass", "material", "height", "width", "depth"], values: instrumentDefaults("vt") } },
   puitmast: {
     id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole", group: "electrical-posts",
     steps: ASSEMBLY_STEPS,

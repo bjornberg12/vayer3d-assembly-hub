@@ -12,6 +12,7 @@ export type LoopResult = { from: string; to: string; voltage: number; resistance
 export type SolverTransformer = { id: string; ratio: number; rSec: number; vector: "Dyn11" | "YNyn0"; ratedVA: number };
 export type TransformerStatus = { primaryV: number; secondaryV: number; currents: number[]; loadVA: number; loadPct: number };
 export type PartStatus = { state: "on" | "low" | "over" | "off"; voltage: number; current: number; powerW: number; ratedV: number };
+export type SolverSignal = { id: string; a: string; b: string; value: number; mode: "current" | "voltage"; resistance: number };
 
 type C = [number, number];
 const add = (a: C, b: C): C => [a[0] + b[0], a[1] + b[1]];
@@ -45,13 +46,24 @@ function solveLinear(A: C[][], b: C[]): C[] | null {
   return x;
 }
 
-function mna(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[], tfs: SolverTransformer[] = []) {
+function mna(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[], tfs: SolverTransformer[] = [], signals: SolverSignal[] = []) {
   const idx = new Map<string, number>();
   const node = (id: string) => { if (!idx.has(id)) idx.set(id, idx.size); return idx.get(id)!; };
   const branches: { a: number; b: number; g: number }[] = [];
   for (const w of wires) branches.push({ a: node(w.a), b: node(w.b), g: 1 / Math.max(w.r, 1e-6) });
   for (const l of loads) branches.push({ a: node(l.a), b: node(l.b), g: 1 / Math.max(l.r, 1e-6) });
   const vs: { p: number; n: number; v: C; src: string; from: string; to: string; mag: number }[] = [];
+  const injections: { p: number; n: number; value: number }[] = [];
+  for (const s of signals) {
+    if (s.mode === "current") {
+      branches.push({ a: node(s.a), b: node(s.b), g: 1 / Math.max(s.resistance, 1) });
+      injections.push({ p: node(s.a), n: node(s.b), value: s.value });
+    } else {
+      const inner = node(`${s.id}#__signal`);
+      branches.push({ a: inner, b: node(s.a), g: 1 / Math.max(s.resistance, 1e-6) });
+      vs.push({ p: inner, n: node(s.b), v: [s.value, 0], src: s.id, from: "outp", to: "outn", mag: s.value });
+    }
+  }
   for (const s of sources) {
     if (s.kind === "DC") {
       const inner = node(`${s.id}#__int`);
@@ -77,9 +89,10 @@ function mna(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[], 
     }
   }
   const N = idx.size, M = vs.length, size = N + M + tw.length;
-  if (M === 0) return null;
+  if (M === 0 && injections.length === 0) return null;
   const A: C[][] = Array.from({ length: size }, () => Array.from({ length: size }, () => [0, 0] as C));
   const b: C[] = Array.from({ length: size }, () => [0, 0] as C);
+  for (const s of injections) { b[s.p] = add(b[s.p], [s.value, 0]); b[s.n] = sub(b[s.n], [s.value, 0]); }
   for (let i = 0; i < N; i++) A[i][i] = [1e-9, 0]; // tiny leak keeps floating parts solvable
   for (const br of branches) {
     A[br.a][br.a] = add(A[br.a][br.a], [br.g, 0]);
@@ -107,8 +120,8 @@ function mna(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[], 
 }
 
 /** DC and AC are solved separately (superposition) so each wire knows which kind it carries. */
-export function solveCircuits(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[] = [], tfs: SolverTransformer[] = []) {
-  const dc = mna(sources.filter((s) => s.kind === "DC"), wires, loads);
+export function solveCircuits(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[] = [], tfs: SolverTransformer[] = [], signals: SolverSignal[] = []) {
+  const dc = mna(sources.filter((s) => s.kind === "DC"), wires, loads, [], signals);
   const ac = mna(sources.filter((s) => s.kind !== "DC"), wires, loads, tfs);
   const transformerStatus: Record<string, TransformerStatus> = {};
   for (const t of tfs) {
@@ -135,7 +148,7 @@ export function solveCircuits(sources: SolverSource[], wires: SolverWire[], load
       : { dir: idc[0] >= 0 ? 1 : -1, ac: false, phaseDeg: 0 };
   }
   const loops: Record<string, LoopResult[]> = {};
-  for (const s of sources) loops[s.id] = [];
+  for (const s of [...sources, ...signals]) loops[s.id] = [];
   for (const s of [...(dc?.vs ?? []), ...(ac?.vs ?? [])])
     if (s.i > 1e-6) loops[s.src].push({ from: s.from, to: s.to, voltage: s.mag, resistance: s.mag / s.i, current: s.i, wires: [] });
   const partStatus: Record<string, PartStatus> = {};
@@ -152,5 +165,14 @@ export function solveCircuits(sources: SolverSource[], wires: SolverWire[], load
     const ratio = st.voltage / Math.max(st.ratedV, 1e-6);
     st.state = ratio < 0.05 ? "off" : ratio < 0.85 ? "low" : ratio > 1.15 ? "over" : "on";
   }
-  return { wireCurrent, loops, wireFlow, partStatus, transformerStatus };
+  const voltageBetween = (a: string, b: string) => ({
+    ac: abs(sub(ac?.V(a) ?? [0, 0], ac?.V(b) ?? [0, 0])),
+    dc: abs(sub(dc?.V(a) ?? [0, 0], dc?.V(b) ?? [0, 0])),
+  });
+  const voltageAlong = (a: string, b: string, t: number, reference: string) => {
+    const f = Math.max(0, Math.min(1, t));
+    const measure = (solution: typeof ac) => abs(sub(add(mul(solution?.V(a) ?? [0, 0], [1 - f, 0]), mul(solution?.V(b) ?? [0, 0], [f, 0])), solution?.V(reference) ?? [0, 0]));
+    return { ac: measure(ac), dc: measure(dc) };
+  };
+  return { wireCurrent, loops, wireFlow, partStatus, transformerStatus, voltageBetween, voltageAlong };
 }
