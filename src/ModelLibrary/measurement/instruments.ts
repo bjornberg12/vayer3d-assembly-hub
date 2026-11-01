@@ -24,5 +24,5 @@ export function instrumentReading(kind: InstrumentKind, v: InstrumentValues, pri
   const valid = primary !== null && ac;
   const output = valid ? mode === "4-20mA" ? 0.004 + 0.016 * fraction : (mode === "0-5V" ? 5 : 10) * fraction : 0;
   return { primary, secondary: valid ? ratio * Number(v.secondaryRating ?? (kind === "ct" ? 5 : 100)) : 0,
-    output, mode, valid, overrange: ratio > 1, state: primary === null ? "No primary connection" : !ac ? "AC instrument — DC unsupported" : ratio > 1 ? "Overrange — output limited" : "Measuring" };
+    output, mode, valid, overrange: ratio > 1.00001, state: primary === null ? "No primary connection" : !ac ? "AC instrument — DC unsupported" : ratio > 1.00001 ? "Overrange — output limited" : "Measuring" };
 }
