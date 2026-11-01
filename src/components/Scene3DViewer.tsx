@@ -1236,6 +1236,7 @@ export default function Scene3DViewer() {
   const [propsTarget, setPropsTarget] = useState<string | null>(null);
   const [propsOwnerId, setPropsOwnerId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
   const [rulerActive, setRulerActive] = useState(false);
