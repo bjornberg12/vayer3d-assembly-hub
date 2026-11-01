@@ -1847,9 +1847,9 @@ export default function Scene3DViewer() {
     } else if (i.type === "vt") {
       const ref = String(v.reference || `${i.id}#p2`);
       const refConnected = Boolean(v.reference) || evWires.some((w) => w.a === ref || w.b === ref);
-      const p1Connected = evWires.some((w) => w.a === `${i.id}#p1` || w.b === `${i.id}#p1`);
+      const p1Connected = Boolean(v.primaryTap) || evWires.some((w) => w.a === `${i.id}#p1` || w.b === `${i.id}#p1`);
       if (refConnected && (branch || p1Connected)) {
-        const voltage = branch ? primaryCircuit.voltageAlong(branch.a, branch.b, Number(v.fraction), ref) : primaryCircuit.voltageBetween(`${i.id}#p1`, ref);
+        const voltage = branch ? primaryCircuit.voltageAlong(branch.a, branch.b, Number(v.fraction), ref) : primaryCircuit.voltageBetween(String(v.primaryTap || `${i.id}#p1`), ref);
         primary = voltage.ac + voltage.dc; ac = voltage.dc < 0.001 || voltage.ac > voltage.dc;
       }
     }

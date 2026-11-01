@@ -4,7 +4,7 @@ export type InstrumentValues = Record<string, string | number | undefined>;
 export function instrumentDefaults(kind: InstrumentKind) {
   return { modelId: kind === "ct" ? "CT-RMS-400" : "VT-RMS-10000", mass: 2, material: "Insulating resin / copper", height: 0.3, width: 0.32, depth: 0.18, phases: 1, frequency: 50,
     primaryRange: kind === "ct" ? 400 : 10000, secondaryRating: kind === "ct" ? 5 : 100,
-    outputMode: "4-20mA", complianceV: 24, outputR: 10, host: "", fraction: 0.5, conductor: 0, reference: "" };
+    outputMode: "4-20mA", complianceV: 24, outputR: 10, host: "", fraction: 0.5, conductor: 0, reference: "", primaryTap: "" };
 }
 export function instrumentPins(kind: InstrumentKind): PinDef[] {
   const out: PinDef[] = [
