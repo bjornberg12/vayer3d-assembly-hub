@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useDeferredValue, useMemo, useRef, useState } from "react";
 import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed, Cable, ChevronDown } from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
@@ -1751,19 +1751,6 @@ export default function Scene3DViewer() {
     return `${end}@${k}`; // posts, panels, joints: conductors pass straight through
   };
   const AL_RHO = 0.0282;
-  const bundleWires = [
-    ...cables.filter((c) => !cableLoose(c)).flatMap((c) => {
-      const sz = cableSizeOf(c.size);
-      const area = sz.area;
-      const len = cableLengthOf(c);
-      return (sz.mv ? [0, 1, 2] : [0, 1, 2, 3]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / area }));
-    }),
-    ...connections.filter((c) => !parsePt(c.a) && !parsePt(c.b)).flatMap((c) => {
-      const lt = lineTypeOf(c.type);
-      const len = lineLengthOf(c);
-      return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
-    }),
-  ];
   const isSwg = (t: string) => t === "alajaam" || t === "gis";
   const switchgearOf = (id: string) => (addedItems.find((i) => i.id === id)?.type === "gis" ? parseGIS : parseSwitchgear)(objectProps[id]?.values.swg);
   const setSwitchgear = (id: string, next: Cubicle[]) =>
@@ -1778,20 +1765,46 @@ export default function Scene3DViewer() {
       return { ...prev, [id]: { ...cur, values: { ...cur.values, lvdev: JSON.stringify(next) } } };
     });
   const lvPanels = addedItems.filter((i) => i.type === "lvpanel");
-  bundleWires.push(...lvPanels.flatMap((i) => lvPanelWires(i.id, lvDevsOf(i.id))));
   const lvDevCurrent = (pid: string, d: LVDevice) => Math.max(0, ...Array.from({ length: d.poles }, (_, p) => circuit.wireCurrent[lvBreakerWireId(pid, d.id, p)] ?? 0));
-  bundleWires.push(...addedItems.filter((i) => isSwg(i.type)).flatMap((i) => switchgearWires(i.id, switchgearOf(i.id))));
   const cubicleCurrent = (subId: string, k: number) => Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
   const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
-  const circuit = solveCircuits(
-    addedItems.filter((i) => i.type === "vsource").map((i) => {
-      const v = objectProps[i.id]?.values ?? sourceDefaults("AC");
-      return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
-    }),
-    [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
-    [...evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)), ...lvPanels.flatMap((i) => lvPanelLoads(i.id, lvDevsOf(i.id)))],
-    addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
-  );
+  // The circuit is solved only when something electrical changes (objects,
+  // wires, cables, lines, settings) — not on hover, menus or camera moves.
+  // Deferred inputs let React skip intermediate solves while dragging.
+  const dItems = useDeferredValue(addedItems);
+  const dEvParts = useDeferredValue(evParts);
+  const dEvWires = useDeferredValue(evWires);
+  const dCables = useDeferredValue(cables);
+  const dConns = useDeferredValue(connections);
+  const dProps = useDeferredValue(objectProps);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const circuit = useMemo(() => {
+    const wires = [
+      ...dCables.filter((c) => !cableLoose(c)).flatMap((c) => {
+        const sz = cableSizeOf(c.size);
+        const len = cableLengthOf(c);
+        return (sz.mv ? [0, 1, 2] : [0, 1, 2, 3]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / sz.area }));
+      }),
+      ...dConns.filter((c) => !parsePt(c.a) && !parsePt(c.b)).flatMap((c) => {
+        const lt = lineTypeOf(c.type);
+        const len = lineLengthOf(c);
+        return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
+      }),
+    ];
+    const panels = dItems.filter((i) => i.type === "lvpanel");
+    const devs = (id: string) => parseLVPanel(dProps[id]?.values.lvdev);
+    wires.push(...panels.flatMap((i) => lvPanelWires(i.id, devs(i.id))));
+    wires.push(...dItems.filter((i) => isSwg(i.type)).flatMap((i) => switchgearWires(i.id, (i.type === "gis" ? parseGIS : parseSwitchgear)(dProps[i.id]?.values.swg))));
+    return solveCircuits(
+      dItems.filter((i) => i.type === "vsource").map((i) => {
+        const v = dProps[i.id]?.values ?? sourceDefaults("AC");
+        return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
+      }),
+      [...dEvWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...wires],
+      [...dEvParts.flatMap((p) => evLoads(p, dProps[p.id]?.values)), ...panels.flatMap((i) => lvPanelLoads(i.id, devs(i.id)))],
+      dItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...dProps[i.id]?.values }) })),
+    );
+  }, [dItems, dEvParts, dEvWires, dCables, dConns, dProps]);
   // Protection: closed breakers trip instantly when current exceeds I> / I>>.
   const tripKey = addedItems.filter((i) => isSwg(i.type)).map((i) => switchgearOf(i.id).map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`).join(",")).join("|");
   useEffect(() => {
