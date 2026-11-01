@@ -2003,9 +2003,9 @@ export default function Scene3DViewer() {
   };
 
   const moveRulerPoint = useCallback((i: number, p: Point3) => setRulerPoints((prev) => prev.map((q, k) => (k === i ? p : q))), []);
-  const addRulerPoint = (p: Point3) => {
+  const addRulerPoint = useCallback((p: Point3) => {
     setRulerPoints((prev) => (prev.length >= 2 ? [p] : [...prev, p]));
-  };
+  }, []);
 
   const clearRuler = () => setRulerPoints([]);
 
