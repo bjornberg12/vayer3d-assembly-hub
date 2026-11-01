@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed, Cable, ChevronDown } from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
+import { parseScene, serializeScene } from "@/lib/sceneSave";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "@/ModelLibrary";
 import { DistributionPanel, PANEL_STEPS } from "@/ModelLibrary";
@@ -1909,6 +1910,49 @@ export default function Scene3DViewer() {
   };
 
   const clearRuler = () => setRulerPoints([]);
+
+  const loadInputRef = useRef<HTMLInputElement>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const saveToFile = () => {
+    const text = serializeScene({
+      sceneId, addedItems, connections, cables, feeders, evParts, evWires, objectProps,
+      weather: weather as unknown as Record<string, unknown>, groundMode, customGroundWidthM, showFlow,
+    });
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `vayer-scene-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30_000);
+    setSaveMsg("Scene saved.");
+  };
+  const loadFromFile = async (file: File) => {
+    let d;
+    try {
+      d = parseScene(await file.text());
+    } catch (e) {
+      setSaveMsg(e instanceof Error ? e.message : "Could not open the file.");
+      return;
+    }
+    resetAll();
+    setSceneId((SCENES.some((s) => s.id === d.sceneId) ? d.sceneId : "blank") as SceneId);
+    setAddedItems(d.addedItems as AddedItem[]);
+    setConnections(d.connections as LineRecord[]);
+    setCables(d.cables as CableRecord[]);
+    setFeeders(d.feeders as Record<string, Feeder[]>);
+    setEVParts(d.evParts as EVPartRecord[]);
+    setEVWires(d.evWires as EVWireRecord[]);
+    setObjectProps(d.objectProps as Record<string, ObjectProps>);
+    setWeather({ ...DEFAULT_WEATHER, ...(d.weather as Partial<WeatherState>) });
+    setGroundMode(d.groundMode === "default" ? "default" : "off");
+    setCustomGroundWidthM(d.customGroundWidthM);
+    setShowFlow(d.showFlow);
+    setMenuOpen(true);
+    setSaveMsg(`Opened ${file.name}.`);
+  };
 
   const resetAll = () => {
     setSceneId("blank");
@@ -3873,6 +3917,28 @@ export default function Scene3DViewer() {
               );
             })}
           </ul>
+          <div className="flex flex-col gap-1.5 border-t border-white/40 px-4 py-3">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Save file</div>
+            <button className="rounded-lg bg-white/70 px-3 py-1.5 text-left text-sm text-neutral-900 hover:bg-white" onClick={saveToFile}>
+              Save to file
+            </button>
+            <button className="rounded-lg bg-white/70 px-3 py-1.5 text-left text-sm text-neutral-900 hover:bg-white" onClick={() => loadInputRef.current?.click()}>
+              Open save file
+            </button>
+            <input
+              ref={loadInputRef}
+              type="file"
+              accept=".txt,.json,text/plain,application/json"
+              className="hidden"
+              aria-label="Open save file"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) void loadFromFile(f);
+              }}
+            />
+            {saveMsg && <div className="text-xs text-neutral-700">{saveMsg}</div>}
+          </div>
         </DraggablePanel>
       )}
 
