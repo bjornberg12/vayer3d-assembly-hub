@@ -29,9 +29,3 @@
 
 ## LV panel
 - [x] LV panel with MCCB, MCB, small breaker and SPD devices, phase choice, busbar or manual feed, outgoing pins/cable ends, solver trips
-
-## Measurement transformers
-- [x] Add CT and VT models, cable/wire mounting, and selectable primary/analog pins.
-- [x] Add live ratio measurements and conditioned analog outputs (ideal AC RMS instruments with built-in transmitter, not magnetic saturation models).
-- [x] Test scaling, loading, isolation and missing/open primary behavior; inspect both models and verify live VT 230.94 V → 20 mA / 10 V (35 tests pass).
-- [ ] Verify mounted CT on a powered wire and a loaded analog loop on screen; blocked by unreliable browser pin selection. Calculation tests pass.
