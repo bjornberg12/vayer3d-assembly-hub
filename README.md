@@ -11,3 +11,11 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Run offline on your own computer
+
+The app has no backend — everything (3D scene, circuit simulation) runs in the browser.
+
+1. Install [Bun](https://bun.sh) (or Node.js) once.
+2. In the project folder run `bun install` (needs internet once).
+3. Run `bun run dev` and open http://localhost:8080 — it now works without internet.
