@@ -1,7 +1,7 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
 import { Suspense, useEffect, useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed, Cable, ChevronDown } from "lucide-react";
+import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed, Cable, ChevronDown, Info } from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
 import { parseScene, serializeScene } from "@/lib/sceneSave";
@@ -1236,6 +1236,7 @@ export default function Scene3DViewer() {
   const [propsTarget, setPropsTarget] = useState<string | null>(null);
   const [propsOwnerId, setPropsOwnerId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
   const [rulerActive, setRulerActive] = useState(false);
@@ -2687,6 +2688,28 @@ export default function Scene3DViewer() {
         <LocateFixed className="h-5 w-5" />
       </Button>
 
+      {/* About */}
+      <div className="absolute right-4 top-4 z-20">
+        <button
+          onClick={() => setAboutOpen((o) => !o)}
+          aria-label="About"
+          title="About"
+          className="flex h-[22px] w-[22px] items-center justify-center rounded-md border border-white/40 bg-white/30 text-neutral-900 shadow backdrop-blur-md transition hover:bg-white/50"
+        >
+          <Info className="h-3 w-3" />
+        </button>
+        {aboutOpen && (
+          <div className="absolute right-0 top-7 w-64 rounded-xl border border-white/40 bg-white/80 p-3 text-xs text-neutral-900 shadow-lg backdrop-blur-md">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="font-semibold">About</span>
+              <button onClick={() => setAboutOpen(false)} aria-label="Close about">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+            <p>Created by Hugo Martin Liivaleht, funded by INSA. Tallinn 2026. TTK University of Applied Sciences</p>
+          </div>
+        )}
+      </div>
 
       {/* Hamburger menus */}
       <div className="absolute left-4 top-4 flex gap-2">
