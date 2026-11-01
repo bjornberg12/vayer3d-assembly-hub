@@ -439,73 +439,157 @@ function GroundPlane() {
 
 type Point3 = [number, number, number];
 
+/** Small camera-facing square that keeps a constant on-screen size. */
+function RulerSquare({ position, color, px = 7 }: { position: Point3; color: string; px?: number }) {
+  const ref = useRef<THREE.Mesh>(null);
+  const { camera, size } = useThree();
+  useFrame(() => {
+    const m = ref.current;
+    if (!m) return;
+    m.quaternion.copy(camera.quaternion);
+    const d = camera.position.distanceTo(m.position);
+    const fov = (camera as THREE.PerspectiveCamera).fov ?? 50;
+    const worldPerPx = (2 * d * Math.tan((fov * Math.PI) / 360)) / size.height;
+    m.scale.setScalar(worldPerPx * px);
+  });
+  return (
+    <mesh ref={ref} position={position} renderOrder={40} userData={{ ruler: true }}>
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial color={color} depthTest={false} depthWrite={false} transparent />
+    </mesh>
+  );
+}
+
+const CORNER_PX = 12;
+const EDGE_PX = 8;
+const GRAB_PX = 10;
+
 function Ruler({
   active,
   points,
   onAddPoint,
+  onMovePoint,
 }: {
   active: boolean;
   points: Point3[];
   onAddPoint: (p: Point3) => void;
+  onMovePoint: (i: number, p: Point3) => void;
 }) {
   const { camera, scene, gl } = useThree();
+  const [preview, setPreview] = useState<{ p: Point3; snap: "corner" | "edge" | null } | null>(null);
+  const pointsRef = useRef(points);
+  pointsRef.current = points;
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      setPreview(null);
+      return;
+    }
     const dom = gl.domElement;
     const raycaster = new THREE.Raycaster();
     const ndc = new THREE.Vector2();
     let downX = 0;
     let downY = 0;
+    let dragIdx: number | null = null;
+    const toScreen = (v: THREE.Vector3, rect: DOMRect) => {
+      const q = v.clone().project(camera);
+      return [((q.x + 1) / 2) * rect.width, ((1 - q.y) / 2) * rect.height] as const;
+    };
+    const pick = (e: PointerEvent): { p: Point3; snap: "corner" | "edge" | null } | null => {
+      const rect = dom.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      ndc.x = (mx / rect.width) * 2 - 1;
+      ndc.y = -(my / rect.height) * 2 + 1;
+      raycaster.setFromCamera(ndc, camera);
+      const hit = raycaster
+        .intersectObjects(scene.children, true)
+        .find((h) => !h.object.userData.ruler && h.object.type !== "AxesHelper" && (h.object as THREE.Mesh).isMesh);
+      if (!hit) return null;
+      const raw: Point3 = [hit.point.x, hit.point.y, hit.point.z];
+      const mesh = hit.object as THREE.Mesh;
+      const pos = (mesh.geometry as THREE.BufferGeometry)?.attributes?.position;
+      if (e.altKey || !hit.face || !pos || (mesh as THREE.InstancedMesh).isInstancedMesh) return { p: raw, snap: null };
+      const vs = [hit.face.a, hit.face.b, hit.face.c].map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld));
+      // Corners first.
+      let best: THREE.Vector3 | null = null;
+      let bestD = CORNER_PX;
+      for (const v of vs) {
+        const [sx, sy] = toScreen(v, rect);
+        const d = Math.hypot(sx - mx, sy - my);
+        if (d < bestD) { bestD = d; best = v; }
+      }
+      if (best) return { p: [best.x, best.y, best.z], snap: "corner" };
+      // Then edges (closest point on each edge to the hit).
+      bestD = EDGE_PX;
+      for (let k = 0; k < 3; k++) {
+        const c = new THREE.Line3(vs[k], vs[(k + 1) % 3]).closestPointToPoint(hit.point, true, new THREE.Vector3());
+        const [sx, sy] = toScreen(c, rect);
+        const d = Math.hypot(sx - mx, sy - my);
+        if (d < bestD) { bestD = d; best = c; }
+      }
+      if (best) return { p: [best.x, best.y, best.z], snap: "edge" };
+      return { p: raw, snap: null };
+    };
     const onDown = (e: PointerEvent) => {
       downX = e.clientX;
       downY = e.clientY;
+      if (e.button !== 0) return;
+      const rect = dom.getBoundingClientRect();
+      const i = pointsRef.current.findIndex((p) => {
+        const [sx, sy] = toScreen(new THREE.Vector3(...p), rect);
+        return Math.hypot(sx - (e.clientX - rect.left), sy - (e.clientY - rect.top)) < GRAB_PX;
+      });
+      if (i >= 0) dragIdx = i;
+    };
+    const onMove = (e: PointerEvent) => {
+      const r = pick(e);
+      setPreview(r);
+      if (dragIdx !== null && r) onMovePoint(dragIdx, r.p);
     };
     const onUp = (e: PointerEvent) => {
       if (e.button !== 0) return;
-      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 4) return;
-      const rect = dom.getBoundingClientRect();
-      ndc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-      ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      raycaster.setFromCamera(ndc, camera);
-      const hits = raycaster
-        .intersectObjects(scene.children, true)
-        .filter((h) => !h.object.userData.ruler && h.object.type !== "AxesHelper");
-      if (hits.length) {
-        const p = hits[0].point;
-        onAddPoint([p.x, p.y, p.z]);
+      if (dragIdx !== null) {
+        dragIdx = null;
+        return;
       }
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 4) return;
+      const r = pick(e);
+      if (r) onAddPoint(r.p);
     };
+    const onLeave = () => setPreview(null);
     dom.addEventListener("pointerdown", onDown);
+    dom.addEventListener("pointermove", onMove);
     dom.addEventListener("pointerup", onUp);
+    dom.addEventListener("pointerleave", onLeave);
     return () => {
       dom.removeEventListener("pointerdown", onDown);
+      dom.removeEventListener("pointermove", onMove);
       dom.removeEventListener("pointerup", onUp);
+      dom.removeEventListener("pointerleave", onLeave);
     };
-  }, [active, camera, scene, gl, onAddPoint]);
-
-  if (points.length === 0) return null;
+  }, [active, camera, scene, gl, onAddPoint, onMovePoint]);
 
   const a = points[0];
   const b = points[1];
-  const mid: Point3 | null = b
+  const mid: Point3 | null = a && b
     ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.25, (a[2] + b[2]) / 2]
     : null;
-  const dist = b
+  const dist = a && b
     ? Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])
     : 0;
 
   return (
     <group userData={{ ruler: true }}>
+      {active && preview && (
+        <RulerSquare position={preview.p} color={preview.snap === "corner" ? "#22c55e" : preview.snap === "edge" ? "#f59e0b" : "#ffffff"} px={preview.snap ? 9 : 6} />
+      )}
       {points.map((p, i) => (
-        <mesh key={i} position={p} userData={{ ruler: true }}>
-          <sphereGeometry args={[0.08, 16, 16]} />
-          <meshStandardMaterial color="#ff3b30" emissive="#ff3b30" emissiveIntensity={0.4} />
-        </mesh>
+        <RulerSquare key={i} position={p} color="#ff3b30" />
       ))}
-      {b && (
+      {a && b && (
         <>
-          <Line points={[a, b]} color="#ff3b30" lineWidth={3} userData={{ ruler: true }} />
+          <Line points={[a, b]} color="#ff3b30" lineWidth={1} depthTest={false} userData={{ ruler: true }} />
           {mid && (
             <Text
               position={mid}
