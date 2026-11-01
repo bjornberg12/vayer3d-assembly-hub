@@ -3979,14 +3979,14 @@ export default function Scene3DViewer() {
       {rulerActive && (
         <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
           {rulerPoints.length === 0
-            ? "Ruler: click the first point"
+            ? "Ruler: click the first point (snaps to corners, hold Alt for free)"
             : rulerPoints.length === 1
             ? "Click the second point to measure"
             : `Distance: ${Math.hypot(
                 rulerPoints[1][0] - rulerPoints[0][0],
                 rulerPoints[1][1] - rulerPoints[0][1],
                 rulerPoints[1][2] - rulerPoints[0][2]
-              ).toFixed(2)} m — click again to restart`}
+              ).toFixed(2)} m — drag a point to adjust, click to restart`}
         </div>
       )}
 
