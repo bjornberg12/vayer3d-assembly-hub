@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed, Cable, ChevronDown } from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
+import { parseScene, serializeScene } from "@/lib/sceneSave";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "@/ModelLibrary";
 import { DistributionPanel, PANEL_STEPS } from "@/ModelLibrary";
