@@ -1,6 +1,6 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
-import { Suspense, useEffect, useDeferredValue, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
 import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed, Cable, ChevronDown } from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
@@ -2002,6 +2002,7 @@ export default function Scene3DViewer() {
     setViewsOpen(false);
   };
 
+  const moveRulerPoint = useCallback((i: number, p: Point3) => setRulerPoints((prev) => prev.map((q, k) => (k === i ? p : q))), []);
   const addRulerPoint = (p: Point3) => {
     setRulerPoints((prev) => (prev.length >= 2 ? [p] : [...prev, p]));
   };
@@ -2563,7 +2564,7 @@ export default function Scene3DViewer() {
           />
           <ContinuousCursorZoom controlsRef={controlsRef} resetNonce={cameraReset} />
           <CameraRig view={activeView} controlsRef={controlsRef} resetNonce={cameraReset} />
-          <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} />
+          <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} onMovePoint={moveRulerPoint} />
           <Placer
             active={pendingAdd !== null || pendingEV !== null}
             onPlace={(p) => {
