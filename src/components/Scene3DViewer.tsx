@@ -1319,6 +1319,19 @@ export default function Scene3DViewer() {
       ...prev,
       { id, type, position, rotationY: placementRotation },
     ]);
+    if (isInstrument(type)) {
+      let closest: { host: string; t: number; distance: number } | null = null;
+      for (const host of instrumentHosts) for (let k = 0; k <= 100; k++) {
+        const p = hostPoint(host.id, k / 100);
+        if (!p) continue;
+        const distance = Math.hypot(p[0] - position[0], p[2] - position[2]);
+        if (!closest || distance < closest.distance) closest = { host: host.id, t: k / 100, distance };
+      }
+      const attachment = closest && closest.distance < 1 ? closest : null;
+      setObjectProps((prev) => ({ ...prev, [id]: { ...initPropsFor(type), values: { ...initPropsFor(type).values, ...instrumentDefaults(type), host: attachment?.host ?? "", fraction: attachment?.t ?? 0.5 } } }));
+      setPropsTarget(type === "ct" ? "Current transformer (CT)" : "Voltage transformer (VT)");
+      setPropsOwnerId(id);
+    }
   };
   const startPlacing = (type: AddableType) => {
     setPendingAdd(type);
@@ -1790,7 +1803,7 @@ export default function Scene3DViewer() {
   bundleWires.push(...addedItems.filter((i) => isSwg(i.type)).flatMap((i) => switchgearWires(i.id, switchgearOf(i.id))));
   const cubicleCurrent = (subId: string, k: number) => Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
   const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
-  const primaryCircuit = solveCircuits(
+  const solveScene = (signals: import("@/ModelLibrary/sources/solver").SolverSignal[] = []) => solveCircuits(
     addedItems.filter((i) => i.type === "vsource").map((i) => {
       const v = objectProps[i.id]?.values ?? sourceDefaults("AC");
       return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
@@ -1798,7 +1811,9 @@ export default function Scene3DViewer() {
     [...evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...bundleWires],
     [...evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values)), ...lvPanels.flatMap((i) => lvPanelLoads(i.id, lvDevsOf(i.id))), ...addedItems.filter((i) => i.type === "vt").map((i) => ({ owner: `${i.id}:primary`, a: `${i.id}#p1`, b: `${i.id}#p2`, r: 1e9, ratedV: Number(objectProps[i.id]?.values.primaryRange ?? 10000) }))],
     addedItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...objectProps[i.id]?.values }) })),
+    signals,
   );
+  const primaryCircuit = solveScene();
   const instrumentHosts = [
     ...evWires.filter((w) => !addedItems.some((i) => isInstrument(i.type) && (ownerOfEnd(w.a) === i.id || ownerOfEnd(w.b) === i.id))).map((w, k) => ({ id: w.id, label: `Wire ${k + 1} · ${endName(w.a)} → ${endName(w.b)}`, conductors: 1 })),
     ...cables.map((c, k) => ({ id: c.id, label: `Cable ${k + 1} · ${cableLabel(c.size)}`, conductors: cableSizeOf(c.size).mv ? 3 : 4 })),
@@ -1827,13 +1842,14 @@ export default function Scene3DViewer() {
     let primary: number | null = null, ac = true;
     if (i.type === "ct" && branch) {
       primary = primaryCircuit.wireCurrent[branch.id] ?? 0;
-      ac = primaryCircuit.wireFlow[branch.id]?.ac ?? true;
+      const hint = primaryCircuit.voltageBetween(branch.a, branch.b);
+      ac = primaryCircuit.wireFlow[branch.id]?.ac ?? (hint.dc < 0.001 || hint.ac > hint.dc);
     } else if (i.type === "vt") {
       const ref = String(v.reference || `${i.id}#p2`);
-      const refConnected = Boolean(v.reference) || evWires.some((w) => w.a === ref || w.b === ref);
-      const p1Connected = evWires.some((w) => w.a === `${i.id}#p1` || w.b === `${i.id}#p1`);
-      if (refConnected && (branch || p1Connected)) {
-        const voltage = branch ? primaryCircuit.voltageAlong(branch.a, branch.b, Number(v.fraction), ref) : primaryCircuit.voltageBetween(`${i.id}#p1`, ref);
+      const refConnected = v.reference ? Boolean(pinInfo(ref)) : evWires.some((w) => w.a === ref || w.b === ref);
+      const p1Connected = v.primaryTap ? Boolean(pinInfo(String(v.primaryTap))) : evWires.some((w) => w.a === `${i.id}#p1` || w.b === `${i.id}#p1`);
+      if (refConnected && (branch || (!v.host && p1Connected))) {
+        const voltage = branch ? primaryCircuit.voltageAlong(branch.a, branch.b, Number(v.fraction), ref) : primaryCircuit.voltageBetween(String(v.primaryTap || `${i.id}#p1`), ref);
         primary = voltage.ac + voltage.dc; ac = voltage.dc < 0.001 || voltage.ac > voltage.dc;
       }
     }
@@ -1844,11 +1860,12 @@ export default function Scene3DViewer() {
     const v = { ...instrumentDefaults(i.type as InstrumentKind), ...objectProps[i.id]?.values };
     return { id: i.id, a: `${i.id}#outp`, b: `${i.id}#outn`, value: r.output,
       mode: r.mode === "4-20mA" ? "current" as const : "voltage" as const,
+      complianceV: Number(v.complianceV),
       resistance: r.mode === "4-20mA" ? Number(v.complianceV) / Math.max(r.output, 1e-9) : Number(v.outputR) };
   });
   // Analog secondary circuits are galvanically isolated from the measured primary.
-  const analog = solveCircuits([], evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), [], [], signals);
-  const circuit = { ...primaryCircuit, wireCurrent: { ...primaryCircuit.wireCurrent, ...analog.wireCurrent }, wireFlow: { ...primaryCircuit.wireFlow, ...analog.wireFlow } };
+  const analog = solveCircuits([], evWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), [...evParts.flatMap((p) => evLoads(p, objectProps[p.id]?.values))], [], signals);
+  const circuit = signals.length ? solveScene(signals) : primaryCircuit;
   const mountKey = instruments.map((i) => {
     const v = objectProps[i.id]?.values;
     const p = hostPoint(String(v?.host ?? ""), Number(v?.fraction ?? 0.5));
@@ -1859,7 +1876,12 @@ export default function Scene3DViewer() {
       if (!isInstrument(i.type)) return i;
       const v = objectProps[i.id]?.values;
       const p = hostPoint(String(v?.host ?? ""), Number(v?.fraction ?? 0.5));
-      return p && p.some((n, k) => Math.abs(n - i.position[k]) > 1e-5) ? { ...i, position: p } : i;
+      if (!p) return i;
+      const next: [number, number, number] = [p[0], p[1] - (i.type === "ct" ? 0.15 : 0), p[2]];
+      const before = hostPoint(String(v?.host ?? ""), Math.max(0, Number(v?.fraction ?? 0.5) - 0.01));
+      const after = hostPoint(String(v?.host ?? ""), Math.min(1, Number(v?.fraction ?? 0.5) + 0.01));
+      const rotationY = i.type === "ct" && before && after ? Math.atan2(after[0] - before[0], after[2] - before[2]) : i.rotationY;
+      return next.some((n, k) => Math.abs(n - i.position[k]) > 1e-5) || Math.abs(rotationY - i.rotationY) > 1e-5 ? { ...i, position: next, rotationY } : i;
     }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mountKey]);
@@ -2301,7 +2323,12 @@ export default function Scene3DViewer() {
                       spdOk={Object.fromEntries(lvDevsOf(item.id).filter((d) => d.kind === "spd").map((d) => [d.id, circuit.partStatus[lvSpdOwner(item.id, d.id)]?.state === "on"]))}
                     />
                   )}
-                  {isInstrument(item.type) && <InstrumentModel kind={item.type} />}
+                  {isInstrument(item.type) && <>
+                    <InstrumentModel kind={item.type} />
+                    <Html position={[0, Math.max(0.4, 0.4 - item.position[1]), 0]} center>
+                      <Button size="sm" variant="outline" aria-label={`Properties ${item.type.toUpperCase()} ${item.id}`} onClick={() => { setPropsOwnerId(item.id); setPropsTarget(item.type === "ct" ? "Current transformer (CT)" : "Voltage transformer (VT)"); }} className="h-6 whitespace-nowrap px-2 font-mono text-[10px]">{item.type.toUpperCase()} · {instrumentReadings[item.id]?.valid ? `${(instrumentReadings[item.id].output * (instrumentReadings[item.id].mode === "4-20mA" ? 1000 : 1)).toFixed(2)} ${instrumentReadings[item.id].mode === "4-20mA" ? "mA" : "V"}` : "—"}</Button>
+                    </Html>
+                  </>}
                   {item.type === "transformer" && <TransformerModel />}
                   {item.type === "vsource" && (
                     <VoltageSource kind={String(objectProps[item.id]?.values.sourceKind ?? "AC")} />
@@ -3988,7 +4015,7 @@ export default function Scene3DViewer() {
             {(() => {
               const item = addedItems.find((i) => i.id === propsOwnerId);
               const obj = item ?? evPropPart;
-              if (!obj) return null;
+              if (!obj || (item && isInstrument(item.type) && objectProps[item.id]?.values.host)) return null;
               const update = (patch: { position?: [number, number, number]; rotationY?: number }) => {
                 if (item) setAddedItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
                 else if (evPropPart) setEVParts((prev) => prev.map((q) => (q.id === evPropPart.id ? { ...q, ...patch } : q)));

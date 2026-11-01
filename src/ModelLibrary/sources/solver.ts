@@ -12,7 +12,7 @@ export type LoopResult = { from: string; to: string; voltage: number; resistance
 export type SolverTransformer = { id: string; ratio: number; rSec: number; vector: "Dyn11" | "YNyn0"; ratedVA: number };
 export type TransformerStatus = { primaryV: number; secondaryV: number; currents: number[]; loadVA: number; loadPct: number };
 export type PartStatus = { state: "on" | "low" | "over" | "off"; voltage: number; current: number; powerW: number; ratedV: number };
-export type SolverSignal = { id: string; a: string; b: string; value: number; mode: "current" | "voltage"; resistance: number };
+export type SolverSignal = { id: string; a: string; b: string; value: number; mode: "current" | "voltage"; resistance: number; complianceV?: number };
 
 type C = [number, number];
 const add = (a: C, b: C): C => [a[0] + b[0], a[1] + b[1]];
@@ -48,7 +48,7 @@ function solveLinear(A: C[][], b: C[]): C[] | null {
 
 function mna(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[], tfs: SolverTransformer[] = [], signals: SolverSignal[] = []) {
   const idx = new Map<string, number>();
-  const node = (id: string) => { if (!idx.has(id)) idx.set(id, idx.size); return idx.get(id)!; };
+  const node = (id: string) => { const existing = idx.get(id); if (existing !== undefined) return existing; const next = idx.size; idx.set(id, next); return next; };
   const branches: { a: number; b: number; g: number }[] = [];
   for (const w of wires) branches.push({ a: node(w.a), b: node(w.b), g: 1 / Math.max(w.r, 1e-6) });
   for (const l of loads) branches.push({ a: node(l.a), b: node(l.b), g: 1 / Math.max(l.r, 1e-6) });
@@ -56,7 +56,7 @@ function mna(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[], 
   const injections: { p: number; n: number; value: number }[] = [];
   for (const s of signals) {
     if (s.mode === "current") {
-      branches.push({ a: node(s.a), b: node(s.b), g: 1 / Math.max(s.resistance, 1) });
+      branches.push({ a: node(s.a), b: node(s.b), g: 1e-12 });
       injections.push({ p: node(s.a), n: node(s.b), value: s.value });
     } else {
       const inner = node(`${s.id}#__signal`);
@@ -116,13 +116,16 @@ function mna(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[], 
   const x = solveLinear(A, b);
   if (!x) return null;
   return {
-    tfSec: tfSec.map((t) => ({ tf: t.tf, i: abs(mul(sub(x[t.inner], x[t.pin]), [t.g, 0])) })), V: (id: string): C => (idx.has(id) ? x[idx.get(id)!] : [0, 0]), vs: vs.map((s, k) => ({ ...s, i: abs(x[N + k]) })) };
+      tfSec: tfSec.map((t) => ({ tf: t.tf, i: abs(mul(sub(x[t.inner], x[t.pin]), [t.g, 0])) })), V: (id: string): C => { const i = idx.get(id); return i === undefined ? [0, 0] : x[i]; }, vs: vs.map((s, k) => ({ ...s, i: abs(x[N + k]) })) };
 }
 
 /** DC and AC are solved separately (superposition) so each wire knows which kind it carries. */
 export function solveCircuits(sources: SolverSource[], wires: SolverWire[], loads: SolverLoad[] = [], tfs: SolverTransformer[] = [], signals: SolverSignal[] = []) {
   const dc = mna(sources.filter((s) => s.kind === "DC"), wires, loads, [], signals);
   const ac = mna(sources.filter((s) => s.kind !== "DC"), wires, loads, tfs);
+  const limited = signals.map((s) => s.mode === "current" && s.complianceV !== undefined && abs(sub(dc?.V(s.a) ?? [0, 0], dc?.V(s.b) ?? [0, 0])) > s.complianceV
+    ? { ...s, mode: "voltage" as const, value: s.complianceV, resistance: 1e-3 } : s);
+  if (limited.some((s, k) => s !== signals[k])) return solveCircuits(sources, wires, loads, tfs, limited);
   const transformerStatus: Record<string, TransformerStatus> = {};
   for (const t of tfs) {
     const V = (pin: string) => ac?.V(`${t.id}#${pin}`) ?? ([0, 0] as C);
