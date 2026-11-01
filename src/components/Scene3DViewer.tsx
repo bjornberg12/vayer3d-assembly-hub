@@ -2687,6 +2687,28 @@ export default function Scene3DViewer() {
         <LocateFixed className="h-5 w-5" />
       </Button>
 
+      {/* About */}
+      <div className="absolute right-4 top-4 z-20">
+        <button
+          onClick={() => setAboutOpen((o) => !o)}
+          aria-label="About"
+          title="About"
+          className="flex h-[22px] w-[22px] items-center justify-center rounded-md border border-white/40 bg-white/30 text-neutral-900 shadow backdrop-blur-md transition hover:bg-white/50"
+        >
+          <Info className="h-3 w-3" />
+        </button>
+        {aboutOpen && (
+          <div className="absolute right-0 top-7 w-64 rounded-xl border border-white/40 bg-white/80 p-3 text-xs text-neutral-900 shadow-lg backdrop-blur-md">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="font-semibold">About</span>
+              <button onClick={() => setAboutOpen(false)} aria-label="Close about">
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+            <p>Created by Hugo Martin Liivaleht, funded by INSA. Tallinn 2026. TTK University of Applied Sciences</p>
+          </div>
+        )}
+      </div>
 
       {/* Hamburger menus */}
       <div className="absolute left-4 top-4 flex gap-2">
