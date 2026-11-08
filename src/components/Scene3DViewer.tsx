@@ -166,7 +166,11 @@ import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 // production minifier can rename closed-over identifiers in those functions,
 // leaving the blob with references that do not exist. Keep 3D text on the main
 // thread so labels behave identically in development and production builds.
-configureTextBuilder({ useWorker: false, defaultFontURL: "/fonts/label.woff" });
+configureTextBuilder({
+  useWorker: false,
+  defaultFontURL: "/fonts/label.woff",
+  unicodeFontsURL: "/fonts/unicode",
+});
 
 type SceneId = "blank" | "electriccar";
 
