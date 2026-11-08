@@ -1469,7 +1469,7 @@ export default function Scene3DViewer() {
     const ITEM_FOOTPRINT: Record<string, [number, number]> = {
       evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], gis: [2.6, 1.2], lvpanel: [0.85, 0.35], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
     };
-    const parts = true ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
+    const parts = evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint));
     const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
     return [...parts, ...items];
   };
@@ -1515,13 +1515,13 @@ export default function Scene3DViewer() {
     if (pt) return [pt[0], 0.1, pt[1]];
     if (id.includes("#")) {
       const [oid, pin] = id.split("#");
-      const pp = true ? evParts.find((q) => q.id === oid) : undefined;
+      const pp = evParts.find((q) => q.id === oid);
       if (pp) return evPinWorld(pp, pin);
       const it = addedItems.find((i) => i.id === oid);
       const pd = it && pinDefsOfItem(it).find((q) => q.id === pin);
       return it && pd ? pinWorldOf(pd.local, it.position, it.rotationY) : null;
     }
-    const part = true ? evParts.find((q) => q.id === id) : undefined;
+    const part = evParts.find((q) => q.id === id);
     if (part) return terminalPoint(part);
     const item = addedItems.find((i) => i.id === id);
     if (item) return [item.position[0], 1.2, item.position[2]];
@@ -1934,7 +1934,7 @@ export default function Scene3DViewer() {
   const routeFirst =
     routingKind === "cable" ? cableFirst : routingKind === "line" ? connectFirst : routingKind === "wire" ? evWireFirst : null;
   const availableWirePins = [
-    ...(true ? evParts.map((part) => ({ id: part.id, pins: pinsOf(part.type), pos: part.position, rot: part.rotationY })) : []),
+    ...evParts.map((part) => ({ id: part.id, pins: pinsOf(part.type), pos: part.position, rot: part.rotationY })),
     ...addedItems.filter((item) => PIN_ITEM_TYPES.includes(item.type)).map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
   ].flatMap((owner) => owner.pins.map((pin) => ({
     id: `${owner.id}#${pin.id}`,
@@ -2227,7 +2227,7 @@ export default function Scene3DViewer() {
               </group>
             )}
             {evWireMode && [
-              ...(true ? evParts.map((p) => ({ id: p.id, pins: pinsOf(p.type), pos: p.position, rot: p.rotationY })) : []),
+              ...evParts.map((p) => ({ id: p.id, pins: pinsOf(p.type), pos: p.position, rot: p.rotationY })),
               ...addedItems.filter((i) => PIN_ITEM_TYPES.includes(i.type)).map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
             ].flatMap((o) =>
               o.pins.map((pin) => {
