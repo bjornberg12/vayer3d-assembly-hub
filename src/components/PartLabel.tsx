@@ -12,13 +12,7 @@ const PartLabelCtx = createContext<Ctx>({ setLabel: () => {}, enabled: true });
 /** Identifies which placed object a part belongs to (null = fixed scene model). */
 const PartOwnerCtx = createContext<string | null>(null);
 
-export function PartOwner({
-  id,
-  children,
-}: {
-  id: string;
-  children: ReactNode;
-}) {
+export function PartOwner({ id, children }: { id: string; children: ReactNode }) {
   return <PartOwnerCtx.Provider value={id}>{children}</PartOwnerCtx.Provider>;
 }
 

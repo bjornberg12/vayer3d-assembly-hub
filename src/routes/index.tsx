@@ -30,9 +30,7 @@ function Index() {
         <h1 className="text-lg font-semibold tracking-tight text-foreground">
           Vayer3d electrical assembly
         </h1>
-        <span className="text-xs uppercase tracking-widest text-muted-foreground">
-          3D Viewer
-        </span>
+        <span className="text-xs uppercase tracking-widest text-muted-foreground">3D Viewer</span>
       </header>
       <main className="relative flex-1">
         <Scene3D />

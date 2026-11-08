@@ -3,11 +3,24 @@ import { describe, expect, test } from "bun:test";
 import { EV_DEFS, evLoads, evPinWorld, pinsOf, type EVPartRecord } from "./EVComponents";
 import { HEATER_PINS } from "./heaterPins";
 
-const part: EVPartRecord = { id: "heater-existing", type: "heater", position: [2, 0, 3], rotationY: 0, params: {} };
+const part: EVPartRecord = {
+  id: "heater-existing",
+  type: "heater",
+  position: [2, 0, 3],
+  rotationY: 0,
+  params: {},
+};
 describe("PTC heater connector compatibility", () => {
   test("power, ground and control endpoint IDs and electrical load remain unchanged", () => {
-    expect(pinsOf("heater").map((p) => [p.id, p.role])).toEqual([["dcp", "dc+"], ["dcn", "dc-"], ["gnd", "PE"], ["ctl", "sig"]]);
-    expect(evLoads(part)).toEqual([{ owner: part.id, a: "heater-existing#dcp", b: "heater-existing#dcn", r: 32, ratedV: 400 }]);
+    expect(pinsOf("heater").map((p) => [p.id, p.role])).toEqual([
+      ["dcp", "dc+"],
+      ["dcn", "dc-"],
+      ["gnd", "PE"],
+      ["ctl", "sig"],
+    ]);
+    expect(evLoads(part)).toEqual([
+      { owner: part.id, a: "heater-existing#dcp", b: "heater-existing#dcn", r: 32, ratedV: 400 },
+    ]);
   });
   test("wires follow the actual connector faces after moving and rotating", () => {
     expect(pinsOf("heater")).toBe(HEATER_PINS);

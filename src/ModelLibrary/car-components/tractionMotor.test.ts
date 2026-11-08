@@ -4,10 +4,22 @@ import { evLoads, evPinWorld, pinsOf, type EVPartRecord } from "./EVComponents";
 import { MOTOR_PINS } from "./motorPins";
 import { solveCircuits } from "../sources/solver";
 
-const motor: EVPartRecord = { id: "existing-motor", type: "motor", position: [0, 0, 0], rotationY: 0, params: {} };
+const motor: EVPartRecord = {
+  id: "existing-motor",
+  type: "motor",
+  position: [0, 0, 0],
+  rotationY: 0,
+  params: {},
+};
 describe("traction motor visual refinement compatibility", () => {
   test("existing phase, ground and resolver wire contacts remain in place", () => {
-    expect(pinsOf("motor").map((pin) => [pin.id, pin.role])).toEqual([["u", "U"], ["v", "V"], ["w", "W"], ["gnd", "PE"], ["sens", "sig"]]);
+    expect(pinsOf("motor").map((pin) => [pin.id, pin.role])).toEqual([
+      ["u", "U"],
+      ["v", "V"],
+      ["w", "W"],
+      ["gnd", "PE"],
+      ["sens", "sig"],
+    ]);
     [0.21, 0.255, 0.3, 0.345, 0.39].forEach((x, i) => {
       const pin = pinsOf("motor")[i];
       if (!pin) throw new Error("Missing motor terminal");
@@ -19,7 +31,13 @@ describe("traction motor visual refinement compatibility", () => {
   });
   test("realistic connector layout keeps stable ids and tracks part movement", () => {
     expect(pinsOf("motor")).toBe(MOTOR_PINS);
-    expect(MOTOR_PINS.map((pin) => pin.kind)).toEqual(["phase", "phase", "phase", "ground", "sensor"]);
+    expect(MOTOR_PINS.map((pin) => pin.kind)).toEqual([
+      "phase",
+      "phase",
+      "phase",
+      "ground",
+      "sensor",
+    ]);
     const moved: EVPartRecord = { ...motor, position: [2, 0, -1], rotationY: Math.PI / 2 };
     const u = evPinWorld(moved, "u");
     expect(u?.[0]).toBeCloseTo(2);
@@ -37,8 +55,17 @@ describe("traction motor visual refinement compatibility", () => {
     ]);
   });
   test("the motor still produces the powered state that drives the wheels", () => {
-    const wires = ["u", "v", "w"].map((pin, i) => ({ id: `phase-${i}`, a: `supply#l${i + 1}`, b: `${motor.id}#${pin}`, r: 0.001 }));
-    const result = solveCircuits([{ id: "supply", kind: "AC", voltage: 400, internalR: 0 }], wires, evLoads(motor));
+    const wires = ["u", "v", "w"].map((pin, i) => ({
+      id: `phase-${i}`,
+      a: `supply#l${i + 1}`,
+      b: `${motor.id}#${pin}`,
+      r: 0.001,
+    }));
+    const result = solveCircuits(
+      [{ id: "supply", kind: "AC", voltage: 400, internalR: 0 }],
+      wires,
+      evLoads(motor),
+    );
     expect(result.partStatus[motor.id]?.state).toBe("on");
     expect(result.partStatus[motor.id]?.powerW).toBeGreaterThan(149000);
     expect(result.partStatus[motor.id]?.powerW).toBeLessThan(150000);

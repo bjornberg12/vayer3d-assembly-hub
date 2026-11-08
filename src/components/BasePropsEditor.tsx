@@ -59,9 +59,7 @@ export function BasePropsEditor({
             />
           )}
           <span className="flex items-center justify-end gap-1">
-            {d.unit && (
-              <span className="text-[10px] text-neutral-500">{d.unit}</span>
-            )}
+            {d.unit && <span className="text-[10px] text-neutral-500">{d.unit}</span>}
             {d.id === "nominalVoltage" && (
               <span className="flex overflow-hidden rounded-md border border-white/60 shadow-sm">
                 {(["AC", "DC"] as const).map((k) => (

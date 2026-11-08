@@ -3,13 +3,31 @@ import { describe, expect, test } from "bun:test";
 import { evPinWorld, evLoads, pinsOf, type EVPartRecord } from "./EVComponents";
 import { CONVERTER_PINS } from "./converterPins";
 
-const part: EVPartRecord = { id: "converter-existing", type: "dcdc", position: [2, 0, 3], rotationY: 0, params: {} };
+const part: EVPartRecord = {
+  id: "converter-existing",
+  type: "dcdc",
+  position: [2, 0, 3],
+  rotationY: 0,
+  params: {},
+};
 describe("DC-DC connector compatibility", () => {
   test("all existing endpoints and their electrical behavior remain available", () => {
     expect(pinsOf("dcdc").map((p) => [p.id, p.role])).toEqual([
-      ["hvp", "dc+"], ["hvn", "dc-"], ["lvp", "12+"], ["lvn", "12-"], ["en", "sig"],
+      ["hvp", "dc+"],
+      ["hvn", "dc-"],
+      ["lvp", "12+"],
+      ["lvn", "12-"],
+      ["en", "sig"],
     ]);
-    expect(evLoads(part)).toEqual([{ owner: "converter-existing", a: "converter-existing#hvp", b: "converter-existing#hvn", r: 64, ratedV: 400 }]);
+    expect(evLoads(part)).toEqual([
+      {
+        owner: "converter-existing",
+        a: "converter-existing#hvp",
+        b: "converter-existing#hvn",
+        r: 64,
+        ratedV: 400,
+      },
+    ]);
   });
   test("existing wires track side-mounted contacts after movement and rotation", () => {
     expect(pinsOf("dcdc")).toBe(CONVERTER_PINS);

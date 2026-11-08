@@ -88,13 +88,7 @@ function Rain({ windSpeed, night }: { windSpeed: number; night: boolean }) {
   );
 }
 
-function WindParticles({
-  windSpeed,
-  night,
-}: {
-  windSpeed: number;
-  night: boolean;
-}) {
+function WindParticles({ windSpeed, night }: { windSpeed: number; night: boolean }) {
   const count = 900;
   const ref = useRef<THREE.Points>(null);
 

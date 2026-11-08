@@ -22,9 +22,33 @@ export const CABLE_SIZES: {
   { id: "95", area: 95, voltage: 1000, label: "4×95 mm²", coreD: 0.011, outerD: 0.045 },
   { id: "120", area: 120, voltage: 1000, label: "4×120 mm²", coreD: 0.0124, outerD: 0.05 },
   { id: "240", area: 240, voltage: 1000, label: "4×240 mm²", coreD: 0.0175, outerD: 0.065 },
-  { id: "mv95", area: 95, voltage: 24000, mv: true, label: "AHXAMK-W 3×1×95 mm² 24 kV", coreD: 0.011, outerD: 0.034 },
-  { id: "mv150", area: 150, voltage: 24000, mv: true, label: "AHXAMK-W 3×1×150 mm² 24 kV", coreD: 0.0142, outerD: 0.038 },
-  { id: "mv240", area: 240, voltage: 24000, mv: true, label: "AHXAMK-W 3×1×240 mm² 24 kV", coreD: 0.0178, outerD: 0.043 },
+  {
+    id: "mv95",
+    area: 95,
+    voltage: 24000,
+    mv: true,
+    label: "AHXAMK-W 3×1×95 mm² 24 kV",
+    coreD: 0.011,
+    outerD: 0.034,
+  },
+  {
+    id: "mv150",
+    area: 150,
+    voltage: 24000,
+    mv: true,
+    label: "AHXAMK-W 3×1×150 mm² 24 kV",
+    coreD: 0.0142,
+    outerD: 0.038,
+  },
+  {
+    id: "mv240",
+    area: 240,
+    voltage: 24000,
+    mv: true,
+    label: "AHXAMK-W 3×1×240 mm² 24 kV",
+    coreD: 0.0178,
+    outerD: 0.043,
+  },
 ];
 export const cableSizeOf = (id?: string) => CABLE_SIZES.find((s) => s.id === id) ?? CABLE_SIZES[1];
 export const cableLabel = (id?: string) => cableSizeOf(id).label;
@@ -94,7 +118,7 @@ function routePoints(
   from: [number, number, number],
   to: [number, number, number],
   depth: number,
-  waypoints?: Waypoint[]
+  waypoints?: Waypoint[],
 ): THREE.Vector3[] {
   const a = new THREE.Vector3(...from);
   const b = new THREE.Vector3(...to);
@@ -121,7 +145,8 @@ function routePoints(
     b.clone(),
   ];
   let minSeg = Infinity;
-  for (let i = 1; i < corners.length; i++) minSeg = Math.min(minSeg, corners[i].distanceTo(corners[i - 1]));
+  for (let i = 1; i < corners.length; i++)
+    minSeg = Math.min(minSeg, corners[i].distanceTo(corners[i - 1]));
   const radius = Math.max(Math.min(depth * 0.6, minSeg * 0.9, wps.length ? 3 : lenA * 0.2), 0.05);
   return filletPolyline(corners, wps.length ? Math.max(radius, depth * 0.6) : radius, 12);
 }
@@ -132,9 +157,13 @@ export function cableRoutePointAt(
   to: [number, number, number],
   depth: number,
   waypoints: Waypoint[] | undefined,
-  t: number
+  t: number,
 ): [number, number, number] {
-  const c = new THREE.CatmullRomCurve3(routePoints(from, to, depth, waypoints), false, "centripetal");
+  const c = new THREE.CatmullRomCurve3(
+    routePoints(from, to, depth, waypoints),
+    false,
+    "centripetal",
+  );
   const p = c.getPointAt(Math.min(Math.max(t, 0), 1));
   return [p.x, p.y, p.z];
 }
@@ -170,10 +199,7 @@ function TubeAlong({
         if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
         side.normalize();
         const vert = new THREE.Vector3().crossVectors(side, t).normalize();
-        return p
-          .clone()
-          .addScaledVector(side, offset[0])
-          .addScaledVector(vert, offset[1]);
+        return p.clone().addScaledVector(side, offset[0]).addScaledVector(vert, offset[1]);
       });
       c = new THREE.CatmullRomCurve3(pts, false, "centripetal");
     }
@@ -199,7 +225,7 @@ export function cableRouteLength(
   from: [number, number, number],
   to: [number, number, number],
   depth: number = TRENCH_DEPTH,
-  waypoints?: Waypoint[]
+  waypoints?: Waypoint[],
 ): number {
   const pts = routePoints(from, to, depth, waypoints);
   let len = 0;
@@ -229,14 +255,16 @@ export function UndergroundCable({
 
   const curve = useMemo(
     () => new THREE.CatmullRomCurve3(routePoints(from, to, depth, waypoints), false, "centripetal"),
-    [from, to, depth, waypoints]
+    [from, to, depth, waypoints],
   );
 
   const coreR = size.coreD / 2;
   const insR = size.outerD / 2 / 2.1; // insulated core radius
   const ring = size.outerD / 2 - insR; // 2×2 bundle offset
 
-  const label = size.mv ? `MV cable ${size.label} (L1, L2, L3)` : `LV cable 4×${size.area} mm² (L1, L2, L3, PEN)`;
+  const label = size.mv
+    ? `MV cable ${size.label} (L1, L2, L3)`
+    : `LV cable 4×${size.area} mm² (L1, L2, L3, PEN)`;
   const hitR = Math.max(size.outerD, conduit.outerD) / 2 + 0.06;
 
   return (
@@ -275,46 +303,52 @@ export function UndergroundCable({
           return (
             <Part key={k} name={`L${k + 1} single core — ${size.area} mm² Al, XLPE, 24 kV`}>
               <group>
-                <TubeAlong curve={curve} radius={r} color="#c62828" offset={[Math.cos(a) * r * 1.15, Math.sin(a) * r * 1.15]} roughness={0.6} />
+                <TubeAlong
+                  curve={curve}
+                  radius={r}
+                  color="#c62828"
+                  offset={[Math.cos(a) * r * 1.15, Math.sin(a) * r * 1.15]}
+                  roughness={0.6}
+                />
               </group>
             </Part>
           );
         })
-      ) : (<>
-      {/* Outer sheath */}
-      <Part name={label}>
-        <TubeAlong curve={curve} radius={size.outerD / 2} color="#1f1f22" roughness={0.75} />
-      </Part>
-
-
-      {/* Individual cores, arranged 2×2 inside the sheath */}
-      {CORES.map((c, i) => {
-        const ox = i === 0 || i === 3 ? -ring : ring;
-        const oy = i < 2 ? ring : -ring;
-        return (
-          <Part key={c.name} name={`${c.name} conductor — ${size.area} mm² Al`}>
-            <group>
-              <TubeAlong
-                curve={curve}
-                radius={insR}
-                color={c.color}
-                offset={[ox, oy]}
-                roughness={0.6}
-              />
-              <TubeAlong
-                curve={curve}
-                radius={coreR * 0.5}
-                color="#c8ccd0"
-                offset={[ox, oy]}
-                metalness={0.85}
-                roughness={0.35}
-              />
-            </group>
+      ) : (
+        <>
+          {/* Outer sheath */}
+          <Part name={label}>
+            <TubeAlong curve={curve} radius={size.outerD / 2} color="#1f1f22" roughness={0.75} />
           </Part>
-        );
-      })}
 
-      </>)}
+          {/* Individual cores, arranged 2×2 inside the sheath */}
+          {CORES.map((c, i) => {
+            const ox = i === 0 || i === 3 ? -ring : ring;
+            const oy = i < 2 ? ring : -ring;
+            return (
+              <Part key={c.name} name={`${c.name} conductor — ${size.area} mm² Al`}>
+                <group>
+                  <TubeAlong
+                    curve={curve}
+                    radius={insR}
+                    color={c.color}
+                    offset={[ox, oy]}
+                    roughness={0.6}
+                  />
+                  <TubeAlong
+                    curve={curve}
+                    radius={coreR * 0.5}
+                    color="#c8ccd0"
+                    offset={[ox, oy]}
+                    metalness={0.85}
+                    roughness={0.35}
+                  />
+                </group>
+              </Part>
+            );
+          })}
+        </>
+      )}
 
       {/* Protective conduit pipe */}
       {conduit.id !== "none" && (

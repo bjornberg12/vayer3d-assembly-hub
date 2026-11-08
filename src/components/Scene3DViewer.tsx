@@ -1,7 +1,36 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Text, Line, Html, CatmullRomLine } from "@react-three/drei";
-import { Suspense, useEffect, useCallback, useDeferredValue, useMemo, useRef, useState } from "react";
-import { Menu, Eye, Ruler as RulerIcon, X, Layers, Upload, Plus, Trash2, Link2, RotateCw, RefreshCcw, Move, CloudRain, Wind, Moon, Thermometer, LocateFixed, Cable, ChevronDown, Info } from "lucide-react";
+import {
+  Suspense,
+  useEffect,
+  useCallback,
+  useDeferredValue,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  Menu,
+  Eye,
+  Ruler as RulerIcon,
+  X,
+  Layers,
+  Upload,
+  Plus,
+  Trash2,
+  Link2,
+  RotateCw,
+  RefreshCcw,
+  Move,
+  CloudRain,
+  Wind,
+  Moon,
+  Thermometer,
+  LocateFixed,
+  Cable,
+  ChevronDown,
+  Info,
+} from "lucide-react";
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
 import { parseScene, serializeScene } from "@/lib/sceneSave";
@@ -31,32 +60,106 @@ import {
   type ConduitId,
 } from "@/ModelLibrary";
 
-
 import { AerialGround } from "./AerialGround";
 import { PartLabelProvider, PartOwner } from "./PartLabel";
 import { BasePropsEditor } from "./BasePropsEditor";
 import { ElectronFlow, wireCurve as evWireCurve, evLoads, type PartStatus } from "@/ModelLibrary";
-import { VoltageSource, sourcePins, sourceDefaults, SOURCE_PARAMS, PHASE_ANGLES, solveCircuits, type SourceKind } from "@/ModelLibrary";
-import { TransformerModel, transformerPins, transformerDefaults, transformerModel, transformerTerminalLocals, TRANSFORMER_PARAMS, type VectorGroup } from "@/ModelLibrary";
-import { LVPanelModel, parseLVPanel, lvPanelPins, lvPanelWires, lvPanelLoads, lvCableEnds, lvBreakerWireId, lvTripReason, lvSpdOwner, lvConducts, makeLVDevice, LV_KIND_INFO, type LVDevice, type LVKind, type LVPhase } from "@/ModelLibrary/distribution/LVPanel";
-import { GISModel, parseGIS, gisTerminalLocals, relayAutoOn } from "@/ModelLibrary/substations/GIS";
-import { SwitchgearModel, parseSwitchgear, switchgearWires, cubicleTerminalLocals, cubicleConducts, makeCubicle, CUBICLE_KIND_LABEL, type Cubicle, type CubicleKind } from "@/ModelLibrary";
-import { initPropsFor, type ObjectProps, EVCharger, CHARGER_PARAMS, CHARGER_KIND_LABEL, chargerDefaults, chargerInputKw, type ChargerKind } from "@/ModelLibrary";
 import {
-  EV_DEFS, EV_TYPES, WIRE_SECTIONS, EVChassisGhost, EVPart, EVWire,
-  defaultEVLayout, isHVWire, makeEVPart, terminalPoint, wireCurveLength,
-  pinsOf, evPinWorld, pinWorldOf, chargerPins, ownerOfEnd, PIN_COLORS, pinsIncompatible, wireResistance, type PinDef,
-  LINE_TYPES, WIRE_TYPES, INSTALL_CABLE_TYPES, ALL_WIRE_TYPES, WIRE_MATERIALS, resistanceFormula, type WireMaterial, DEFAULT_LINE_TYPE, DEFAULT_WIRE_TYPE, lineTypeOf, wireTypeOf,
-  type EVPartRecord, type EVType, type EVWireRecord,
+  VoltageSource,
+  sourcePins,
+  sourceDefaults,
+  SOURCE_PARAMS,
+  PHASE_ANGLES,
+  solveCircuits,
+  type SourceKind,
+} from "@/ModelLibrary";
+import {
+  TransformerModel,
+  transformerPins,
+  transformerDefaults,
+  transformerModel,
+  transformerTerminalLocals,
+  TRANSFORMER_PARAMS,
+  type VectorGroup,
+} from "@/ModelLibrary";
+import {
+  LVPanelModel,
+  parseLVPanel,
+  lvPanelPins,
+  lvPanelWires,
+  lvPanelLoads,
+  lvCableEnds,
+  lvBreakerWireId,
+  lvTripReason,
+  lvSpdOwner,
+  lvConducts,
+  makeLVDevice,
+  LV_KIND_INFO,
+  type LVDevice,
+  type LVKind,
+  type LVPhase,
+} from "@/ModelLibrary/distribution/LVPanel";
+import { GISModel, parseGIS, gisTerminalLocals, relayAutoOn } from "@/ModelLibrary/substations/GIS";
+import {
+  SwitchgearModel,
+  parseSwitchgear,
+  switchgearWires,
+  cubicleTerminalLocals,
+  cubicleConducts,
+  makeCubicle,
+  CUBICLE_KIND_LABEL,
+  type Cubicle,
+  type CubicleKind,
+} from "@/ModelLibrary";
+import {
+  initPropsFor,
+  type ObjectProps,
+  EVCharger,
+  CHARGER_PARAMS,
+  CHARGER_KIND_LABEL,
+  chargerDefaults,
+  chargerInputKw,
+  type ChargerKind,
+} from "@/ModelLibrary";
+import {
+  EV_DEFS,
+  EV_TYPES,
+  WIRE_SECTIONS,
+  EVChassisGhost,
+  EVPart,
+  EVWire,
+  defaultEVLayout,
+  isHVWire,
+  makeEVPart,
+  terminalPoint,
+  wireCurveLength,
+  pinsOf,
+  evPinWorld,
+  pinWorldOf,
+  chargerPins,
+  ownerOfEnd,
+  PIN_COLORS,
+  pinsIncompatible,
+  wireResistance,
+  type PinDef,
+  LINE_TYPES,
+  WIRE_TYPES,
+  INSTALL_CABLE_TYPES,
+  ALL_WIRE_TYPES,
+  WIRE_MATERIALS,
+  resistanceFormula,
+  type WireMaterial,
+  DEFAULT_LINE_TYPE,
+  DEFAULT_WIRE_TYPE,
+  lineTypeOf,
+  wireTypeOf,
+  type EVPartRecord,
+  type EVType,
+  type EVWireRecord,
 } from "@/ModelLibrary";
 import { DraggablePanel } from "./DraggablePanel";
 import { Button } from "./ui/button";
-import {
-  WeatherEffects,
-  DEFAULT_WEATHER,
-  feelsLike,
-  type WeatherState,
-} from "./Weather";
+import { WeatherEffects, DEFAULT_WEATHER, feelsLike, type WeatherState } from "./Weather";
 import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 // Troika's default worker serializes functions into a generated blob. The
@@ -81,10 +184,34 @@ const VIEWS: {
   position: [number, number, number];
   target: [number, number, number];
 }[] = [
-  { id: "iso", name: "Isometric", subtitle: "Default 3D angle", position: [14, 11, 16], target: [0, 5, 0] },
-  { id: "front", name: "Front", subtitle: "Looking along +Z", position: [0, 6, 22], target: [0, 4, 0] },
-  { id: "top", name: "Top", subtitle: "Bird's eye view", position: [0, 28, 0.01], target: [0, 0, 0] },
-  { id: "side", name: "Side", subtitle: "Looking along +X", position: [22, 6, 0], target: [0, 4, 0] },
+  {
+    id: "iso",
+    name: "Isometric",
+    subtitle: "Default 3D angle",
+    position: [14, 11, 16],
+    target: [0, 5, 0],
+  },
+  {
+    id: "front",
+    name: "Front",
+    subtitle: "Looking along +Z",
+    position: [0, 6, 22],
+    target: [0, 4, 0],
+  },
+  {
+    id: "top",
+    name: "Top",
+    subtitle: "Bird's eye view",
+    position: [0, 28, 0.01],
+    target: [0, 0, 0],
+  },
+  {
+    id: "side",
+    name: "Side",
+    subtitle: "Looking along +X",
+    position: [22, 6, 0],
+    target: [0, 4, 0],
+  },
 ];
 
 function CameraRig({
@@ -281,7 +408,9 @@ function ContinuousCursorZoom({
         grabPoint.copy(hit);
       } else {
         const depth = Math.max(controls.target.clone().sub(camera.position).dot(forward), 0.01);
-        grabPoint.copy(camera.position).addScaledVector(dir, depth / Math.max(dir.dot(forward), 0.05));
+        grabPoint
+          .copy(camera.position)
+          .addScaledVector(dir, depth / Math.max(dir.dot(forward), 0.05));
       }
       plane.setFromNormalAndCoplanarPoint(forward, grabPoint);
 
@@ -347,7 +476,8 @@ function ContinuousCursorZoom({
     const controls = controlsRef.current;
     const cameraRemaining = remainingCameraTravel.current;
     const targetRemaining = remainingTargetTravel.current;
-    if (!controls || (cameraRemaining.lengthSq() < 1e-16 && targetRemaining.lengthSq() < 1e-16)) return;
+    if (!controls || (cameraRemaining.lengthSq() < 1e-16 && targetRemaining.lengthSq() < 1e-16))
+      return;
 
     const smoothing = 1 - Math.exp(-14 * Math.min(delta, 0.1));
     const cameraMovement = cameraRemaining.clone().multiplyScalar(smoothing);
@@ -361,8 +491,6 @@ function ContinuousCursorZoom({
 
   return null;
 }
-
-
 
 function GridLabels() {
   const ticks = useMemo(() => {
@@ -440,7 +568,15 @@ function GroundPlane() {
 type Point3 = [number, number, number];
 
 /** Small camera-facing square that keeps a constant on-screen size. */
-function RulerSquare({ position, color, px = 7 }: { position: Point3; color: string; px?: number }) {
+function RulerSquare({
+  position,
+  color,
+  px = 7,
+}: {
+  position: Point3;
+  color: string;
+  px?: number;
+}) {
   const ref = useRef<THREE.Mesh>(null);
   const { camera, size } = useThree();
   useFrame(() => {
@@ -476,7 +612,9 @@ function Ruler({
   onMovePoint: (i: number, p: Point3) => void;
 }) {
   const { camera, scene, gl } = useThree();
-  const [preview, setPreview] = useState<{ p: Point3; snap: "corner" | "edge" | null } | null>(null);
+  const [preview, setPreview] = useState<{ p: Point3; snap: "corner" | "edge" | null } | null>(
+    null,
+  );
   const pointsRef = useRef(points);
   pointsRef.current = points;
 
@@ -504,29 +642,47 @@ function Ruler({
       raycaster.setFromCamera(ndc, camera);
       const hit = raycaster
         .intersectObjects(scene.children, true)
-        .find((h) => !h.object.userData.ruler && h.object.type !== "AxesHelper" && (h.object as THREE.Mesh).isMesh);
+        .find(
+          (h) =>
+            !h.object.userData.ruler &&
+            h.object.type !== "AxesHelper" &&
+            (h.object as THREE.Mesh).isMesh,
+        );
       if (!hit) return null;
       const raw: Point3 = [hit.point.x, hit.point.y, hit.point.z];
       const mesh = hit.object as THREE.Mesh;
       const pos = (mesh.geometry as THREE.BufferGeometry)?.attributes?.position;
-      if (e.altKey || !hit.face || !pos || (mesh as THREE.InstancedMesh).isInstancedMesh) return { p: raw, snap: null };
-      const vs = [hit.face.a, hit.face.b, hit.face.c].map((i) => new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld));
+      if (e.altKey || !hit.face || !pos || (mesh as THREE.InstancedMesh).isInstancedMesh)
+        return { p: raw, snap: null };
+      const vs = [hit.face.a, hit.face.b, hit.face.c].map((i) =>
+        new THREE.Vector3().fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld),
+      );
       // Corners first.
       let best: THREE.Vector3 | null = null;
       let bestD = CORNER_PX;
       for (const v of vs) {
         const [sx, sy] = toScreen(v, rect);
         const d = Math.hypot(sx - mx, sy - my);
-        if (d < bestD) { bestD = d; best = v; }
+        if (d < bestD) {
+          bestD = d;
+          best = v;
+        }
       }
       if (best) return { p: [best.x, best.y, best.z], snap: "corner" };
       // Then edges (closest point on each edge to the hit).
       bestD = EDGE_PX;
       for (let k = 0; k < 3; k++) {
-        const c = new THREE.Line3(vs[k], vs[(k + 1) % 3]).closestPointToPoint(hit.point, true, new THREE.Vector3());
+        const c = new THREE.Line3(vs[k], vs[(k + 1) % 3]).closestPointToPoint(
+          hit.point,
+          true,
+          new THREE.Vector3(),
+        );
         const [sx, sy] = toScreen(c, rect);
         const d = Math.hypot(sx - mx, sy - my);
-        if (d < bestD) { bestD = d; best = c; }
+        if (d < bestD) {
+          bestD = d;
+          best = c;
+        }
       }
       if (best) return { p: [best.x, best.y, best.z], snap: "edge" };
       return { p: raw, snap: null };
@@ -572,24 +728,33 @@ function Ruler({
 
   const a = points[0];
   const b = points[1];
-  const mid: Point3 | null = a && b
-    ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.25, (a[2] + b[2]) / 2]
-    : null;
-  const dist = a && b
-    ? Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2])
-    : 0;
+  const mid: Point3 | null =
+    a && b ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + 0.25, (a[2] + b[2]) / 2] : null;
+  const dist = a && b ? Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]) : 0;
 
   return (
     <group userData={{ ruler: true }}>
       {active && preview && (
-        <RulerSquare position={preview.p} color={preview.snap === "corner" ? "#22c55e" : preview.snap === "edge" ? "#f59e0b" : "#ffffff"} px={preview.snap ? 9 : 6} />
+        <RulerSquare
+          position={preview.p}
+          color={
+            preview.snap === "corner" ? "#22c55e" : preview.snap === "edge" ? "#f59e0b" : "#ffffff"
+          }
+          px={preview.snap ? 9 : 6}
+        />
       )}
       {points.map((p, i) => (
         <RulerSquare key={i} position={p} color="#ff3b30" />
       ))}
       {a && b && (
         <>
-          <Line points={[a, b]} color="#ff3b30" lineWidth={1} depthTest={false} userData={{ ruler: true }} />
+          <Line
+            points={[a, b]}
+            color="#ff3b30"
+            lineWidth={1}
+            depthTest={false}
+            userData={{ ruler: true }}
+          />
           {mid && (
             <Text
               position={mid}
@@ -637,11 +802,7 @@ function DragProxy({
       ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
       if (raycaster.ray.intersectPlane(plane, hit)) {
-        onMove([
-          Math.round(hit.x * 100) / 100,
-          0,
-          Math.round(hit.z * 100) / 100,
-        ]);
+        onMove([Math.round(hit.x * 100) / 100, 0, Math.round(hit.z * 100) / 100]);
       }
     };
     const up = () => {
@@ -666,7 +827,7 @@ function groundHit(e: MouseEvent, dom: HTMLElement, camera: THREE.Camera): Groun
   const rect = dom.getBoundingClientRect();
   const ndc = new THREE.Vector2(
     ((e.clientX - rect.left) / rect.width) * 2 - 1,
-    -((e.clientY - rect.top) / rect.height) * 2 + 1
+    -((e.clientY - rect.top) / rect.height) * 2 + 1,
   );
   const rc = new THREE.Raycaster();
   rc.setFromCamera(ndc, camera);
@@ -686,14 +847,23 @@ const parsePt = (id?: string | null): GroundPt | null => {
 
 /** Wire curve through optional ground waypoints (wires run just above ground). */
 /** Corner height: just above the higher pin, so a wire never dips through the body a pin sits on. */
-const wireCornerY = (a: [number, number, number], b: [number, number, number]) => Math.max(0.15, a[1] + 0.03, b[1] + 0.03);
+const wireCornerY = (a: [number, number, number], b: [number, number, number]) =>
+  Math.max(0.15, a[1] + 0.03, b[1] + 0.03);
 
-function routedWireCurve(a: [number, number, number], b: [number, number, number], wps: Waypoint[]) {
+function routedWireCurve(
+  a: [number, number, number],
+  b: [number, number, number],
+  wps: Waypoint[],
+) {
   const y = wireCornerY(a, b);
   return new THREE.CatmullRomCurve3(
-    [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], y, w[1])), new THREE.Vector3(...b)],
+    [
+      new THREE.Vector3(...a),
+      ...wps.map((w) => new THREE.Vector3(w[0], y, w[1])),
+      new THREE.Vector3(...b),
+    ],
     false,
-    "centripetal"
+    "centripetal",
   );
 }
 
@@ -702,22 +872,30 @@ type RouteObstacle = { minX: number; maxX: number; minZ: number; maxZ: number };
 function segmentHits(a: Waypoint, b: Waypoint, obstacles: RouteObstacle[]) {
   for (let i = 1; i < 60; i++) {
     const t = i / 60;
-    const x = a[0] + (b[0] - a[0]) * t, z = a[1] + (b[1] - a[1]) * t;
+    const x = a[0] + (b[0] - a[0]) * t,
+      z = a[1] + (b[1] - a[1]) * t;
     if (obstacles.some((o) => x > o.minX && x < o.maxX && z > o.minZ && z < o.maxZ)) return true;
   }
   return false;
 }
 
 /** Keep the user's corners, but detour any straight section that crosses an obstacle. */
-function detourFreehand(from: [number, number, number], to: [number, number, number], wps: Waypoint[], obstacles: RouteObstacle[]): { waypoints: Waypoint[]; blocked: boolean } {
+function detourFreehand(
+  from: [number, number, number],
+  to: [number, number, number],
+  wps: Waypoint[],
+  obstacles: RouteObstacle[],
+): { waypoints: Waypoint[]; blocked: boolean } {
   const pts: Waypoint[] = [[from[0], from[2]], ...wps, [to[0], to[2]]];
   const out: Waypoint[] = [];
   let blocked = false;
   for (let i = 0; i < pts.length - 1; i++) {
-    const p = pts[i], q = pts[i + 1];
+    const p = pts[i],
+      q = pts[i + 1];
     if (segmentHits(p, q, obstacles)) {
       const r = orthogonalRoute([p[0], 0, p[1]], [q[0], 0, q[1]], obstacles);
-      if (r) out.push(...r); else blocked = true;
+      if (r) out.push(...r);
+      else blocked = true;
     }
     if (i < pts.length - 2) out.push(q);
   }
@@ -739,15 +917,25 @@ function segmentClear(a: Waypoint, b: Waypoint, obstacles: RouteObstacle[]) {
 }
 
 /** Shortest rectilinear route around expanded component footprints. */
-function orthogonalRoute(from: [number, number, number], to: [number, number, number], obstacles: RouteObstacle[]): Waypoint[] | null {
+function orthogonalRoute(
+  from: [number, number, number],
+  to: [number, number, number],
+  obstacles: RouteObstacle[],
+): Waypoint[] | null {
   const start: Waypoint = [from[0], from[2]];
   const end: Waypoint = [to[0], to[2]];
-  const xs = [...new Set([start[0], end[0], ...obstacles.flatMap((o) => [o.minX, o.maxX])])].sort((a, b) => a - b);
-  const zs = [...new Set([start[1], end[1], ...obstacles.flatMap((o) => [o.minZ, o.maxZ])])].sort((a, b) => a - b);
+  const xs = [...new Set([start[0], end[0], ...obstacles.flatMap((o) => [o.minX, o.maxX])])].sort(
+    (a, b) => a - b,
+  );
+  const zs = [...new Set([start[1], end[1], ...obstacles.flatMap((o) => [o.minZ, o.maxZ])])].sort(
+    (a, b) => a - b,
+  );
   const nodes: Waypoint[] = [];
-  for (const x of xs) for (const z of zs) {
-    if (!obstacles.some((o) => x > o.minX && x < o.maxX && z > o.minZ && z < o.maxZ)) nodes.push([x, z]);
-  }
+  for (const x of xs)
+    for (const z of zs) {
+      if (!obstacles.some((o) => x > o.minX && x < o.maxX && z > o.minZ && z < o.maxZ))
+        nodes.push([x, z]);
+    }
   const key = (p: Waypoint) => `${p[0]},${p[1]}`;
   const byKey = new Map(nodes.map((p) => [key(p), p]));
   byKey.set(key(start), start);
@@ -761,8 +949,10 @@ function orthogonalRoute(from: [number, number, number], to: [number, number, nu
     const cur = queue.shift();
     if (!cur) break;
     if (key(cur.point) === key(end)) {
-      const compact = cur.path.filter((p, i, arr) => i === 0 || i === arr.length - 1 ||
-        (arr[i - 1][0] === p[0]) !== (p[0] === arr[i + 1][0]));
+      const compact = cur.path.filter(
+        (p, i, arr) =>
+          i === 0 || i === arr.length - 1 || (arr[i - 1][0] === p[0]) !== (p[0] === arr[i + 1][0]),
+      );
       return compact.slice(1, -1);
     }
     const stateKey = `${key(cur.point)}:${cur.axis}`;
@@ -773,26 +963,47 @@ function orthogonalRoute(from: [number, number, number], to: [number, number, nu
       if (!segmentClear(cur.point, next, obstacles)) continue;
       const axis = next[0] === cur.point[0] ? "z" : "x";
       const turn = cur.axis !== "start" && cur.axis !== axis ? 0.08 : 0;
-      queue.push({ point: next, axis, cost: cur.cost + Math.abs(next[0] - cur.point[0]) + Math.abs(next[1] - cur.point[1]) + turn, path: [...cur.path, next] });
+      queue.push({
+        point: next,
+        axis,
+        cost: cur.cost + Math.abs(next[0] - cur.point[0]) + Math.abs(next[1] - cur.point[1]) + turn,
+        path: [...cur.path, next],
+      });
     }
   }
   return null;
 }
 
-function roundedOrthogonalCurve(a: [number, number, number], b: [number, number, number], wps: Waypoint[]) {
+function roundedOrthogonalCurve(
+  a: [number, number, number],
+  b: [number, number, number],
+  wps: Waypoint[],
+) {
   const y = wireCornerY(a, b);
-  const corners = [new THREE.Vector3(...a), ...wps.map((w) => new THREE.Vector3(w[0], y, w[1])), new THREE.Vector3(...b)];
+  const corners = [
+    new THREE.Vector3(...a),
+    ...wps.map((w) => new THREE.Vector3(w[0], y, w[1])),
+    new THREE.Vector3(...b),
+  ];
   if (corners.length < 3) return new THREE.CatmullRomCurve3(corners, false, "centripetal");
   const points: THREE.Vector3[] = [corners[0]];
   for (let i = 1; i < corners.length - 1; i++) {
-    const prev = corners[i - 1], cur = corners[i], next = corners[i + 1];
+    const prev = corners[i - 1],
+      cur = corners[i],
+      next = corners[i + 1];
     const radius = Math.min(0.08, cur.distanceTo(prev) * 0.35, cur.distanceTo(next) * 0.35);
     const before = cur.clone().lerp(prev, radius / Math.max(cur.distanceTo(prev), 0.001));
     const after = cur.clone().lerp(next, radius / Math.max(cur.distanceTo(next), 0.001));
     points.push(before);
     for (let s = 1; s < 6; s++) {
       const t = s / 6;
-      points.push(before.clone().multiplyScalar((1 - t) ** 2).addScaledVector(cur, 2 * (1 - t) * t).addScaledVector(after, t * t));
+      points.push(
+        before
+          .clone()
+          .multiplyScalar((1 - t) ** 2)
+          .addScaledVector(cur, 2 * (1 - t) * t)
+          .addScaledVector(after, t * t),
+      );
     }
     points.push(after);
   }
@@ -800,18 +1011,50 @@ function roundedOrthogonalCurve(a: [number, number, number], b: [number, number,
   return new THREE.CatmullRomCurve3(points, false, "centripetal");
 }
 function RoutedWire({
-  from, to, waypoints, crossSection, color, selected, onSelect, orthogonal = false,
+  from,
+  to,
+  waypoints,
+  crossSection,
+  color,
+  selected,
+  onSelect,
+  orthogonal = false,
 }: {
-  from: [number, number, number]; to: [number, number, number]; waypoints: Waypoint[];
-  crossSection: number; color: string; selected: boolean; onSelect: () => void; orthogonal?: boolean;
+  from: [number, number, number];
+  to: [number, number, number];
+  waypoints: Waypoint[];
+  crossSection: number;
+  color: string;
+  selected: boolean;
+  onSelect: () => void;
+  orthogonal?: boolean;
 }) {
   const geo = useMemo(() => {
     const r = Math.max(0.006, (Math.sqrt(crossSection / Math.PI) / 1000) * 2.2);
-    return new THREE.TubeGeometry(orthogonal ? roundedOrthogonalCurve(from, to, waypoints) : routedWireCurve(from, to, waypoints), 120, r, 8, false);
+    return new THREE.TubeGeometry(
+      orthogonal
+        ? roundedOrthogonalCurve(from, to, waypoints)
+        : routedWireCurve(from, to, waypoints),
+      120,
+      r,
+      8,
+      false,
+    );
   }, [from, to, waypoints, crossSection, orthogonal]);
   return (
-    <mesh geometry={geo} onClick={(e) => { e.stopPropagation(); onSelect(); }}>
-      <meshStandardMaterial color={selected ? "#facc15" : color} roughness={0.5} emissive={selected ? "#f59e0b" : "#000000"} emissiveIntensity={selected ? 0.4 : 0} />
+    <mesh
+      geometry={geo}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+    >
+      <meshStandardMaterial
+        color={selected ? "#facc15" : color}
+        roughness={0.5}
+        emissive={selected ? "#f59e0b" : "#000000"}
+        emissiveIntensity={selected ? 0.4 : 0}
+      />
     </mesh>
   );
 }
@@ -847,7 +1090,11 @@ function CableRouter({
 }) {
   const { camera, gl } = useThree();
   const [hover, setHover] = useState<GroundPt | null>(null);
-  const [snapPin, setSnapPin] = useState<{ id: string; point: [number, number, number]; color: string } | null>(null);
+  const [snapPin, setSnapPin] = useState<{
+    id: string;
+    point: [number, number, number];
+    color: string;
+  } | null>(null);
   const addRef = useRef(onAdd);
   const finishRef = useRef(onFinish);
   const snapPinsRef = useRef(snapPins);
@@ -864,9 +1111,13 @@ function CableRouter({
       return;
     }
     const dom = gl.domElement;
-    let dx = 0, dy = 0;
+    let dx = 0,
+      dy = 0;
     let timer: number | null = null;
-    const down = (e: PointerEvent) => { dx = e.clientX; dy = e.clientY; };
+    const down = (e: PointerEvent) => {
+      dx = e.clientX;
+      dy = e.clientY;
+    };
     const move = (e: PointerEvent) => {
       setHover(groundHit(e, dom, camera));
       let nearest: { id: string; point: [number, number, number]; color: string } | null = null;
@@ -891,7 +1142,10 @@ function CableRouter({
       if (Math.hypot(e.clientX - dx, e.clientY - dy) > 4) return;
       if (pinClickRef.current && nearestRef.current && performance.now() - skipRef.current > 300) {
         const id = nearestRef.current;
-        if (timer !== null) { window.clearTimeout(timer); timer = null; }
+        if (timer !== null) {
+          window.clearTimeout(timer);
+          timer = null;
+        }
         pinClickRef.current(id);
         return;
       }
@@ -928,15 +1182,21 @@ function CableRouter({
     };
   }, [active, camera, gl, skipRef, pinOnlyEnd]);
   if (!active) return null;
-  const previewDraft = snapPin && previewWaypoints ? previewWaypoints(snapPin.id) ?? [] : draft;
+  const previewDraft = snapPin && previewWaypoints ? (previewWaypoints(snapPin.id) ?? []) : draft;
   const pts: [number, number, number][] = [
     ...(start ? [[start[0], 0.03, start[2]] as [number, number, number]] : []),
     ...previewDraft.map((w) => [w[0], 0.03, w[1]] as [number, number, number]),
-    ...(snapPin ? [snapPin.point] : hover ? [[hover[0], 0.03, hover[1]] as [number, number, number]] : []),
+    ...(snapPin
+      ? [snapPin.point]
+      : hover
+        ? [[hover[0], 0.03, hover[1]] as [number, number, number]]
+        : []),
   ];
   return (
     <group>
-      {pts.length > 1 && <Line points={pts} color="#f59e0b" lineWidth={2} dashed dashSize={0.3} gapSize={0.2} />}
+      {pts.length > 1 && (
+        <Line points={pts} color="#f59e0b" lineWidth={2} dashed dashSize={0.3} gapSize={0.2} />
+      )}
       {hover && (
         <mesh position={[hover[0], 0.05, hover[1]]} raycast={() => null}>
           <sphereGeometry args={[0.08, 12, 10]} />
@@ -1014,7 +1274,9 @@ function CableRouteEditor({
     e.stopPropagation();
     document.body.style.cursor = "grab";
   };
-  const hoverOff = () => { document.body.style.cursor = ""; };
+  const hoverOff = () => {
+    document.body.style.cursor = "";
+  };
   const endHandle = (p: [number, number, number], idx: -1 | -2) => (
     <mesh
       key={`e${idx}`}
@@ -1028,7 +1290,11 @@ function CableRouteEditor({
       }}
     >
       <cylinderGeometry args={[0.2, 0.2, 0.12, 20]} />
-      <meshStandardMaterial color={drag === idx ? "#ffffff" : "#ef4444"} emissive="#ef4444" emissiveIntensity={0.35} />
+      <meshStandardMaterial
+        color={drag === idx ? "#ffffff" : "#ef4444"}
+        emissive="#ef4444"
+        emissiveIntensity={0.35}
+      />
     </mesh>
   );
   return (
@@ -1062,7 +1328,11 @@ function CableRouteEditor({
           onContextMenu={(e) => e.stopPropagation()}
         >
           <sphereGeometry args={[0.18, 20, 14]} />
-          <meshStandardMaterial color={drag === i ? "#ffffff" : "#f59e0b"} emissive="#f59e0b" emissiveIntensity={0.4} />
+          <meshStandardMaterial
+            color={drag === i ? "#ffffff" : "#f59e0b"}
+            emissive="#f59e0b"
+            emissiveIntensity={0.4}
+          />
         </mesh>
       ))}
       {chain.slice(1).map((c, i) => {
@@ -1095,7 +1365,11 @@ function CableRouteEditor({
 }
 
 /** Loose line ends hang at 8 m, keeping the phase spacing of the other end. */
-const DEFAULT_LINE_PHASES: [number, number, number][] = [[-0.45, 8, 0], [0, 8, 0], [0.45, 8, 0]];
+const DEFAULT_LINE_PHASES: [number, number, number][] = [
+  [-0.45, 8, 0],
+  [0, 8, 0],
+  [0.45, 8, 0],
+];
 const centroid = (pts: [number, number, number][]): [number, number, number] => {
   const n = pts.length || 1;
   return [
@@ -1110,13 +1384,19 @@ function linePhasePath(
   e: [number, number, number],
   sOff: [number, number, number],
   eOff: [number, number, number],
-  wps: Waypoint[]
+  wps: Waypoint[],
 ): [number, number, number][] {
   // Support nodes: ground distance drives height/offset interpolation
-  const ground: GroundPt[] = [[s[0] - sOff[0], s[2] - sOff[2]], ...wps, [e[0] - eOff[0], e[2] - eOff[2]]];
+  const ground: GroundPt[] = [
+    [s[0] - sOff[0], s[2] - sOff[2]],
+    ...wps,
+    [e[0] - eOff[0], e[2] - eOff[2]],
+  ];
   const cum = [0];
   for (let i = 1; i < ground.length; i++)
-    cum.push(cum[i - 1] + Math.hypot(ground[i][0] - ground[i - 1][0], ground[i][1] - ground[i - 1][1]));
+    cum.push(
+      cum[i - 1] + Math.hypot(ground[i][0] - ground[i - 1][0], ground[i][1] - ground[i - 1][1]),
+    );
   const total = cum[cum.length - 1] || 1;
   const nodes: [number, number, number][] = ground.map((g, i) => {
     if (i === 0) return s;
@@ -1147,14 +1427,7 @@ function linePhasePath(
   return pts;
 }
 
-function Placer({
-
-  active,
-  onPlace,
-}: {
-  active: boolean;
-  onPlace: (p: Point3) => void;
-}) {
+function Placer({ active, onPlace }: { active: boolean; onPlace: (p: Point3) => void }) {
   const { camera, gl } = useThree();
   useEffect(() => {
     if (!active) return;
@@ -1177,11 +1450,7 @@ function Placer({
       ndc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(ndc, camera);
       if (raycaster.ray.intersectPlane(plane, hit)) {
-        onPlace([
-          Math.round(hit.x * 100) / 100,
-          0,
-          Math.round(hit.z * 100) / 100,
-        ]);
+        onPlace([Math.round(hit.x * 100) / 100, 0, Math.round(hit.z * 100) / 100]);
       }
     };
     dom.addEventListener("pointerdown", onDown);
@@ -1196,7 +1465,6 @@ function Placer({
   return null;
 }
 
-
 function PartLabel3D({
   name,
   position,
@@ -1206,11 +1474,7 @@ function PartLabel3D({
   position: [number, number, number];
   onDismiss: () => void;
 }) {
-  const anchor: [number, number, number] = [
-    position[0],
-    position[1] + 1.2,
-    position[2],
-  ];
+  const anchor: [number, number, number] = [position[0], position[1] + 1.2, position[2]];
   return (
     <group>
       <Line points={[position, anchor]} color="#333333" lineWidth={1} />
@@ -1249,18 +1513,23 @@ export default function Scene3DViewer() {
   const [customGroundWidthM, setCustomGroundWidthM] = useState<number>(30);
   const [weatherOpen, setWeatherOpen] = useState(false);
   const [weather, setWeather] = useState<WeatherState>(DEFAULT_WEATHER);
-  const updateWeather = (patch: Partial<WeatherState>) =>
-    setWeather((w) => ({ ...w, ...patch }));
+  const updateWeather = (patch: Partial<WeatherState>) => setWeather((w) => ({ ...w, ...patch }));
   const night = weather.active && weather.night;
-  const felt = feelsLike(
-    weather.temperature,
-    weather.wind ? weather.windSpeed : 0,
-  );
+  const felt = feelsLike(weather.temperature, weather.wind ? weather.windSpeed : 0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const controlsRef = useRef<OrbitControlsImpl | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [cablesOpen, setCablesOpen] = useState(false);
-  type AddableType = "puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "gis" | "lvpanel" | "evcharger" | "vsource" | "transformer";
+  type AddableType =
+    | "puitmast"
+    | "puitmast20"
+    | "jaotuskilp"
+    | "alajaam"
+    | "gis"
+    | "lvpanel"
+    | "evcharger"
+    | "vsource"
+    | "transformer";
   const PIN_ITEM_TYPES: string[] = ["evcharger", "vsource", "transformer", "lvpanel"];
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
@@ -1268,14 +1537,22 @@ export default function Scene3DViewer() {
     { type: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel" },
     { type: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation" },
     { type: "lvpanel", name: "LV panel 0.4 kV", subtitle: "MCCB, MCB, SPD and control breakers" },
-    { type: "gis", name: "MV GIS + automation", subtitle: "Gas-insulated switchgear with relay panel" },
+    {
+      type: "gis",
+      name: "MV GIS + automation",
+      subtitle: "Gas-insulated switchgear with relay panel",
+    },
     { type: "evcharger", name: "EV charger", subtitle: "AC / DC car charger" },
     { type: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply" },
     { type: "transformer", name: "Transformer", subtitle: "3-phase, HV / LV pins" },
   ];
   const ADD_GROUPS: { id: string; label: string; types: AddableType[] }[] = [
     { id: "lines", label: "Power line poles", types: ["puitmast", "puitmast20"] },
-    { id: "dist", label: "Distribution & substations", types: ["jaotuskilp", "lvpanel", "alajaam", "gis", "transformer"] },
+    {
+      id: "dist",
+      label: "Distribution & substations",
+      types: ["jaotuskilp", "lvpanel", "alajaam", "gis", "transformer"],
+    },
     { id: "sources", label: "Power sources", types: ["vsource"] },
     { id: "charging", label: "EV charging", types: ["evcharger"] },
   ];
@@ -1354,14 +1631,12 @@ export default function Scene3DViewer() {
         ...c,
         feederA: c.a === key && c.feederA === id ? undefined : c.feederA,
         feederB: c.b === key && c.feederB === id ? undefined : c.feederB,
-      }))
+      })),
     );
   };
   const panelName = (key: string) => {
     if (key === "scene") return "Jaotuskilp (scene)";
-    const idx = addedItems
-      .filter((i) => i.type === "jaotuskilp")
-      .findIndex((i) => i.id === key);
+    const idx = addedItems.filter((i) => i.type === "jaotuskilp").findIndex((i) => i.id === key);
     return idx >= 0 ? `Jaotuskilp #${idx + 1}` : "Jaotuskilp";
   };
   const openFeeders = (key: string) => {
@@ -1369,14 +1644,11 @@ export default function Scene3DViewer() {
     setSelectedCableId(null);
   };
 
-
-
   const [cameraReset, setCameraReset] = useState(0);
   const resetCameraView = () => {
     setViewId("iso");
     setCameraReset((n) => n + 1);
   };
-
 
   // R key rotates during placement, mouse wheel rotates during placement.
   useEffect(() => {
@@ -1394,10 +1666,7 @@ export default function Scene3DViewer() {
 
   const placeItem = (type: AddableType, position: [number, number, number]) => {
     const id = `${type}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    setAddedItems((prev) => [
-      ...prev,
-      { id, type, position, rotationY: placementRotation },
-    ]);
+    setAddedItems((prev) => [...prev, { id, type, position, rotationY: placementRotation }]);
   };
   const startPlacing = (type: AddableType) => {
     setPendingAdd(type);
@@ -1420,16 +1689,10 @@ export default function Scene3DViewer() {
     setFeederPanelKey((cur) => (cur === id ? null : cur));
   };
   const setItemRotation = (id: string, rotationY: number) =>
-    setAddedItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, rotationY } : i))
-    );
+    setAddedItems((prev) => prev.map((i) => (i.id === id ? { ...i, rotationY } : i)));
   const setItemPosition = (id: string, position: [number, number, number]) => {
-    setAddedItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, position } : i))
-    );
-    setEVParts((prev) =>
-      prev.map((q) => (q.id === id ? { ...q, position } : q))
-    );
+    setAddedItems((prev) => prev.map((i) => (i.id === id ? { ...i, position } : i)));
+    setEVParts((prev) => prev.map((q) => (q.id === id ? { ...q, position } : q)));
   };
 
   // --- Electric car internals ------------------------------------------------
@@ -1440,8 +1703,8 @@ export default function Scene3DViewer() {
   const [evWireMode, setEVWireMode] = useState(false);
   const [hoveredWirePin, setHoveredWirePin] = useState<string | null>(null);
   const [evWireFirst, setEVWireFirst] = useState<string | null>(null);
-  const evPropPart = propsOwnerId ? evParts.find((q) => q.id === propsOwnerId) ?? null : null;
-  const evPropWire = propsOwnerId ? evWires.find((w) => w.id === propsOwnerId) ?? null : null;
+  const evPropPart = propsOwnerId ? (evParts.find((q) => q.id === propsOwnerId) ?? null) : null;
+  const evPropWire = propsOwnerId ? (evWires.find((w) => w.id === propsOwnerId) ?? null) : null;
 
   // --- Shared basic properties (every model) --------------------------------
   const [objectProps, setObjectProps] = useState<Record<string, ObjectProps>>({});
@@ -1450,7 +1713,9 @@ export default function Scene3DViewer() {
     addedItems.find((i) => i.id === propsOwnerId)?.type ?? evPropPart?.type ?? sceneId;
   const currentProps = objectProps[propsKey] ?? initPropsFor(propsModelId);
   const updateEVParam = (id: string, key: string, value: number) =>
-    setEVParts((prev) => prev.map((q) => (q.id === id ? { ...q, params: { ...q.params, [key]: value } } : q)));
+    setEVParts((prev) =>
+      prev.map((q) => (q.id === id ? { ...q, params: { ...q.params, [key]: value } } : q)),
+    );
   const removeEVPart = (id: string) => {
     setEVParts((prev) => prev.filter((q) => q.id !== id));
     setEVWires((prev) => prev.filter((w) => ownerOfEnd(w.a) !== id && ownerOfEnd(w.b) !== id));
@@ -1464,13 +1729,30 @@ export default function Scene3DViewer() {
       const s = Math.abs(Math.sin(rot));
       const halfX = (width * c + depth * s) / 2 + clearance;
       const halfZ = (width * s + depth * c) / 2 + clearance;
-      return { minX: pos[0] - halfX, maxX: pos[0] + halfX, minZ: pos[2] - halfZ, maxZ: pos[2] + halfZ };
+      return {
+        minX: pos[0] - halfX,
+        maxX: pos[0] + halfX,
+        minZ: pos[2] - halfZ,
+        maxZ: pos[2] + halfZ,
+      };
     };
     const ITEM_FOOTPRINT: Record<string, [number, number]> = {
-      evcharger: [0.8, 0.6], vsource: [0.6, 0.4], transformer: [1.5, 1.0], jaotuskilp: [1.0, 0.4], alajaam: [3.6, 2.4], gis: [2.6, 1.2], lvpanel: [0.85, 0.35], puitmast: [0.4, 0.4], puitmast20: [0.5, 0.5],
+      evcharger: [0.8, 0.6],
+      vsource: [0.6, 0.4],
+      transformer: [1.5, 1.0],
+      jaotuskilp: [1.0, 0.4],
+      alajaam: [3.6, 2.4],
+      gis: [2.6, 1.2],
+      lvpanel: [0.85, 0.35],
+      puitmast: [0.4, 0.4],
+      puitmast20: [0.5, 0.5],
     };
-    const parts = true ? evParts.filter((p) => !excluded.has(p.id)).map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint)) : [];
-    const items = addedItems.filter((i) => !excluded.has(i.id)).map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
+    const parts = evParts
+      .filter((p) => !excluded.has(p.id))
+      .map((p) => box(p.position, p.rotationY, ...EV_DEFS[p.type].footprint));
+    const items = addedItems
+      .filter((i) => !excluded.has(i.id))
+      .map((i) => box(i.position, i.rotationY ?? 0, ...(ITEM_FOOTPRINT[i.type] ?? [0.6, 0.6])));
     return [...parts, ...items];
   };
   const autoWireWaypoints = (aId: string, bId: string): Waypoint[] | null => {
@@ -1483,28 +1765,55 @@ export default function Scene3DViewer() {
     if (!id.includes("#") || !pinInfo(id)) return;
     endpointClickAt.current = performance.now();
     setWireRouteWarning(null);
-    if (!evWireFirst) { setCableDraft([]); return setEVWireFirst(id); }
-    if (evWireFirst === id) { setCableDraft([]); return setEVWireFirst(null); }
+    if (!evWireFirst) {
+      setCableDraft([]);
+      return setEVWireFirst(id);
+    }
+    if (evWireFirst === id) {
+      setCableDraft([]);
+      return setEVWireFirst(null);
+    }
     const a = evWireFirst;
     let routed: Waypoint[] | null = wps;
     if (wireRoutingMode === "auto") routed = autoWireWaypoints(a, id);
     else {
-      const pa = wireEnd(a), pb = wireEnd(id);
+      const pa = wireEnd(a),
+        pb = wireEnd(id);
       if (pa && pb) {
-        const d = detourFreehand(pa, pb, wps, routingObstacles(new Set([ownerOfEnd(a), ownerOfEnd(id)])));
+        const d = detourFreehand(
+          pa,
+          pb,
+          wps,
+          routingObstacles(new Set([ownerOfEnd(a), ownerOfEnd(id)])),
+        );
         routed = d.waypoints;
-        if (d.blocked) setWireRouteWarning("Part of this wire could not be routed around an object.");
+        if (d.blocked)
+          setWireRouteWarning("Part of this wire could not be routed around an object.");
       }
     }
     if (wireRoutingMode === "auto" && routed === null) {
-      setWireRouteWarning("No clear automatic route was found. Move a component or switch to Free hand.");
+      setWireRouteWarning(
+        "No clear automatic route was found. Move a component or switch to Free hand.",
+      );
       return;
     }
     const waypoints = routed ?? [];
     setEVWires((prev) =>
       !waypoints.length && prev.some((w) => (w.a === a && w.b === id) || (w.a === id && w.b === a))
         ? prev
-        : [...prev, { id: `evw-${Date.now()}`, a, b: id, crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5, wireType, material: wireMaterial, routingMode: wireRoutingMode, waypoints: waypoints.length ? waypoints : undefined }]
+        : [
+            ...prev,
+            {
+              id: `evw-${Date.now()}`,
+              a,
+              b: id,
+              crossSection: wireTypeOf(wireType)?.crossSection ?? 2.5,
+              wireType,
+              material: wireMaterial,
+              routingMode: wireRoutingMode,
+              waypoints: waypoints.length ? waypoints : undefined,
+            },
+          ],
     );
     setEVWireFirst(null);
     setCableDraft([]);
@@ -1515,13 +1824,13 @@ export default function Scene3DViewer() {
     if (pt) return [pt[0], 0.1, pt[1]];
     if (id.includes("#")) {
       const [oid, pin] = id.split("#");
-      const pp = true ? evParts.find((q) => q.id === oid) : undefined;
+      const pp = evParts.find((q) => q.id === oid);
       if (pp) return evPinWorld(pp, pin);
       const it = addedItems.find((i) => i.id === oid);
       const pd = it && pinDefsOfItem(it).find((q) => q.id === pin);
       return it && pd ? pinWorldOf(pd.local, it.position, it.rotationY) : null;
     }
-    const part = true ? evParts.find((q) => q.id === id) : undefined;
+    const part = evParts.find((q) => q.id === id);
     if (part) return terminalPoint(part);
     const item = addedItems.find((i) => i.id === id);
     if (item) return [item.position[0], 1.2, item.position[2]];
@@ -1530,36 +1839,57 @@ export default function Scene3DViewer() {
   function pinDefsOfItem(it: { id: string; type: string }): PinDef[] {
     if (it.type === "transformer") return transformerPins();
     if (it.type === "lvpanel") return lvPanelPins(parseLVPanel(objectProps[it.id]?.values.lvdev));
-    if (it.type === "vsource") return sourcePins(String(objectProps[it.id]?.values.sourceKind ?? "AC"));
-    return it.type === "evcharger" ? chargerPins(String(objectProps[it.id]?.values.chargerType ?? "ac-wall")) : [];
+    if (it.type === "vsource")
+      return sourcePins(String(objectProps[it.id]?.values.sourceKind ?? "AC"));
+    return it.type === "evcharger"
+      ? chargerPins(String(objectProps[it.id]?.values.chargerType ?? "ac-wall"))
+      : [];
   }
   /** Pin definition + display name for an end id like "owner#pin". */
   const pinInfo = (id: string): { pin: PinDef; owner: string } | null => {
     if (!id.includes("#")) return null;
     const [oid, pid] = id.split("#");
     const pp = evParts.find((q) => q.id === oid);
-    if (pp) { const pin = pinsOf(pp.type).find((q) => q.id === pid); return pin ? { pin, owner: EV_DEFS[pp.type].name } : null; }
+    if (pp) {
+      const pin = pinsOf(pp.type).find((q) => q.id === pid);
+      return pin ? { pin, owner: EV_DEFS[pp.type].name } : null;
+    }
     const it = addedItems.find((i) => i.id === oid);
     const pin = it && pinDefsOfItem(it).find((q) => q.id === pid);
-    return pin ? { pin, owner: it?.type === "lvpanel" ? "LV panel" : it?.type === "transformer" ? "Transformer" : it?.type === "vsource" ? "Voltage source" : "EV charger" } : null;
+    return pin
+      ? {
+          pin,
+          owner:
+            it?.type === "lvpanel"
+              ? "LV panel"
+              : it?.type === "transformer"
+                ? "Transformer"
+                : it?.type === "vsource"
+                  ? "Voltage source"
+                  : "EV charger",
+        }
+      : null;
   };
   const endName = (id: string) => {
     const pi = pinInfo(id);
     if (pi) return `${pi.owner} · ${pi.pin.label}`;
     if (parsePt(id)) return "Loose end";
     const pp = evParts.find((q) => q.id === id);
-    return pp ? EV_DEFS[pp.type].name : addedItems.find((i) => i.id === id)?.type ?? "Object";
+    return pp ? EV_DEFS[pp.type].name : (addedItems.find((i) => i.id === id)?.type ?? "Object");
   };
   const anyWireLength = (w: EVWireRecord) => {
     const a = wireEnd(w.a);
     const b = wireEnd(w.b);
     if (!a || !b) return 0;
-    if (w.routingMode === "auto") return roundedOrthogonalCurve(a, b, w.waypoints ?? []).getLength();
-    if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b)) return routedWireCurve(a, b, w.waypoints ?? []).getLength();
+    if (w.routingMode === "auto")
+      return roundedOrthogonalCurve(a, b, w.waypoints ?? []).getLength();
+    if (w.waypoints?.length || parsePt(w.a) || parsePt(w.b))
+      return routedWireCurve(a, b, w.waypoints ?? []).getLength();
     return wireCurveLength(a, b);
   };
   const wireLabel = (w: EVWireRecord) =>
-    wireTypeOf(w.wireType)?.label ?? (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
+    wireTypeOf(w.wireType)?.label ??
+    (isHVWire(w, evParts) ? `HV cable ${w.crossSection} mm²` : `12 V wire ${w.crossSection} mm²`);
   const stopAllModes = () => {
     setConnectMode(false);
     setConnectFirst(null);
@@ -1589,16 +1919,17 @@ export default function Scene3DViewer() {
     const a = connectFirst;
     const b = id;
     setConnections((prev) => {
-      if (
-        !wps.length &&
-        prev.some(
-          (c) => (c.a === a && c.b === b) || (c.a === b && c.b === a)
-        )
-      )
+      if (!wps.length && prev.some((c) => (c.a === a && c.b === b) || (c.a === b && c.b === a)))
         return prev;
       return [
         ...prev,
-        { id: `${a}::${b}::${Date.now()}`, a, b, type: lineType, waypoints: wps.length ? wps : undefined },
+        {
+          id: `${a}::${b}::${Date.now()}`,
+          a,
+          b,
+          type: lineType,
+          waypoints: wps.length ? wps : undefined,
+        },
       ];
     });
     setConnectFirst(null);
@@ -1624,11 +1955,15 @@ export default function Scene3DViewer() {
   // --- Underground LV cables -------------------------------------------------
   const CABLE_ENDPOINT_TYPES: AddableType[] = ["jaotuskilp", "alajaam", "evcharger"];
   const cableExitLocal = (type: AddableType): [number, number, number] =>
-    type === "alajaam" ? [0.6, 0.05, 1.05] : type === "evcharger" ? [0, 0.03, 0] : [0.18, 0.03, 0.1];
+    type === "alajaam"
+      ? [0.6, 0.05, 1.05]
+      : type === "evcharger"
+        ? [0, 0.03, 0]
+        : [0.18, 0.03, 0.1];
   const rotateLocal = (
     local: [number, number, number],
     origin: [number, number, number],
-    rotY: number
+    rotY: number,
   ): [number, number, number] => {
     const cos = Math.cos(rotY);
     const sin = Math.sin(rotY);
@@ -1641,37 +1976,84 @@ export default function Scene3DViewer() {
   type CableEnd = { id: string; name: string; point: [number, number, number] };
   /** Ends that cables and lines can attach to as a whole 3-phase group. */
   const terminalEnds = useMemo(() => {
-    const out: { id: string; name: string; point: [number, number, number]; phases: [number, number, number][] }[] = [];
+    const out: {
+      id: string;
+      name: string;
+      point: [number, number, number];
+      phases: [number, number, number][];
+    }[] = [];
     addedItems.forEach((i, idx) => {
-      const world = (l: [number, number, number][]) => l.map((p) => rotateLocal(p, i.position, i.rotationY));
+      const world = (l: [number, number, number][]) =>
+        l.map((p) => rotateLocal(p, i.position, i.rotationY));
       if (i.type === "transformer") {
         (["hv", "lv"] as const).forEach((side) => {
           const ph = world(transformerTerminalLocals(side));
-          out.push({ id: `${i.id}#${side}`, name: `Transformer #${idx + 1} ${side.toUpperCase()}`, point: ph[1], phases: ph });
+          out.push({
+            id: `${i.id}#${side}`,
+            name: `Transformer #${idx + 1} ${side.toUpperCase()}`,
+            point: ph[1],
+            phases: ph,
+          });
         });
       } else if (i.type === "alajaam") {
         const cubs = parseSwitchgear(objectProps[i.id]?.values.swg);
         cubs.forEach((c, k) => {
           const ph = world(cubicleTerminalLocals(k, cubs.length));
-          out.push({ id: `${i.id}#mv${k + 1}`, name: `Alajaam #${idx + 1} · ${c.label} (10 kV)`, point: ph[1], phases: ph });
+          out.push({
+            id: `${i.id}#mv${k + 1}`,
+            name: `Alajaam #${idx + 1} · ${c.label} (10 kV)`,
+            point: ph[1],
+            phases: ph,
+          });
         });
       } else if (i.type === "gis") {
         const cubs = parseGIS(objectProps[i.id]?.values.swg);
         cubs.forEach((c, k) => {
           const ph = world(gisTerminalLocals(k, cubs.length));
-          out.push({ id: `${i.id}#mv${k + 1}`, name: `GIS #${idx + 1} · ${c.label} (MV)`, point: ph[1], phases: ph });
+          out.push({
+            id: `${i.id}#mv${k + 1}`,
+            name: `GIS #${idx + 1} · ${c.label} (MV)`,
+            point: ph[1],
+            phases: ph,
+          });
         });
       } else if (i.type === "lvpanel") {
         const devs = parseLVPanel(objectProps[i.id]?.values.lvdev);
-        const inc = world(lvPanelPins(devs).slice(0, 3).map((p) => p.local));
-        out.push({ id: `${i.id}#ac`, name: `LV panel #${idx + 1} · Incoming`, point: inc[1], phases: inc });
+        const inc = world(
+          lvPanelPins(devs)
+            .slice(0, 3)
+            .map((p) => p.local),
+        );
+        out.push({
+          id: `${i.id}#ac`,
+          name: `LV panel #${idx + 1} · Incoming`,
+          point: inc[1],
+          phases: inc,
+        });
         lvCableEnds(devs).forEach(({ dev, phases }) => {
           const ph = world(phases);
-          out.push({ id: `${i.id}#o${dev.id}`, name: `LV panel #${idx + 1} · ${dev.label} out`, point: ph[1], phases: ph });
+          out.push({
+            id: `${i.id}#o${dev.id}`,
+            name: `LV panel #${idx + 1} · ${dev.label} out`,
+            point: ph[1],
+            phases: ph,
+          });
         });
-      } else if (i.type === "vsource" && String(objectProps[i.id]?.values.sourceKind ?? "AC") !== "DC") {
-        const ph = world(sourcePins("AC").slice(0, 3).map((p) => p.local));
-        out.push({ id: `${i.id}#ac`, name: `Voltage source #${idx + 1}`, point: ph[1], phases: ph });
+      } else if (
+        i.type === "vsource" &&
+        String(objectProps[i.id]?.values.sourceKind ?? "AC") !== "DC"
+      ) {
+        const ph = world(
+          sourcePins("AC")
+            .slice(0, 3)
+            .map((p) => p.local),
+        );
+        out.push({
+          id: `${i.id}#ac`,
+          name: `Voltage source #${idx + 1}`,
+          point: ph[1],
+          phases: ph,
+        });
       }
     });
     return out;
@@ -1692,7 +2074,8 @@ export default function Scene3DViewer() {
     cables.forEach((c) => {
       [c.a, c.b].forEach((id) => {
         const p = parsePt(id);
-        if (p && !list.some((e) => e.id === id)) list.push({ id, name: "Loose end", point: [p[0], 0, p[1]] });
+        if (p && !list.some((e) => e.id === id))
+          list.push({ id, name: "Loose end", point: [p[0], 0, p[1]] });
       });
     });
     // Cable joints: an existing cable's midpoint can host a new branch cable
@@ -1705,11 +2088,7 @@ export default function Scene3DViewer() {
         name: `Cable joint #${idx + 1} (${cableLabel(c.size)})`,
         point: c.waypoints?.length
           ? cableRoutePointAt(a.point, b.point, 0.7, c.waypoints, 0.5)
-          : [
-              (a.point[0] + b.point[0]) / 2,
-              -0.7,
-              (a.point[2] + b.point[2]) / 2,
-            ],
+          : [(a.point[0] + b.point[0]) / 2, -0.7, (a.point[2] + b.point[2]) / 2],
       });
     });
     return list;
@@ -1745,7 +2124,6 @@ export default function Scene3DViewer() {
     ]);
     setCableFirst(null);
     setCableDraft([]);
-
   };
 
   /** Remove a cable and any cables branched off its joint. */
@@ -1784,20 +2162,24 @@ export default function Scene3DViewer() {
     cableLoose(c)
       ? 0
       : c.voltage === 400
-      ? (c.powerKw * 1000) / (Math.sqrt(3) * 400 * PF)
-      : (c.powerKw * 1000) / (230 * PF);
+        ? (c.powerKw * 1000) / (Math.sqrt(3) * 400 * PF)
+        : (c.powerKw * 1000) / (230 * PF);
   const selectedCable = cables.find((c) => c.id === selectedCableId) ?? null;
 
   // --- Aerial line geometry (posts or loose ends) ---------------------------
-  const linePhases = (c: LineRecord): [[number, number, number][], [number, number, number][]] | null => {
+  const linePhases = (
+    c: LineRecord,
+  ): [[number, number, number][], [number, number, number][]] | null => {
     const ia = addedItems.find((i) => i.id === c.a);
     const ib = addedItems.find((i) => i.id === c.b);
-    let pa = ia ? worldPhasePoints(ia) : terminalEnds.find((t) => t.id === c.a)?.phases ?? null;
-    let pb = ib ? worldPhasePoints(ib) : terminalEnds.find((t) => t.id === c.b)?.phases ?? null;
+    let pa = ia ? worldPhasePoints(ia) : (terminalEnds.find((t) => t.id === c.a)?.phases ?? null);
+    let pb = ib ? worldPhasePoints(ib) : (terminalEnds.find((t) => t.id === c.b)?.phases ?? null);
     const loose = (pt: GroundPt, ref: [number, number, number][] | null) => {
       const r = ref && ref.length ? ref : DEFAULT_LINE_PHASES;
       const cc = centroid(r);
-      return r.map(([x, , z]) => [pt[0] + x - cc[0], 8, pt[1] + z - cc[2]] as [number, number, number]);
+      return r.map(
+        ([x, , z]) => [pt[0] + x - cc[0], 8, pt[1] + z - cc[2]] as [number, number, number],
+      );
     };
     const ptA = parsePt(c.a);
     const ptB = parsePt(c.b);
@@ -1825,9 +2207,10 @@ export default function Scene3DViewer() {
     const p = linePaths(c)?.[0];
     if (!p) return 0;
     let len = 0;
-    for (let i = 1; i < p.length; i++) len += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1], p[i][2] - p[i - 1][2]);
+    for (let i = 1; i < p.length; i++)
+      len += Math.hypot(p[i][0] - p[i - 1][0], p[i][1] - p[i - 1][1], p[i][2] - p[i - 1][2]);
     return len;
-  };  /** Node id for phase k (0..2, 3 = neutral) at a cable/line end. */
+  }; /** Node id for phase k (0..2, 3 = neutral) at a cable/line end. */
   const phaseNode = (end: string, k: number) => {
     const [oid, side] = end.split("#");
     if (side === "hv") return `${oid}#${k < 3 ? `h${k + 1}` : "hn"}`;
@@ -1837,7 +2220,10 @@ export default function Scene3DViewer() {
   };
   const AL_RHO = 0.0282;
   const isSwg = (t: string) => t === "alajaam" || t === "gis";
-  const switchgearOf = (id: string) => (addedItems.find((i) => i.id === id)?.type === "gis" ? parseGIS : parseSwitchgear)(objectProps[id]?.values.swg);
+  const switchgearOf = (id: string) =>
+    (addedItems.find((i) => i.id === id)?.type === "gis" ? parseGIS : parseSwitchgear)(
+      objectProps[id]?.values.swg,
+    );
   const setSwitchgear = (id: string, next: Cubicle[]) =>
     setObjectProps((prev) => {
       const cur = prev[id] ?? initPropsFor(addedItems.find((i) => i.id === id)?.type ?? "alajaam");
@@ -1850,9 +2236,18 @@ export default function Scene3DViewer() {
       return { ...prev, [id]: { ...cur, values: { ...cur.values, lvdev: JSON.stringify(next) } } };
     });
   const lvPanels = addedItems.filter((i) => i.type === "lvpanel");
-  const lvDevCurrent = (pid: string, d: LVDevice) => Math.max(0, ...Array.from({ length: d.poles }, (_, p) => circuit.wireCurrent[lvBreakerWireId(pid, d.id, p)] ?? 0));
-  const cubicleCurrent = (subId: string, k: number) => Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
-  const bundleCurrent = (id: string) => Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
+  const lvDevCurrent = (pid: string, d: LVDevice) =>
+    Math.max(
+      0,
+      ...Array.from(
+        { length: d.poles },
+        (_, p) => circuit.wireCurrent[lvBreakerWireId(pid, d.id, p)] ?? 0,
+      ),
+    );
+  const cubicleCurrent = (subId: string, k: number) =>
+    Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
+  const bundleCurrent = (id: string) =>
+    Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
   // The circuit is solved only when something electrical changes (objects,
   // wires, cables, lines, settings) — not on hover, menus or camera moves.
   // Deferred inputs let React skip intermediate solves while dragging.
@@ -1865,33 +2260,86 @@ export default function Scene3DViewer() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const circuit = useMemo(() => {
     const wires = [
-      ...dCables.filter((c) => !cableLoose(c)).flatMap((c) => {
-        const sz = cableSizeOf(c.size);
-        const len = cableLengthOf(c);
-        return (sz.mv ? [0, 1, 2] : [0, 1, 2, 3]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / sz.area }));
-      }),
-      ...dConns.filter((c) => !parsePt(c.a) && !parsePt(c.b)).flatMap((c) => {
-        const lt = lineTypeOf(c.type);
-        const len = lineLengthOf(c);
-        return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({ id: `${c.id}~${k}`, a: phaseNode(c.a, k), b: phaseNode(c.b, k), r: (AL_RHO * len) / lt.crossSection }));
-      }),
+      ...dCables
+        .filter((c) => !cableLoose(c))
+        .flatMap((c) => {
+          const sz = cableSizeOf(c.size);
+          const len = cableLengthOf(c);
+          return (sz.mv ? [0, 1, 2] : [0, 1, 2, 3]).map((k) => ({
+            id: `${c.id}~${k}`,
+            a: phaseNode(c.a, k),
+            b: phaseNode(c.b, k),
+            r: (AL_RHO * len) / sz.area,
+          }));
+        }),
+      ...dConns
+        .filter((c) => !parsePt(c.a) && !parsePt(c.b))
+        .flatMap((c) => {
+          const lt = lineTypeOf(c.type);
+          const len = lineLengthOf(c);
+          return (lt.voltage < 1000 ? [0, 1, 2, 3] : [0, 1, 2]).map((k) => ({
+            id: `${c.id}~${k}`,
+            a: phaseNode(c.a, k),
+            b: phaseNode(c.b, k),
+            r: (AL_RHO * len) / lt.crossSection,
+          }));
+        }),
     ];
     const panels = dItems.filter((i) => i.type === "lvpanel");
     const devs = (id: string) => parseLVPanel(dProps[id]?.values.lvdev);
     wires.push(...panels.flatMap((i) => lvPanelWires(i.id, devs(i.id))));
-    wires.push(...dItems.filter((i) => isSwg(i.type)).flatMap((i) => switchgearWires(i.id, (i.type === "gis" ? parseGIS : parseSwitchgear)(dProps[i.id]?.values.swg))));
+    wires.push(
+      ...dItems
+        .filter((i) => isSwg(i.type))
+        .flatMap((i) =>
+          switchgearWires(
+            i.id,
+            (i.type === "gis" ? parseGIS : parseSwitchgear)(dProps[i.id]?.values.swg),
+          ),
+        ),
+    );
     return solveCircuits(
-      dItems.filter((i) => i.type === "vsource").map((i) => {
-        const v = dProps[i.id]?.values ?? sourceDefaults("AC");
-        return { id: i.id, kind: String(v.sourceKind ?? "AC"), voltage: Number(v.srcVoltage ?? 0), internalR: Number(v.internalR ?? 0) };
-      }),
-      [...dEvWires.map((w) => ({ id: w.id, a: w.a, b: w.b, r: wireResistance(anyWireLength(w), w.crossSection, w.material) })), ...wires],
-      [...dEvParts.flatMap((p) => evLoads(p, dProps[p.id]?.values)), ...panels.flatMap((i) => lvPanelLoads(i.id, devs(i.id)))],
-      dItems.filter((i) => i.type === "transformer").map((i) => ({ id: i.id, ...transformerModel({ ...transformerDefaults(), ...dProps[i.id]?.values }) })),
+      dItems
+        .filter((i) => i.type === "vsource")
+        .map((i) => {
+          const v = dProps[i.id]?.values ?? sourceDefaults("AC");
+          return {
+            id: i.id,
+            kind: String(v.sourceKind ?? "AC"),
+            voltage: Number(v.srcVoltage ?? 0),
+            internalR: Number(v.internalR ?? 0),
+          };
+        }),
+      [
+        ...dEvWires.map((w) => ({
+          id: w.id,
+          a: w.a,
+          b: w.b,
+          r: wireResistance(anyWireLength(w), w.crossSection, w.material),
+        })),
+        ...wires,
+      ],
+      [
+        ...dEvParts.flatMap((p) => evLoads(p, dProps[p.id]?.values)),
+        ...panels.flatMap((i) => lvPanelLoads(i.id, devs(i.id))),
+      ],
+      dItems
+        .filter((i) => i.type === "transformer")
+        .map((i) => ({
+          id: i.id,
+          ...transformerModel({ ...transformerDefaults(), ...dProps[i.id]?.values }),
+        })),
     );
   }, [dItems, dEvParts, dEvWires, dCables, dConns, dProps]);
   // Protection: closed breakers trip instantly when current exceeds I> / I>>.
-  const tripKey = addedItems.filter((i) => isSwg(i.type)).map((i) => switchgearOf(i.id).map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`).join(",")).join("|");
+  const tripKey = addedItems
+    .filter((i) => isSwg(i.type))
+    .map((i) =>
+      switchgearOf(i.id)
+        .map((c, k) => `${c.id}:${cubicleCurrent(i.id, k).toFixed(1)}`)
+        .join(","),
+    )
+    .join("|");
   useEffect(() => {
     for (const it of addedItems.filter((i) => isSwg(i.type))) {
       const cubs = switchgearOf(it.id);
@@ -1902,17 +2350,27 @@ export default function Scene3DViewer() {
         const I = cubicleCurrent(it.id, k);
         if (I <= c.pickupA) return c;
         changed = true;
-        return { ...c, tripped: I > c.scA ? `I>> short circuit (${I.toFixed(0)} A)` : `I> overcurrent (${I.toFixed(0)} A)` };
+        return {
+          ...c,
+          tripped:
+            I > c.scA
+              ? `I>> short circuit (${I.toFixed(0)} A)`
+              : `I> overcurrent (${I.toFixed(0)} A)`,
+        };
       });
       if (changed) setSwitchgear(it.id, next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tripKey, addedItems.map((i) => String(objectProps[i.id]?.values.relayAuto ?? "")).join()]);
 
-
-
   // LV panel protection: MCCB / MCB trip from solver pole currents.
-  const lvTripKey = lvPanels.map((i) => lvDevsOf(i.id).map((d) => `${d.id}:${lvDevCurrent(i.id, d).toFixed(2)}`).join(",")).join("|");
+  const lvTripKey = lvPanels
+    .map((i) =>
+      lvDevsOf(i.id)
+        .map((d) => `${d.id}:${lvDevCurrent(i.id, d).toFixed(2)}`)
+        .join(","),
+    )
+    .join("|");
   useEffect(() => {
     for (const it of lvPanels) {
       const devs = lvDevsOf(it.id);
@@ -1930,19 +2388,55 @@ export default function Scene3DViewer() {
 
   // --- Shared routing for cables, lines and wires -----------------------------
   const routingKind: "cable" | "line" | "wire" | null =
-    pendingAdd || pendingEV ? null : cableMode ? "cable" : connectMode ? "line" : evWireMode ? "wire" : null;
+    pendingAdd || pendingEV
+      ? null
+      : cableMode
+        ? "cable"
+        : connectMode
+          ? "line"
+          : evWireMode
+            ? "wire"
+            : null;
   const routeFirst =
-    routingKind === "cable" ? cableFirst : routingKind === "line" ? connectFirst : routingKind === "wire" ? evWireFirst : null;
+    routingKind === "cable"
+      ? cableFirst
+      : routingKind === "line"
+        ? connectFirst
+        : routingKind === "wire"
+          ? evWireFirst
+          : null;
   const availableWirePins = [
-    ...(true ? evParts.map((part) => ({ id: part.id, pins: pinsOf(part.type), pos: part.position, rot: part.rotationY })) : []),
-    ...addedItems.filter((item) => PIN_ITEM_TYPES.includes(item.type)).map((item) => ({ id: item.id, pins: pinDefsOfItem(item), pos: item.position, rot: item.rotationY })),
-  ].flatMap((owner) => owner.pins.map((pin) => ({
-    id: `${owner.id}#${pin.id}`,
-    point: pinWorldOf(pin.local, owner.pos, owner.rot),
-    color: PIN_COLORS[pin.role],
-  }))).filter((pin) => pin.id !== evWireFirst);
+    ...evParts.map((part) => ({
+      id: part.id,
+      pins: pinsOf(part.type),
+      pos: part.position,
+      rot: part.rotationY,
+    })),
+    ...addedItems
+      .filter((item) => PIN_ITEM_TYPES.includes(item.type))
+      .map((item) => ({
+        id: item.id,
+        pins: pinDefsOfItem(item),
+        pos: item.position,
+        rot: item.rotationY,
+      })),
+  ]
+    .flatMap((owner) =>
+      owner.pins.map((pin) => ({
+        id: `${owner.id}#${pin.id}`,
+        point: pinWorldOf(pin.local, owner.pos, owner.rot),
+        color: PIN_COLORS[pin.role],
+      })),
+    )
+    .filter((pin) => pin.id !== evWireFirst);
   /** Transformer HV/LV and AC source connectors that aerial lines snap to. */
-  const lineSnapEnds = terminalEnds.filter((t) => t.id !== connectFirst).map((t) => ({ id: t.id, point: t.point, color: t.id.endsWith("#hv") ? "#ef4444" : "#22c55e" }));
+  const lineSnapEnds = terminalEnds
+    .filter((t) => t.id !== connectFirst)
+    .map((t) => ({
+      id: t.id,
+      point: t.point,
+      color: t.id.endsWith("#hv") ? "#ef4444" : "#22c55e",
+    }));
   const finishRoute = (endId: string, wps: Waypoint[] = cableDraft) => {
     if (routingKind === "cable") handleCableClick(endId, wps);
     else if (routingKind === "line") handleItemClickForConnect(endId, wps);
@@ -1958,14 +2452,20 @@ export default function Scene3DViewer() {
     const pt = parsePt(id);
     if (pt) return [pt[0], 0, pt[1]];
     if (routingKind === "cable") return cableEndpoints.find((e) => e.id === id)?.point ?? null;
-    if (routingKind === "line") return addedItems.find((i) => i.id === id)?.position ?? terminalEnds.find((t) => t.id === id)?.point ?? null;
+    if (routingKind === "line")
+      return (
+        addedItems.find((i) => i.id === id)?.position ??
+        terminalEnds.find((t) => t.id === id)?.point ??
+        null
+      );
     return wireEnd(id);
   };
   useEffect(() => {
     if (!routingKind || !routeFirst) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT"))
+        return;
       if (e.key === "Escape") {
         cancelRoute();
       } else if (e.key === "Backspace") {
@@ -1982,8 +2482,6 @@ export default function Scene3DViewer() {
   });
   const updateCable = (id: string, patch: Partial<CableRecord>) =>
     setCables((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
-
-
 
   const activeScene = SCENES.find((s) => s.id === sceneId)!;
   const activeView = VIEWS.find((v) => v.id === viewId)!;
@@ -2003,7 +2501,10 @@ export default function Scene3DViewer() {
     setViewsOpen(false);
   };
 
-  const moveRulerPoint = useCallback((i: number, p: Point3) => setRulerPoints((prev) => prev.map((q, k) => (k === i ? p : q))), []);
+  const moveRulerPoint = useCallback(
+    (i: number, p: Point3) => setRulerPoints((prev) => prev.map((q, k) => (k === i ? p : q))),
+    [],
+  );
   const addRulerPoint = useCallback((p: Point3) => {
     setRulerPoints((prev) => (prev.length >= 2 ? [p] : [...prev, p]));
   }, []);
@@ -2014,8 +2515,18 @@ export default function Scene3DViewer() {
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const saveToFile = () => {
     const text = serializeScene({
-      sceneId, addedItems, connections, cables, feeders, evParts, evWires, objectProps,
-      weather: weather as unknown as Record<string, unknown>, groundMode, customGroundWidthM, showFlow,
+      sceneId,
+      addedItems,
+      connections,
+      cables,
+      feeders,
+      evParts,
+      evWires,
+      objectProps,
+      weather: weather as unknown as Record<string, unknown>,
+      groundMode,
+      customGroundWidthM,
+      showFlow,
     });
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -2071,7 +2582,6 @@ export default function Scene3DViewer() {
     setEVWireFirst(null);
     setPendingEV(null);
 
-
     setMoveMode(false);
     setDraggingId(null);
 
@@ -2114,34 +2624,26 @@ export default function Scene3DViewer() {
     groundMode === "default"
       ? undefined // AerialGround default (bundled aerial, known 95 m width)
       : groundMode === "custom" && customGroundUrl
-      ? customGroundUrl
-      : null;
+        ? customGroundUrl
+        : null;
   const showGround = groundUrl !== null;
   // Default aerial has a known real-world size (~95 m wide). For custom uploads
   // the scale is unknown, so the user picks the real width via the slider.
-  const realWidth =
-    groundMode === "custom" ? customGroundWidthM : undefined;
+  const realWidth = groundMode === "custom" ? customGroundWidthM : undefined;
 
   return (
-    <div
-      className="relative h-full w-full"
-      onContextMenu={(e) => e.preventDefault()}
-    >
+    <div className="relative h-full w-full" onContextMenu={(e) => e.preventDefault()}>
       <img
         src={vayerLogo.url}
         alt="Vayer 3d"
         className="pointer-events-none absolute left-1/2 top-3 z-10 h-8 -translate-x-1/2 rounded-md shadow-md"
       />
       <Canvas
-        shadows
+        shadows="percentage"
         gl={{ logarithmicDepthBuffer: true }}
         camera={{ position: [14, 11, 16], fov: 50, near: 0.000001, far: 1_000_000_000 }}
         style={{
-          background: night
-            ? "#0b1020"
-            : weather.active && weather.rain
-            ? "#c9ccd1"
-            : "#f6f3ec",
+          background: night ? "#0b1020" : weather.active && weather.rain ? "#c9ccd1" : "#f6f3ec",
           transition: "background 400ms ease",
         }}
         onPointerMissed={() => {
@@ -2163,9 +2665,7 @@ export default function Scene3DViewer() {
             shadow-mapSize-height={2048}
           />
           <GroundPlane />
-          {showGround && (
-            <AerialGround url={groundUrl ?? ""} realWidthM={realWidth} />
-          )}
+          {showGround && <AerialGround url={groundUrl ?? ""} realWidthM={realWidth} />}
           <WeatherEffects weather={weather} />
           <PartLabelProvider
             setLabel={(name, pos) => {
@@ -2180,7 +2680,7 @@ export default function Scene3DViewer() {
             }}
             enabled={!rulerActive}
           >
-            {(
+            {
               <group>
                 {sceneId === "electriccar" && <EVChassisGhost />}
                 {evParts.map((part) => (
@@ -2190,19 +2690,39 @@ export default function Scene3DViewer() {
                       const st = circuit.partStatus[part.id]?.state;
                       if (!st || st === "off") return null;
                       const col = st === "on" ? "#22c55e" : "#ef4444";
-                      return (<>
-                        <mesh position={[part.position[0], part.position[1] + EV_DEFS[part.type].terminalY + 0.12, part.position[2]]} raycast={() => null}>
-                          <sphereGeometry args={[0.035, 16, 12]} />
-                          <meshBasicMaterial color={col} toneMapped={false} />
-                        </mesh>
-                        {showFlow && circuit.partStatus[part.id].powerW > 0 && (
-                          <Html position={[part.position[0], part.position[1] + EV_DEFS[part.type].terminalY + 0.2, part.position[2]]} center style={{ pointerEvents: "none" }}>
-                            <span className="whitespace-nowrap rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-foreground" data-device-power={part.id}>
-                              {(circuit.partStatus[part.id].powerW / 1000).toFixed(2)} kW
-                            </span>
-                          </Html>
-                        )}
-                      </>);
+                      return (
+                        <>
+                          <mesh
+                            position={[
+                              part.position[0],
+                              part.position[1] + EV_DEFS[part.type].terminalY + 0.12,
+                              part.position[2],
+                            ]}
+                            raycast={() => null}
+                          >
+                            <sphereGeometry args={[0.035, 16, 12]} />
+                            <meshBasicMaterial color={col} toneMapped={false} />
+                          </mesh>
+                          {showFlow && circuit.partStatus[part.id].powerW > 0 && (
+                            <Html
+                              position={[
+                                part.position[0],
+                                part.position[1] + EV_DEFS[part.type].terminalY + 0.2,
+                                part.position[2],
+                              ]}
+                              center
+                              style={{ pointerEvents: "none" }}
+                            >
+                              <span
+                                className="whitespace-nowrap rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-foreground"
+                                data-device-power={part.id}
+                              >
+                                {(circuit.partStatus[part.id].powerW / 1000).toFixed(2)} kW
+                              </span>
+                            </Html>
+                          )}
+                        </>
+                      );
                     })()}
                     {moveMode && (
                       <mesh
@@ -2225,58 +2745,101 @@ export default function Scene3DViewer() {
                   </group>
                 ))}
               </group>
-            )}
-            {evWireMode && [
-              ...(true ? evParts.map((p) => ({ id: p.id, pins: pinsOf(p.type), pos: p.position, rot: p.rotationY })) : []),
-              ...addedItems.filter((i) => PIN_ITEM_TYPES.includes(i.type)).map((i) => ({ id: i.id, pins: pinDefsOfItem(i), pos: i.position, rot: i.rotationY })),
-            ].flatMap((o) =>
-              o.pins.map((pin) => {
-                const endId = `${o.id}#${pin.id}`;
-                const used = evWires.some((w) => w.a === endId || w.b === endId);
+            }
+            {evWireMode &&
+              [
+                ...evParts.map((p) => ({
+                  id: p.id,
+                  pins: pinsOf(p.type),
+                  pos: p.position,
+                  rot: p.rotationY,
+                })),
+                ...addedItems
+                  .filter((i) => PIN_ITEM_TYPES.includes(i.type))
+                  .map((i) => ({
+                    id: i.id,
+                    pins: pinDefsOfItem(i),
+                    pos: i.position,
+                    rot: i.rotationY,
+                  })),
+              ].flatMap((o) =>
+                o.pins.map((pin) => {
+                  const endId = `${o.id}#${pin.id}`;
+                  const used = evWires.some((w) => w.a === endId || w.b === endId);
+                  return (
+                    <mesh
+                      key={endId}
+                      position={pinWorldOf(pin.local, o.pos, o.rot)}
+                      renderOrder={10}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEVWireClick(endId);
+                      }}
+                      onPointerOver={(e) => {
+                        e.stopPropagation();
+                        setHoveredWirePin(endId);
+                        setPartLabel(`${pinInfo(endId)?.owner ?? ""} · ${pin.label}`);
+                        setPartLabelPos(pinWorldOf(pin.local, o.pos, o.rot));
+                      }}
+                      onPointerOut={() =>
+                        setHoveredWirePin((current) => (current === endId ? null : current))
+                      }
+                    >
+                      <sphereGeometry args={[0.018, 12, 12]} />
+                      <meshBasicMaterial
+                        color={evWireFirst === endId ? "#f59e0b" : PIN_COLORS[pin.role]}
+                        transparent
+                        opacity={used ? 0.55 : 0.95}
+                        depthTest={false}
+                      />
+                    </mesh>
+                  );
+                }),
+              )}
+            {routingKind === "wire" &&
+              hoveredWirePin &&
+              (() => {
+                const pin = availableWirePins.find((candidate) => candidate.id === hoveredWirePin);
+                if (!pin) return null;
                 return (
-                  <mesh
-                    key={endId}
-                    position={pinWorldOf(pin.local, o.pos, o.rot)}
-                    renderOrder={10}
-                    onClick={(e) => { e.stopPropagation(); handleEVWireClick(endId); }}
-                    onPointerOver={(e) => { e.stopPropagation(); setHoveredWirePin(endId); setPartLabel(`${pinInfo(endId)?.owner ?? ""} · ${pin.label}`); setPartLabelPos(pinWorldOf(pin.local, o.pos, o.rot)); }}
-                    onPointerOut={() => setHoveredWirePin((current) => current === endId ? null : current)}
+                  <Html
+                    position={pin.point}
+                    center
+                    zIndexRange={[30, 20]}
+                    style={{ pointerEvents: "none" }}
                   >
-                    <sphereGeometry args={[0.018, 12, 12]} />
-                    <meshBasicMaterial color={evWireFirst === endId ? "#f59e0b" : PIN_COLORS[pin.role]} transparent opacity={used ? 0.55 : 0.95} depthTest={false} />
-                  </mesh>
+                    <div
+                      aria-label="Wiring pin target"
+                      data-pin-target={pin.id}
+                      className="wiring-pin-triangle h-2.5 w-3 -translate-y-3 bg-wiring-pin"
+                    />
+                  </Html>
                 );
-              })
-            )}
-            {routingKind === "wire" && hoveredWirePin && (() => {
-              const pin = availableWirePins.find((candidate) => candidate.id === hoveredWirePin);
-              if (!pin) return null;
-              return (
-                <Html position={pin.point} center zIndexRange={[30, 20]} style={{ pointerEvents: "none" }}>
-                  <div
-                    aria-label="Wiring pin target"
-                    data-pin-target={pin.id}
-                    className="wiring-pin-triangle h-2.5 w-3 -translate-y-3 bg-wiring-pin"
+              })()}
+            {showFlow &&
+              evWires.map((w) => {
+                const flow = circuit.wireFlow[w.id];
+                const a = wireEnd(w.a);
+                const b = wireEnd(w.b);
+                if (!flow || !a || !b) return null;
+                const curve =
+                  w.routingMode === "auto"
+                    ? roundedOrthogonalCurve(a, b, w.waypoints ?? [])
+                    : w.waypoints?.length || parsePt(w.a) || parsePt(w.b)
+                      ? routedWireCurve(a, b, w.waypoints ?? [])
+                      : evWireCurve(a, b);
+                return (
+                  <ElectronFlow
+                    key={`flow-${w.id}-${a.join()}-${b.join()}-${(w.waypoints ?? []).join()}`}
+                    curve={curve}
+                    current={circuit.wireCurrent[w.id] ?? 0}
+                    dir={flow.dir}
+                    ac={flow.ac}
+                    phaseDeg={flow.phaseDeg}
+                    radius={Math.max((Math.sqrt(w.crossSection / Math.PI) / 1000) * 2.2, 0.004)}
                   />
-                </Html>
-              );
-            })()}
-            {showFlow && evWires.map((w) => {
-              const flow = circuit.wireFlow[w.id];
-              const a = wireEnd(w.a);
-              const b = wireEnd(w.b);
-              if (!flow || !a || !b) return null;
-              const curve = w.routingMode === "auto"
-                ? roundedOrthogonalCurve(a, b, w.waypoints ?? [])
-                : w.waypoints?.length || parsePt(w.a) || parsePt(w.b)
-                  ? routedWireCurve(a, b, w.waypoints ?? [])
-                  : evWireCurve(a, b);
-              return (
-                <ElectronFlow key={`flow-${w.id}-${a.join()}-${b.join()}-${(w.waypoints ?? []).join()}`} curve={curve}
-                  current={circuit.wireCurrent[w.id] ?? 0} dir={flow.dir} ac={flow.ac} phaseDeg={flow.phaseDeg}
-                  radius={Math.max(Math.sqrt(w.crossSection / Math.PI) / 1000 * 2.2, 0.004)} />
-              );
-            })}
+                );
+              })}
             {evWires.map((w) => {
               const a = wireEnd(w.a);
               const b = wireEnd(w.b);
@@ -2324,97 +2887,100 @@ export default function Scene3DViewer() {
               const isSelected = connectMode && connectFirst === item.id;
               const itemStep = 999; // assembly removed: always fully built
               return (
-                <group
-                  key={item.id}
-                  position={item.position}
-                  rotation={[0, item.rotationY, 0]}
-                >
-                 <PartOwner id={item.id}>
-
-                  {item.type === "puitmast" && (
-                    <ElectricalPost
-                      step={itemStep}
-                      showAutoLines={false}
-                    />
-                  )}
-                  {item.type === "puitmast20" && (
-                    <WoodenMast20kV
-                      step={itemStep}
-                      showNextSpan={false}
-                    />
-                  )}
-                  {item.type === "jaotuskilp" && (
-                    <>
-                      <DistributionPanel step={itemStep} />
-                      <FeederBlocks feeders={feedersOf(item.id)} />
-                      <Html position={[0, 1.5, 0]} center>
-                        <button
-                          onClick={() => openFeeders(item.id)}
-                          className="whitespace-nowrap rounded-full border border-white/60 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-amber-400/90"
-                        >
-                          Feeders ({feedersOf(item.id).length})
-                        </button>
-                      </Html>
-                    </>
-                  )}
-                  {item.type === "alajaam" && (
-                    <>
-                      <Substation step={itemStep} />
-                      <SwitchgearModel cubicles={parseSwitchgear(objectProps[item.id]?.values.swg)} />
-                    </>
-                  )}
-                  {item.type === "gis" && (
-                    <GISModel cubicles={parseGIS(objectProps[item.id]?.values.swg)} relayAuto={relayAutoOn(objectProps[item.id]?.values.relayAuto)} />
-                  )}
-                  {item.type === "lvpanel" && (
-                    <LVPanelModel
-                      devices={lvDevsOf(item.id)}
-                      spdOk={Object.fromEntries(lvDevsOf(item.id).filter((d) => d.kind === "spd").map((d) => [d.id, circuit.partStatus[lvSpdOwner(item.id, d.id)]?.state === "on"]))}
-                    />
-                  )}
-                  {item.type === "transformer" && <TransformerModel />}
-                  {item.type === "vsource" && (
-                    <VoltageSource kind={String(objectProps[item.id]?.values.sourceKind ?? "AC")} />
-                  )}
-                  {item.type === "evcharger" && (
-                    <EVCharger kind={String(objectProps[item.id]?.values.chargerType ?? "ac-wall")} />
-                  )}
-                  {/* Invisible proxy for connect / move mode */}
-                   {(moveMode || (connectMode && item.type !== "transformer" && item.type !== "vsource")) && (
-                    <mesh
-                      position={[0, 5, 0]}
-                      onClick={(e) => {
-                        if (!connectMode) return;
-                        e.stopPropagation();
-                        handleItemClickForConnect(item.id);
-                      }}
-                      onPointerDown={(e) => {
-                        if (!moveMode || e.button !== 0) return;
-                        e.stopPropagation();
-                        setDraggingId(item.id);
-                      }}
-                    >
-                      <cylinderGeometry args={[0.6, 0.6, 12, 12]} />
-                      <meshBasicMaterial
-                        color={
-                          draggingId === item.id
-                            ? "#f59e0b"
-                            : isSelected
-                            ? "#22c55e"
-                            : moveMode
-                            ? "#a855f7"
-                            : "#3b82f6"
-                        }
-                        transparent
-                        opacity={
-                          draggingId === item.id || isSelected ? 0.35 : 0.15
-                        }
+                <group key={item.id} position={item.position} rotation={[0, item.rotationY, 0]}>
+                  <PartOwner id={item.id}>
+                    {item.type === "puitmast" && (
+                      <ElectricalPost step={itemStep} showAutoLines={false} />
+                    )}
+                    {item.type === "puitmast20" && (
+                      <WoodenMast20kV step={itemStep} showNextSpan={false} />
+                    )}
+                    {item.type === "jaotuskilp" && (
+                      <>
+                        <DistributionPanel step={itemStep} />
+                        <FeederBlocks feeders={feedersOf(item.id)} />
+                        <Html position={[0, 1.5, 0]} center>
+                          <button
+                            onClick={() => openFeeders(item.id)}
+                            className="whitespace-nowrap rounded-full border border-white/60 bg-white/70 px-2.5 py-1 text-[11px] font-semibold text-neutral-900 shadow-md backdrop-blur-md transition hover:bg-amber-400/90"
+                          >
+                            Feeders ({feedersOf(item.id).length})
+                          </button>
+                        </Html>
+                      </>
+                    )}
+                    {item.type === "alajaam" && (
+                      <>
+                        <Substation step={itemStep} />
+                        <SwitchgearModel
+                          cubicles={parseSwitchgear(objectProps[item.id]?.values.swg)}
+                        />
+                      </>
+                    )}
+                    {item.type === "gis" && (
+                      <GISModel
+                        cubicles={parseGIS(objectProps[item.id]?.values.swg)}
+                        relayAuto={relayAutoOn(objectProps[item.id]?.values.relayAuto)}
                       />
-                    </mesh>
-                  )}
-                  {/* Cable connection proxy (panels & substations only) */}
-                  {cableMode &&
-                    CABLE_ENDPOINT_TYPES.includes(item.type) && (
+                    )}
+                    {item.type === "lvpanel" && (
+                      <LVPanelModel
+                        devices={lvDevsOf(item.id)}
+                        spdOk={Object.fromEntries(
+                          lvDevsOf(item.id)
+                            .filter((d) => d.kind === "spd")
+                            .map((d) => [
+                              d.id,
+                              circuit.partStatus[lvSpdOwner(item.id, d.id)]?.state === "on",
+                            ]),
+                        )}
+                      />
+                    )}
+                    {item.type === "transformer" && <TransformerModel />}
+                    {item.type === "vsource" && (
+                      <VoltageSource
+                        kind={String(objectProps[item.id]?.values.sourceKind ?? "AC")}
+                      />
+                    )}
+                    {item.type === "evcharger" && (
+                      <EVCharger
+                        kind={String(objectProps[item.id]?.values.chargerType ?? "ac-wall")}
+                      />
+                    )}
+                    {/* Invisible proxy for connect / move mode */}
+                    {(moveMode ||
+                      (connectMode && item.type !== "transformer" && item.type !== "vsource")) && (
+                      <mesh
+                        position={[0, 5, 0]}
+                        onClick={(e) => {
+                          if (!connectMode) return;
+                          e.stopPropagation();
+                          handleItemClickForConnect(item.id);
+                        }}
+                        onPointerDown={(e) => {
+                          if (!moveMode || e.button !== 0) return;
+                          e.stopPropagation();
+                          setDraggingId(item.id);
+                        }}
+                      >
+                        <cylinderGeometry args={[0.6, 0.6, 12, 12]} />
+                        <meshBasicMaterial
+                          color={
+                            draggingId === item.id
+                              ? "#f59e0b"
+                              : isSelected
+                                ? "#22c55e"
+                                : moveMode
+                                  ? "#a855f7"
+                                  : "#3b82f6"
+                          }
+                          transparent
+                          opacity={draggingId === item.id || isSelected ? 0.35 : 0.15}
+                        />
+                      </mesh>
+                    )}
+                    {/* Cable connection proxy (panels & substations only) */}
+                    {cableMode && CABLE_ENDPOINT_TYPES.includes(item.type) && (
                       <mesh
                         position={[0, 1.4, 0]}
                         onClick={(e) => {
@@ -2430,10 +2996,7 @@ export default function Scene3DViewer() {
                         />
                       </mesh>
                     )}
-
-
-
-                 </PartOwner>
+                  </PartOwner>
                 </group>
               );
             })}
@@ -2511,39 +3074,39 @@ export default function Scene3DViewer() {
                 ))}
 
             {/* 3-phase terminal markers (transformer HV/LV, AC source) for cables and lines */}
-            {(cableMode || connectMode) && terminalEnds.map((t) => {
-              const first = (cableMode ? cableFirst : connectFirst) === t.id;
-              return (
-                <mesh
-                  key={t.id}
-                  position={t.point}
-                  renderOrder={10}
-                  onClick={(ev) => { ev.stopPropagation(); if (cableMode) handleCableClick(t.id); /* lines: picked by the router snap */ }}
-                  onPointerOver={(ev) => { ev.stopPropagation(); setPartLabel(t.name); setPartLabelPos(t.point); }}
-                  onPointerOut={() => { setPartLabel(null); setPartLabelPos(null); }}
-                >
-                  <sphereGeometry args={[0.16, 16, 16]} />
-                  <meshBasicMaterial color={first ? "#f59e0b" : t.id.endsWith("#hv") ? "#ef4444" : "#22c55e"} transparent opacity={first ? 0.85 : 0.55} depthTest={false} />
-                </mesh>
-              );
-            })}
+            {(cableMode || connectMode) &&
+              terminalEnds.map((t) => {
+                const first = (cableMode ? cableFirst : connectFirst) === t.id;
+                return (
+                  <mesh
+                    key={t.id}
+                    position={t.point}
+                    renderOrder={10}
+                    onClick={(ev) => {
+                      ev.stopPropagation();
+                      if (cableMode) handleCableClick(t.id); /* lines: picked by the router snap */
+                    }}
+                    onPointerOver={(ev) => {
+                      ev.stopPropagation();
+                      setPartLabel(t.name);
+                      setPartLabelPos(t.point);
+                    }}
+                    onPointerOut={() => {
+                      setPartLabel(null);
+                      setPartLabelPos(null);
+                    }}
+                  >
+                    <sphereGeometry args={[0.16, 16, 16]} />
+                    <meshBasicMaterial
+                      color={first ? "#f59e0b" : t.id.endsWith("#hv") ? "#ef4444" : "#22c55e"}
+                      transparent
+                      opacity={first ? 0.85 : 0.55}
+                      depthTest={false}
+                    />
+                  </mesh>
+                );
+              })}
             {/* Cable proxy for the fixed scene model at the origin */}
-            {false && cableMode && (
-              <mesh
-                position={[0, 1.4, 0]}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCableClick("scene");
-                }}
-              >
-                <cylinderGeometry args={[1, 1, 3, 14]} />
-                <meshBasicMaterial
-                  color={cableFirst === "scene" ? "#f59e0b" : "#eab308"}
-                  transparent
-                  opacity={cableFirst === "scene" ? 0.4 : 0.18}
-                />
-              </mesh>
-            )}
           </PartLabelProvider>
 
           <axesHelper args={[3]} />
@@ -2565,7 +3128,12 @@ export default function Scene3DViewer() {
           />
           <ContinuousCursorZoom controlsRef={controlsRef} resetNonce={cameraReset} />
           <CameraRig view={activeView} controlsRef={controlsRef} resetNonce={cameraReset} />
-          <Ruler active={rulerActive} points={rulerPoints} onAddPoint={addRulerPoint} onMovePoint={moveRulerPoint} />
+          <Ruler
+            active={rulerActive}
+            points={rulerPoints}
+            onAddPoint={addRulerPoint}
+            onMovePoint={moveRulerPoint}
+          />
           <Placer
             active={pendingAdd !== null || pendingEV !== null}
             onPlace={(p) => {
@@ -2584,73 +3152,96 @@ export default function Scene3DViewer() {
             draft={cableDraft}
             onAdd={(p) => {
               if (!routeFirst) finishRoute(makePt(p));
-              else if (!(routingKind === "wire" && wireRoutingMode === "auto")) setCableDraft((d) => [...d, p]);
+              else if (!(routingKind === "wire" && wireRoutingMode === "auto"))
+                setCableDraft((d) => [...d, p]);
             }}
             onFinish={(p) => {
               if (routeFirst) finishRoute(makePt(p));
             }}
             skipRef={endpointClickAt}
-            snapPins={routingKind === "wire" && routeFirst ? availableWirePins : routingKind === "line" ? lineSnapEnds : []}
+            snapPins={
+              routingKind === "wire" && routeFirst
+                ? availableWirePins
+                : routingKind === "line"
+                  ? lineSnapEnds
+                  : []
+            }
             onPinClick={routingKind === "line" ? (id) => handleItemClickForConnect(id) : undefined}
             pinOnlyEnd={routingKind === "wire"}
-            previewWaypoints={routingKind === "wire" && wireRoutingMode === "auto" && routeFirst ? (endId) => autoWireWaypoints(routeFirst, endId) : undefined}
+            previewWaypoints={
+              routingKind === "wire" && wireRoutingMode === "auto" && routeFirst
+                ? (endId) => autoWireWaypoints(routeFirst, endId)
+                : undefined
+            }
           />
-          {editRoute && selectedCable && (() => {
-            const a = cableEndpoints.find((e) => e.id === selectedCable.a);
-            const b = cableEndpoints.find((e) => e.id === selectedCable.b);
-            if (!a || !b) return null;
-            const id = selectedCable.id;
-            return (
-              <CableRouteEditor
-                from={a.point}
-                to={b.point}
-                waypoints={selectedCable.waypoints ?? []}
-                onChange={(w) => updateCable(id, { waypoints: w.length ? w : undefined })}
-                onFromMove={parsePt(selectedCable.a) ? (p) => updateCable(id, { a: makePt(p) }) : undefined}
-                onToMove={parsePt(selectedCable.b) ? (p) => updateCable(id, { b: makePt(p) }) : undefined}
-                controlsRef={controlsRef}
-              />
-            );
-          })()}
-          {selectedLineId && routingKind === null && (() => {
-            const c = connections.find((x) => x.id === selectedLineId);
-            if (!c) return null;
-            const ph = linePhases(c);
-            if (!ph) return null;
-            const id = c.id;
-            const upd = (patch: Partial<LineRecord>) =>
-              setConnections((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-            return (
-              <CableRouteEditor
-                from={centroid(ph[0])}
-                to={centroid(ph[1])}
-                waypoints={c.waypoints ?? []}
-                onChange={(w) => upd({ waypoints: w.length ? w : undefined })}
-                onFromMove={parsePt(c.a) ? (p) => upd({ a: makePt(p) }) : undefined}
-                onToMove={parsePt(c.b) ? (p) => upd({ b: makePt(p) }) : undefined}
-                controlsRef={controlsRef}
-              />
-            );
-          })()}
-          {evPropWire && routingKind === null && (() => {
-            const a = wireEnd(evPropWire.a);
-            const b = wireEnd(evPropWire.b);
-            if (!a || !b) return null;
-            const id = evPropWire.id;
-            const upd = (patch: Partial<EVWireRecord>) =>
-              setEVWires((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
-            return (
-              <CableRouteEditor
-                from={a}
-                to={b}
-                waypoints={evPropWire.waypoints ?? []}
-                onChange={(w) => upd({ waypoints: w.length ? w : undefined, routingMode: "freehand" })}
-                onFromMove={parsePt(evPropWire.a) ? (p) => upd({ a: makePt(p) }) : undefined}
-                onToMove={parsePt(evPropWire.b) ? (p) => upd({ b: makePt(p) }) : undefined}
-                controlsRef={controlsRef}
-              />
-            );
-          })()}
+          {editRoute &&
+            selectedCable &&
+            (() => {
+              const a = cableEndpoints.find((e) => e.id === selectedCable.a);
+              const b = cableEndpoints.find((e) => e.id === selectedCable.b);
+              if (!a || !b) return null;
+              const id = selectedCable.id;
+              return (
+                <CableRouteEditor
+                  from={a.point}
+                  to={b.point}
+                  waypoints={selectedCable.waypoints ?? []}
+                  onChange={(w) => updateCable(id, { waypoints: w.length ? w : undefined })}
+                  onFromMove={
+                    parsePt(selectedCable.a) ? (p) => updateCable(id, { a: makePt(p) }) : undefined
+                  }
+                  onToMove={
+                    parsePt(selectedCable.b) ? (p) => updateCable(id, { b: makePt(p) }) : undefined
+                  }
+                  controlsRef={controlsRef}
+                />
+              );
+            })()}
+          {selectedLineId &&
+            routingKind === null &&
+            (() => {
+              const c = connections.find((x) => x.id === selectedLineId);
+              if (!c) return null;
+              const ph = linePhases(c);
+              if (!ph) return null;
+              const id = c.id;
+              const upd = (patch: Partial<LineRecord>) =>
+                setConnections((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+              return (
+                <CableRouteEditor
+                  from={centroid(ph[0])}
+                  to={centroid(ph[1])}
+                  waypoints={c.waypoints ?? []}
+                  onChange={(w) => upd({ waypoints: w.length ? w : undefined })}
+                  onFromMove={parsePt(c.a) ? (p) => upd({ a: makePt(p) }) : undefined}
+                  onToMove={parsePt(c.b) ? (p) => upd({ b: makePt(p) }) : undefined}
+                  controlsRef={controlsRef}
+                />
+              );
+            })()}
+          {evPropWire &&
+            routingKind === null &&
+            (() => {
+              const a = wireEnd(evPropWire.a);
+              const b = wireEnd(evPropWire.b);
+              if (!a || !b) return null;
+              const id = evPropWire.id;
+              const upd = (patch: Partial<EVWireRecord>) =>
+                setEVWires((prev) => prev.map((x) => (x.id === id ? { ...x, ...patch } : x)));
+              return (
+                <CableRouteEditor
+                  from={a}
+                  to={b}
+                  waypoints={evPropWire.waypoints ?? []}
+                  onChange={(w) =>
+                    upd({ waypoints: w.length ? w : undefined, routingMode: "freehand" })
+                  }
+                  onFromMove={parsePt(evPropWire.a) ? (p) => upd({ a: makePt(p) }) : undefined}
+                  onToMove={parsePt(evPropWire.b) ? (p) => upd({ b: makePt(p) }) : undefined}
+                  controlsRef={controlsRef}
+                />
+              );
+            })()}
           <DragProxy
             dragging={draggingId !== null}
             setDragging={(v) => {
@@ -2706,7 +3297,10 @@ export default function Scene3DViewer() {
                 <X className="h-3 w-3" />
               </button>
             </div>
-            <p>Created by Hugo Martin Liivaleht, funded by INSA. Tallinn 2026. TTK University of Applied Sciences</p>
+            <p>
+              Created by Hugo Martin Liivaleht, funded by INSA. Tallinn 2026. TTK University of
+              Applied Sciences
+            </p>
           </div>
         )}
       </div>
@@ -2738,7 +3332,13 @@ export default function Scene3DViewer() {
             <span className="text-sm font-medium">Views</span>
           </button>
           {viewsOpen && (
-            <DraggablePanel initialX={70} initialY={64} title="Views" width={256} onClose={() => setViewsOpen(false)}>
+            <DraggablePanel
+              initialX={70}
+              initialY={64}
+              title="Views"
+              width={256}
+              onClose={() => setViewsOpen(false)}
+            >
               <ul className="flex flex-col">
                 {VIEWS.map((v) => {
                   const active = v.id === viewId;
@@ -2753,9 +3353,7 @@ export default function Scene3DViewer() {
                         }`}
                       >
                         <span>{v.name}</span>
-                        <span className="text-xs font-normal text-neutral-600">
-                          {v.subtitle}
-                        </span>
+                        <span className="text-xs font-normal text-neutral-600">{v.subtitle}</span>
                       </button>
                     </li>
                   );
@@ -2778,7 +3376,13 @@ export default function Scene3DViewer() {
             <span className="text-sm font-medium">Ground</span>
           </button>
           {groundOpen && (
-            <DraggablePanel initialX={170} initialY={64} title="Ground image" width={288} onClose={() => setGroundOpen(false)}>
+            <DraggablePanel
+              initialX={170}
+              initialY={64}
+              title="Ground image"
+              width={288}
+              onClose={() => setGroundOpen(false)}
+            >
               <ul className="flex flex-col">
                 <li>
                   <button
@@ -2790,9 +3394,7 @@ export default function Scene3DViewer() {
                     }`}
                   >
                     <span>Off</span>
-                    <span className="text-xs font-normal text-neutral-600">
-                      Hide ground image
-                    </span>
+                    <span className="text-xs font-normal text-neutral-600">Hide ground image</span>
                   </button>
                 </li>
                 <li>
@@ -2807,13 +3409,9 @@ export default function Scene3DViewer() {
                         : "text-neutral-800 hover:bg-white/50"
                     }`}
                   >
-                    <span>
-                      {customGroundUrl ? "Custom image" : "Custom image (none)"}
-                    </span>
+                    <span>{customGroundUrl ? "Custom image" : "Custom image (none)"}</span>
                     <span className="text-xs font-normal text-neutral-600">
-                      {customGroundUrl
-                        ? "Auto-fits to scene footprint"
-                        : "Upload one below"}
+                      {customGroundUrl ? "Auto-fits to scene footprint" : "Upload one below"}
                     </span>
                   </button>
                 </li>
@@ -2852,9 +3450,7 @@ export default function Scene3DViewer() {
                     max={200}
                     step={1}
                     value={customGroundWidthM}
-                    onChange={(e) =>
-                      setCustomGroundWidthM(Number(e.target.value))
-                    }
+                    onChange={(e) => setCustomGroundWidthM(Number(e.target.value))}
                     className="w-full accent-neutral-800"
                   />
                   <p className="mt-1 text-[10px] leading-tight text-neutral-600">
@@ -2890,7 +3486,13 @@ export default function Scene3DViewer() {
             </DraggablePanel>
           )}
           {weatherOpen && (
-            <DraggablePanel initialX={170} initialY={330} title="Weather" width={288} onClose={() => setWeatherOpen(false)}>
+            <DraggablePanel
+              initialX={170}
+              initialY={330}
+              title="Weather"
+              width={288}
+              onClose={() => setWeatherOpen(false)}
+            >
               <div className="flex flex-col gap-3 px-4 py-3">
                 <label className="flex items-center justify-between text-sm font-medium text-neutral-900">
                   <span>Weather active</span>
@@ -2942,9 +3544,7 @@ export default function Scene3DViewer() {
                       max={35}
                       step={1}
                       value={weather.windSpeed}
-                      onChange={(e) =>
-                        updateWeather({ windSpeed: Number(e.target.value) })
-                      }
+                      onChange={(e) => updateWeather({ windSpeed: Number(e.target.value) })}
                       className="w-full accent-neutral-800"
                     />
                   </div>
@@ -2974,16 +3574,12 @@ export default function Scene3DViewer() {
                       max={45}
                       step={1}
                       value={weather.temperature}
-                      onChange={(e) =>
-                        updateWeather({ temperature: Number(e.target.value) })
-                      }
+                      onChange={(e) => updateWeather({ temperature: Number(e.target.value) })}
                       className="w-full accent-neutral-800"
                     />
                     <p className="mt-1.5 text-xs text-neutral-700">
                       Feels like{" "}
-                      <span className="font-semibold tabular-nums">
-                        {felt.toFixed(1)} °C
-                      </span>
+                      <span className="font-semibold tabular-nums">{felt.toFixed(1)} °C</span>
                       {weather.wind && Math.abs(felt - weather.temperature) > 0.05 && (
                         <span className="text-neutral-600">
                           {" "}
@@ -3013,7 +3609,13 @@ export default function Scene3DViewer() {
             <span className="text-sm font-medium">Add</span>
           </button>
           {addOpen && (
-            <DraggablePanel initialX={290} initialY={64} title="Add component" width={288} onClose={() => setAddOpen(false)}>
+            <DraggablePanel
+              initialX={290}
+              initialY={64}
+              title="Add component"
+              width={288}
+              onClose={() => setAddOpen(false)}
+            >
               <div className="flex flex-col pr-0.5">
                 {ADD_GROUPS.map((g) => (
                   <div key={g.id} className="border-b border-white/30">
@@ -3021,7 +3623,9 @@ export default function Scene3DViewer() {
                       onClick={() => setAddGroupOpen((o) => ({ ...o, [g.id]: !o[g.id] }))}
                       className="flex w-full items-center justify-between px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-neutral-700 transition hover:bg-white/40"
                     >
-                      <span>{g.label} ({g.types.length})</span>
+                      <span>
+                        {g.label} ({g.types.length})
+                      </span>
                       <span>{addGroupOpen[g.id] ? "−" : "+"}</span>
                     </button>
                     {addGroupOpen[g.id] && (
@@ -3034,7 +3638,9 @@ export default function Scene3DViewer() {
                             >
                               <span className="flex flex-col">
                                 <span className="font-medium">{a.name}</span>
-                                <span className="text-xs font-normal text-neutral-600">{a.subtitle}</span>
+                                <span className="text-xs font-normal text-neutral-600">
+                                  {a.subtitle}
+                                </span>
                               </span>
                               <Plus className="h-4 w-4 text-neutral-600" />
                             </button>
@@ -3044,151 +3650,159 @@ export default function Scene3DViewer() {
                     )}
                   </div>
                 ))}
-                {(
+                {
                   <>
                     <button
                       onClick={() => setAddGroupOpen((o) => ({ ...o, car: !o.car }))}
                       className="flex w-full items-center justify-between px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-widest text-neutral-700 transition hover:bg-white/40"
                     >
-                      <span>Electric car parts ({evParts.length} placed · {evWires.length} wires)</span>
+                      <span>
+                        Electric car parts ({evParts.length} placed · {evWires.length} wires)
+                      </span>
                       <span>{addGroupOpen.car ? "−" : "+"}</span>
                     </button>
-                    {addGroupOpen.car && (<>
-                    <ul className="flex flex-col">
-                      {EV_TYPES.map((t) => (
-                        <li key={t}>
+                    {addGroupOpen.car && (
+                      <>
+                        <ul className="flex flex-col">
+                          {EV_TYPES.map((t) => (
+                            <li key={t}>
+                              <button
+                                onClick={() => {
+                                  setPendingEV(t);
+                                  setPendingAdd(null);
+                                  setAddOpen(false);
+                                  setEVWireMode(false);
+                                  setMoveMode(false);
+                                }}
+                                className="flex w-full items-center justify-between gap-2 px-4 py-2 text-left text-sm text-neutral-800 transition hover:bg-white/50"
+                              >
+                                <span className="flex flex-col">
+                                  <span className="font-medium">{EV_DEFS[t].name}</span>
+                                  <span className="text-xs font-normal text-neutral-600">
+                                    {EV_DEFS[t].subtitle}
+                                  </span>
+                                </span>
+                                <Plus className="h-4 w-4 text-neutral-600" />
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="flex gap-2 border-t border-white/40 px-3 py-2">
                           <button
                             onClick={() => {
-                              setPendingEV(t);
-                              setPendingAdd(null);
-                              setAddOpen(false);
+                              setMoveMode((m) => !m);
                               setEVWireMode(false);
-                              setMoveMode(false);
+                              setPendingEV(null);
+                              setPendingAdd(null);
                             }}
-                            className="flex w-full items-center justify-between gap-2 px-4 py-2 text-left text-sm text-neutral-800 transition hover:bg-white/50"
+                            className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${moveMode ? "border-purple-300/60 bg-purple-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
                           >
-                            <span className="flex flex-col">
-                              <span className="font-medium">{EV_DEFS[t].name}</span>
-                              <span className="text-xs font-normal text-neutral-600">{EV_DEFS[t].subtitle}</span>
-                            </span>
-                            <Plus className="h-4 w-4 text-neutral-600" />
+                            {moveMode ? "Moving…" : "Move parts"}
                           </button>
-                        </li>
-                      ))}
-                    </ul>
-                    <div className="flex gap-2 border-t border-white/40 px-3 py-2">
+                        </div>
+                        <button
+                          onClick={() => {
+                            const d = defaultEVLayout();
+                            setEVParts(d.parts);
+                            setEVWires(d.wires);
+                          }}
+                          className="mx-3 mb-2 rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-900 hover:bg-white/60"
+                        >
+                          Restore default drivetrain
+                        </button>
+                      </>
+                    )}
+                  </>
+                }
+
+                {addedItems.length > 0 && (
+                  <>
+                    <div className="flex items-center justify-between gap-2 border-t border-white/40 px-3 py-2">
                       <button
-                        onClick={() => { setMoveMode((m) => !m); setEVWireMode(false); setPendingEV(null); setPendingAdd(null); }}
-                        className={`flex-1 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${moveMode ? "border-purple-300/60 bg-purple-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
+                        onClick={() => {
+                          setMoveMode((m) => !m);
+                          setCableMode(false);
+                          setConnectMode(false);
+                          setConnectFirst(null);
+                          setPendingAdd(null);
+                        }}
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                          moveMode
+                            ? "border-purple-300/60 bg-purple-500/80 text-white hover:bg-purple-500/90"
+                            : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
+                        }`}
                       >
+                        <Move className="h-3.5 w-3.5" />
                         {moveMode ? "Moving…" : "Move parts"}
                       </button>
                     </div>
-                    <button
-                      onClick={() => { const d = defaultEVLayout(); setEVParts(d.parts); setEVWires(d.wires); }}
-                      className="mx-3 mb-2 rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-900 hover:bg-white/60"
-                    >
-                      Restore default drivetrain
-                    </button>
-                    </>)}
-                  </>
-                )}
 
-
-
-              {addedItems.length > 0 && (
-                <>
-                  <div className="flex items-center justify-between gap-2 border-t border-white/40 px-3 py-2">
-                    <button
-                      onClick={() => {
-                        setMoveMode((m) => !m);
-                        setCableMode(false);
-                        setConnectMode(false);
-                        setConnectFirst(null);
-                        setPendingAdd(null);
-                      }}
-                      className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
-                        moveMode
-                          ? "border-purple-300/60 bg-purple-500/80 text-white hover:bg-purple-500/90"
-                          : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
-                      }`}
-                    >
-                      <Move className="h-3.5 w-3.5" />
-                      {moveMode ? "Moving…" : "Move parts"}
-                    </button>
-                  </div>
-
-                  <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
-                    Added ({addedItems.length})
-                    {connections.length > 0 && (
-                      <span className="ml-2 font-normal normal-case text-neutral-500">
-                        · {connections.length} link{connections.length === 1 ? "" : "s"}
-                      </span>
-                    )}
-                  </div>
-                  <ul className="flex max-h-64 flex-col overflow-y-auto">
-                    {addedItems.map((item, i) => {
-                      const meta = ADDABLES.find((a) => a.type === item.type)!;
-                      const deg = Math.round(
-                        ((item.rotationY * 180) / Math.PI) % 360
-                      );
-                      return (
-                        <li
-                          key={item.id}
-                          className="flex flex-col gap-1 px-4 py-1.5 text-xs text-neutral-800 hover:bg-white/40"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="truncate">
-                              {i + 1}. {meta.name}
-                              <span className="ml-1 text-neutral-500">
-                                ({item.position[0].toFixed(1)}, {item.position[2].toFixed(1)})
+                    <div className="border-t border-white/40 px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
+                      Added ({addedItems.length})
+                      {connections.length > 0 && (
+                        <span className="ml-2 font-normal normal-case text-neutral-500">
+                          · {connections.length} link{connections.length === 1 ? "" : "s"}
+                        </span>
+                      )}
+                    </div>
+                    <ul className="flex max-h-64 flex-col overflow-y-auto">
+                      {addedItems.map((item, i) => {
+                        const meta = ADDABLES.find((a) => a.type === item.type)!;
+                        const deg = Math.round(((item.rotationY * 180) / Math.PI) % 360);
+                        return (
+                          <li
+                            key={item.id}
+                            className="flex flex-col gap-1 px-4 py-1.5 text-xs text-neutral-800 hover:bg-white/40"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="truncate">
+                                {i + 1}. {meta.name}
+                                <span className="ml-1 text-neutral-500">
+                                  ({item.position[0].toFixed(1)}, {item.position[2].toFixed(1)})
+                                </span>
                               </span>
-                            </span>
-                            <button
-                              onClick={() => removeItem(item.id)}
-                              aria-label={`Remove ${meta.name}`}
-                              className="rounded-md p-1 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <RotateCw className="h-3 w-3 text-neutral-500" />
-                            <input
-                              type="range"
-                              min={0}
-                              max={360}
-                              step={5}
-                              value={((deg % 360) + 360) % 360}
-                              onChange={(e) =>
-                                setItemRotation(
-                                  item.id,
-                                  (Number(e.target.value) * Math.PI) / 180
-                                )
-                              }
-                              className="flex-1 accent-neutral-800"
-                            />
-                            <span className="w-8 text-right tabular-nums text-[10px] text-neutral-600">
-                              {((deg % 360) + 360) % 360}°
-                            </span>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <div className="border-t border-white/40 px-3 py-2">
-                    <button
-                      onClick={() => {
-                        setAddedItems([]);
-                        setConnections([]);
-                        setConnectFirst(null);
-                      }}
-                      className="w-full rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm transition hover:bg-white/60"
-                    >
-                      Clear all added
-                    </button>
-                  </div>
-                </>
+                              <button
+                                onClick={() => removeItem(item.id)}
+                                aria-label={`Remove ${meta.name}`}
+                                className="rounded-md p-1 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <RotateCw className="h-3 w-3 text-neutral-500" />
+                              <input
+                                type="range"
+                                min={0}
+                                max={360}
+                                step={5}
+                                value={((deg % 360) + 360) % 360}
+                                onChange={(e) =>
+                                  setItemRotation(item.id, (Number(e.target.value) * Math.PI) / 180)
+                                }
+                                className="flex-1 accent-neutral-800"
+                              />
+                              <span className="w-8 text-right tabular-nums text-[10px] text-neutral-600">
+                                {((deg % 360) + 360) % 360}°
+                              </span>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    <div className="border-t border-white/40 px-3 py-2">
+                      <button
+                        onClick={() => {
+                          setAddedItems([]);
+                          setConnections([]);
+                          setConnectFirst(null);
+                        }}
+                        className="w-full rounded-lg border border-white/50 bg-white/40 px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm transition hover:bg-white/60"
+                      >
+                        Clear all added
+                      </button>
+                    </div>
+                  </>
                 )}
               </div>
             </DraggablePanel>
@@ -3209,304 +3823,384 @@ export default function Scene3DViewer() {
             <Cable className="h-5 w-5" />
             <span className="text-sm font-medium">Wiring</span>
           </button>
-          {cablesOpen && (() => {
-            const SectionHeader = ({ id, label, hint }: { id: "cables" | "lines" | "wires"; label: string; hint: string }) => (
-              <button
-                onClick={() => setWiringSection((s) => (s === id ? null : id))}
-                className="flex w-full items-center justify-between border-t border-white/40 px-4 py-2 text-left transition first:border-t-0 hover:bg-white/40"
-              >
-                <span className="flex flex-col">
-                  <span className="text-sm font-semibold text-neutral-900">{label}</span>
-                  <span className="text-[10px] text-neutral-600">{hint}</span>
-                </span>
-                <ChevronDown className={`h-4 w-4 text-neutral-600 transition ${wiringSection === id ? "rotate-180" : ""}`} />
-              </button>
-            );
-            return (
-            <DraggablePanel initialX={480} initialY={120} title="Wiring" width={300} onClose={() => setCablesOpen(false)}>
-              <SectionHeader id="cables" label="Cables" hint="Underground LV cables" />
-              {wiringSection === "cables" && (
-              <>
-              <div className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
-                Underground cable
-              </div>
-              <div className="px-4 pb-3">
-                <div className="mb-1 text-[11px] text-neutral-600">
-                  Conductor size (L1, L2, L3, PEN)
-                </div>
-                <div className="grid grid-cols-4 gap-1">
-                  {CABLE_SIZES.filter((s) => !s.mv).map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setCableSize(s.id)}
-                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
-                        cableSize === s.id
-                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
-                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
-                      }`}
-                    >
-                      {s.area}
-                    </button>
-                  ))}
-                </div>
-                <div className="mb-1 mt-2 text-[11px] text-neutral-600">
-                  Medium voltage up to 24 kV (AHXAMK-W, L1, L2, L3)
-                </div>
-                <div className="grid grid-cols-3 gap-1">
-                  {CABLE_SIZES.filter((s) => s.mv).map((s) => (
-                    <button
-                      key={s.id}
-                      onClick={() => setCableSize(s.id)}
-                      title={s.label}
-                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
-                        cableSize === s.id
-                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
-                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
-                      }`}
-                    >
-                      3×{s.area}
-                    </button>
-                  ))}
-                </div>
-                <div className="mb-1 mt-2 text-[11px] text-neutral-600">
-                  Protective conduit pipe
-                </div>
-                <div className="grid grid-cols-3 gap-1">
-                  {CONDUITS.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => setCableConduit(c.id)}
-                      title={c.subtitle}
-                      className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
-                        cableConduit === c.id
-                          ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
-                          : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
-                      }`}
-                    >
-                      {c.id === "none" ? "None" : c.id}
-                    </button>
-                  ))}
-                </div>
+          {cablesOpen &&
+            (() => {
+              const SectionHeader = ({
+                id,
+                label,
+                hint,
+              }: {
+                id: "cables" | "lines" | "wires";
+                label: string;
+                hint: string;
+              }) => (
                 <button
-                  onClick={() => {
-                    setCableMode((m) => !m);
-                    setCableFirst(null);
-                    setConnectMode(false);
-                    setMoveMode(false);
-                    setPendingAdd(null);
-                  }}
-                  className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
-                    cableMode
-                      ? "border-amber-300/70 bg-amber-500/85 text-white hover:bg-amber-500"
-                      : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
-                  }`}
+                  onClick={() => setWiringSection((s) => (s === id ? null : id))}
+                  className="flex w-full items-center justify-between border-t border-white/40 px-4 py-2 text-left transition first:border-t-0 hover:bg-white/40"
                 >
-                  <Link2 className="h-3.5 w-3.5" />
-                  {cableMode ? "Laying cable…" : "Lay cable"}
+                  <span className="flex flex-col">
+                    <span className="text-sm font-semibold text-neutral-900">{label}</span>
+                    <span className="text-[10px] text-neutral-600">{hint}</span>
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 text-neutral-600 transition ${wiringSection === id ? "rotate-180" : ""}`}
+                  />
                 </button>
-                <p className="mt-1 text-[10px] leading-snug text-neutral-600">
-                  Click a substation, then a distribution panel. Buried 0,7 m deep.
-                  {cableEndpoints.length < 2 &&
-                    " Add at least two panels/substations."}
-                </p>
-                {cables.length > 0 && (
-                  <ul className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
-                    {cables.map((c) => {
-                      const a = cableEndpoints.find((e) => e.id === c.a);
-                      const b = cableEndpoints.find((e) => e.id === c.b);
-                      return (
-                        <li
-                          key={c.id}
-                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] text-neutral-800 ${
-                            selectedCableId === c.id
-                              ? "bg-amber-300/60"
-                              : "bg-white/40"
+              );
+              return (
+                <DraggablePanel
+                  initialX={480}
+                  initialY={120}
+                  title="Wiring"
+                  width={300}
+                  onClose={() => setCablesOpen(false)}
+                >
+                  <SectionHeader id="cables" label="Cables" hint="Underground LV cables" />
+                  {wiringSection === "cables" && (
+                    <>
+                      <div className="px-4 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-700">
+                        Underground cable
+                      </div>
+                      <div className="px-4 pb-3">
+                        <div className="mb-1 text-[11px] text-neutral-600">
+                          Conductor size (L1, L2, L3, PEN)
+                        </div>
+                        <div className="grid grid-cols-4 gap-1">
+                          {CABLE_SIZES.filter((s) => !s.mv).map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => setCableSize(s.id)}
+                              className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                                cableSize === s.id
+                                  ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                                  : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                              }`}
+                            >
+                              {s.area}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mb-1 mt-2 text-[11px] text-neutral-600">
+                          Medium voltage up to 24 kV (AHXAMK-W, L1, L2, L3)
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          {CABLE_SIZES.filter((s) => s.mv).map((s) => (
+                            <button
+                              key={s.id}
+                              onClick={() => setCableSize(s.id)}
+                              title={s.label}
+                              className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                                cableSize === s.id
+                                  ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                                  : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                              }`}
+                            >
+                              3×{s.area}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mb-1 mt-2 text-[11px] text-neutral-600">
+                          Protective conduit pipe
+                        </div>
+                        <div className="grid grid-cols-3 gap-1">
+                          {CONDUITS.map((c) => (
+                            <button
+                              key={c.id}
+                              onClick={() => setCableConduit(c.id)}
+                              title={c.subtitle}
+                              className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${
+                                cableConduit === c.id
+                                  ? "border-amber-300/70 bg-amber-400/80 text-neutral-900"
+                                  : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"
+                              }`}
+                            >
+                              {c.id === "none" ? "None" : c.id}
+                            </button>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => {
+                            setCableMode((m) => !m);
+                            setCableFirst(null);
+                            setConnectMode(false);
+                            setMoveMode(false);
+                            setPendingAdd(null);
+                          }}
+                          className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${
+                            cableMode
+                              ? "border-amber-300/70 bg-amber-500/85 text-white hover:bg-amber-500"
+                              : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"
                           }`}
                         >
-                          <button
-                            onClick={() => setSelectedCableId(c.id)}
-                            className="min-w-0 flex-1 truncate text-left"
-                          >
-                            {cableLabel(c.size)}
-                            {c.conduit !== "none" ? ` · ${c.conduit}` : ""}
-                            {" · "}
-                            {cableLengthOf(c).toFixed(1)} m
-                            {bundleCurrent(c.id) > 0 && ` · ${bundleCurrent(c.id).toFixed(1)} A`}
-                            <span className="ml-1 text-neutral-500">
-                              {a?.name ?? "?"} → {b?.name ?? "?"}
-                            </span>
-                          </button>
-                          <button
-                            onClick={() => removeCable(c.id)}
-                            aria-label="Remove cable"
-                            className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-              </>
-              )}
-              {wiringSection === "cables" && (
-                <div className="px-4 pb-3">
-                  <div className="mb-1 text-[11px] text-neutral-600">Installation cables (pin to pin)</div>
-                  <div className="grid grid-cols-4 gap-1">
-                    {INSTALL_CABLE_TYPES.map((t) => (
-                      <button
-                        key={t.id}
-                        onClick={() => { stopAllModes(); setWireType(t.id); setEVWireMode(true); }}
-                        className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${evWireMode && wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
-                      >
-                        {t.label}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-1 text-[10px] text-neutral-600">Click a type, then click two pins. Uses the Free hand / Auto route and material choice from Wires.</p>
-                  {evWireMode && wireRouteWarning && <p className="mt-1 rounded-md border border-red-400/60 bg-red-500/15 px-2 py-1 text-[10px] font-semibold text-red-700">{wireRouteWarning}</p>}
-                </div>
-              )}
-              <SectionHeader id="lines" label="Lines" hint="Aerial line cables" />
-              {wiringSection === "lines" && (
-                <div className="px-4 pb-3">
-                  {(["LV aerial bundled (AMKA)", "20 kV bare conductor"] as const).map((g) => (
-                    <div key={g} className="mb-2">
-                      <div className="mb-1 text-[11px] text-neutral-600">{g}</div>
-                      <div className="grid grid-cols-2 gap-1">
-                        {LINE_TYPES.filter((t) => t.group === g).map((t) => (
+                          <Link2 className="h-3.5 w-3.5" />
+                          {cableMode ? "Laying cable…" : "Lay cable"}
+                        </button>
+                        <p className="mt-1 text-[10px] leading-snug text-neutral-600">
+                          Click a substation, then a distribution panel. Buried 0,7 m deep.
+                          {cableEndpoints.length < 2 && " Add at least two panels/substations."}
+                        </p>
+                        {cables.length > 0 && (
+                          <ul className="mt-2 flex max-h-40 flex-col gap-1 overflow-y-auto">
+                            {cables.map((c) => {
+                              const a = cableEndpoints.find((e) => e.id === c.a);
+                              const b = cableEndpoints.find((e) => e.id === c.b);
+                              return (
+                                <li
+                                  key={c.id}
+                                  className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] text-neutral-800 ${
+                                    selectedCableId === c.id ? "bg-amber-300/60" : "bg-white/40"
+                                  }`}
+                                >
+                                  <button
+                                    onClick={() => setSelectedCableId(c.id)}
+                                    className="min-w-0 flex-1 truncate text-left"
+                                  >
+                                    {cableLabel(c.size)}
+                                    {c.conduit !== "none" ? ` · ${c.conduit}` : ""}
+                                    {" · "}
+                                    {cableLengthOf(c).toFixed(1)} m
+                                    {bundleCurrent(c.id) > 0 &&
+                                      ` · ${bundleCurrent(c.id).toFixed(1)} A`}
+                                    <span className="ml-1 text-neutral-500">
+                                      {a?.name ?? "?"} → {b?.name ?? "?"}
+                                    </span>
+                                  </button>
+                                  <button
+                                    onClick={() => removeCable(c.id)}
+                                    aria-label="Remove cable"
+                                    className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {wiringSection === "cables" && (
+                    <div className="px-4 pb-3">
+                      <div className="mb-1 text-[11px] text-neutral-600">
+                        Installation cables (pin to pin)
+                      </div>
+                      <div className="grid grid-cols-4 gap-1">
+                        {INSTALL_CABLE_TYPES.map((t) => (
                           <button
                             key={t.id}
-                            onClick={() => setLineType(t.id)}
-                            className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${lineType === t.id ? "border-blue-300/70 bg-blue-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
+                            onClick={() => {
+                              stopAllModes();
+                              setWireType(t.id);
+                              setEVWireMode(true);
+                            }}
+                            className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${evWireMode && wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
                           >
                             {t.label}
                           </button>
                         ))}
                       </div>
+                      <p className="mt-1 text-[10px] text-neutral-600">
+                        Click a type, then click two pins. Uses the Free hand / Auto route and
+                        material choice from Wires.
+                      </p>
+                      {evWireMode && wireRouteWarning && (
+                        <p className="mt-1 rounded-md border border-red-400/60 bg-red-500/15 px-2 py-1 text-[10px] font-semibold text-red-700">
+                          {wireRouteWarning}
+                        </p>
+                      )}
                     </div>
-                  ))}
-                  <button
-                    onClick={() => { const on = !connectMode; stopAllModes(); setConnectMode(on); }}
-                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50 ${connectMode ? "border-blue-300/60 bg-blue-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
-                  >
-                    <Link2 className="h-3.5 w-3.5" />
-                    {connectMode ? "Connecting…" : "Connect posts"}
-                  </button>
-                  <p className="mt-1 text-[10px] text-neutral-600">Click a post or the ground to start, click the ground for corners, then click a post — or double-click to end the line anywhere.</p>
-                  {connections.length > 0 && (
-                    <ul className="mt-2 flex flex-col rounded-lg border border-white/40 bg-white/30">
-                      {connections.map((c, i) => {
-                        const span = lineLengthOf(c);
-                        const sag = Math.min(1.2, span * 0.03);
-                        const sel = selectedLineId === c.id;
-                        const lt = lineTypeOf(c.type);
-                        return (
-                          <li key={c.id} className={`px-2 py-1.5 text-[11px] text-neutral-800 ${sel ? "bg-amber-200/60" : ""}`}>
-                            <div className="flex items-center justify-between gap-2">
-                              <button className="truncate text-left font-medium" onClick={() => setSelectedLineId(sel ? null : c.id)}>
-                                {i + 1}. {lt.label}
-                              </button>
-                              <button
-                                onClick={() => { setConnections((prev) => prev.filter((x) => x.id !== c.id)); if (sel) setSelectedLineId(null); }}
-                                aria-label="Remove line"
-                                className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                            {sel && (
-                              <div className="mt-1 text-[10px] text-neutral-700">
-                                Length {span.toFixed(1)} m · sag {sag.toFixed(2)} m · {lt.voltage >= 1000 ? `${lt.voltage / 1000} kV` : `${lt.voltage} V`} · {lt.crossSection} mm²
-                                {bundleCurrent(c.id) > 0 && <> · <strong>{bundleCurrent(c.id).toFixed(1)} A</strong> (calculated)</>}
-                              </div>
-                            )}
-                            {sel && c.waypoints?.length ? (
-                              <button
-                                onClick={() => setConnections((prev) => prev.map((x) => (x.id === c.id ? { ...x, waypoints: undefined } : x)))}
-                                className="mt-1 rounded border border-white/60 bg-white/50 px-2 py-0.5 text-[10px] font-semibold text-neutral-800 hover:bg-white/80"
-                              >
-                                Reset route
-                              </button>
-                            ) : null}
-                            {false && (
-                              <div />
-                            )}
-                          </li>
-                        );
-                      })}
-                    </ul>
                   )}
-                </div>
-              )}
-              <div className="px-4 pb-2 pt-1">
-                <Button
-                  onClick={() => setShowFlow((f) => !f)}
-                  className={`w-full rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${showFlow ? "border-sky-400 bg-sky-400/80 text-neutral-900" : "border-white/60 bg-white/45 text-neutral-800 hover:bg-white/70"}`}
-                >
-                  {showFlow ? "Hide electron flow" : "Show electron flow"}
-                </Button>
-                {showFlow && (
-                  <div className="mt-1 text-[10px] leading-snug text-neutral-600">
-                    <span className="font-semibold text-sky-600">Blue dots</span> = electrons (flow − → +). <span className="font-semibold text-amber-600">Amber arrows</span> = electric field / conventional current (+ → −). AC wires swing back and forth (slowed down). Only wires in a closed loop from a voltage source carry current.
-                  </div>
-                )}
-              </div>
-              <SectionHeader id="wires" label="Wires" hint="Single-core wires" />
-              {wiringSection === "wires" && (
-                <div className="px-4 pb-3">
-                  <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
-                    {(["freehand", "auto"] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        onClick={() => { setWireRoutingMode(mode); setCableDraft([]); setWireRouteWarning(null); }}
-                        className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition ${wireRoutingMode === mode ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
-                      >
-                        {mode === "freehand" ? "Free hand" : "Auto route"}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mb-1 text-[11px] text-neutral-600">Material</div>
-                  <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
-                    {(Object.keys(WIRE_MATERIALS) as WireMaterial[]).map((m) => (
-                      <button
-                        key={m}
-                        onClick={() => setWireMaterial(m)}
-                        className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition ${wireMaterial === m ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
-                      >
-                        {WIRE_MATERIALS[m].label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mb-2">
-                    <div className="mb-1 text-[11px] text-neutral-600">Wire (mm²)</div>
-                    <div className="grid grid-cols-5 gap-1">
-                      {WIRE_TYPES.map((t) => (
-                        <button
-                          key={t.id}
-                          onClick={() => setWireType(t.id)}
-                          className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
-                        >
-                          {t.crossSection}
-                        </button>
+                  <SectionHeader id="lines" label="Lines" hint="Aerial line cables" />
+                  {wiringSection === "lines" && (
+                    <div className="px-4 pb-3">
+                      {(["LV aerial bundled (AMKA)", "20 kV bare conductor"] as const).map((g) => (
+                        <div key={g} className="mb-2">
+                          <div className="mb-1 text-[11px] text-neutral-600">{g}</div>
+                          <div className="grid grid-cols-2 gap-1">
+                            {LINE_TYPES.filter((t) => t.group === g).map((t) => (
+                              <button
+                                key={t.id}
+                                onClick={() => setLineType(t.id)}
+                                className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${lineType === t.id ? "border-blue-300/70 bg-blue-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
+                              >
+                                {t.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ))}
+                      <button
+                        onClick={() => {
+                          const on = !connectMode;
+                          stopAllModes();
+                          setConnectMode(on);
+                        }}
+                        className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition disabled:opacity-50 ${connectMode ? "border-blue-300/60 bg-blue-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                        {connectMode ? "Connecting…" : "Connect posts"}
+                      </button>
+                      <p className="mt-1 text-[10px] text-neutral-600">
+                        Click a post or the ground to start, click the ground for corners, then
+                        click a post — or double-click to end the line anywhere.
+                      </p>
+                      {connections.length > 0 && (
+                        <ul className="mt-2 flex flex-col rounded-lg border border-white/40 bg-white/30">
+                          {connections.map((c, i) => {
+                            const span = lineLengthOf(c);
+                            const sag = Math.min(1.2, span * 0.03);
+                            const sel = selectedLineId === c.id;
+                            const lt = lineTypeOf(c.type);
+                            return (
+                              <li
+                                key={c.id}
+                                className={`px-2 py-1.5 text-[11px] text-neutral-800 ${sel ? "bg-amber-200/60" : ""}`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <button
+                                    className="truncate text-left font-medium"
+                                    onClick={() => setSelectedLineId(sel ? null : c.id)}
+                                  >
+                                    {i + 1}. {lt.label}
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setConnections((prev) => prev.filter((x) => x.id !== c.id));
+                                      if (sel) setSelectedLineId(null);
+                                    }}
+                                    aria-label="Remove line"
+                                    className="rounded p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-red-600"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                {sel && (
+                                  <div className="mt-1 text-[10px] text-neutral-700">
+                                    Length {span.toFixed(1)} m · sag {sag.toFixed(2)} m ·{" "}
+                                    {lt.voltage >= 1000
+                                      ? `${lt.voltage / 1000} kV`
+                                      : `${lt.voltage} V`}{" "}
+                                    · {lt.crossSection} mm²
+                                    {bundleCurrent(c.id) > 0 && (
+                                      <>
+                                        {" "}
+                                        · <strong>{bundleCurrent(c.id).toFixed(1)} A</strong>{" "}
+                                        (calculated)
+                                      </>
+                                    )}
+                                  </div>
+                                )}
+                                {sel && c.waypoints?.length ? (
+                                  <button
+                                    onClick={() =>
+                                      setConnections((prev) =>
+                                        prev.map((x) =>
+                                          x.id === c.id ? { ...x, waypoints: undefined } : x,
+                                        ),
+                                      )
+                                    }
+                                    className="mt-1 rounded border border-white/60 bg-white/50 px-2 py-0.5 text-[10px] font-semibold text-neutral-800 hover:bg-white/80"
+                                  >
+                                    Reset route
+                                  </button>
+                                ) : null}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
                     </div>
+                  )}
+                  <div className="px-4 pb-2 pt-1">
+                    <Button
+                      onClick={() => setShowFlow((f) => !f)}
+                      className={`w-full rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${showFlow ? "border-sky-400 bg-sky-400/80 text-neutral-900" : "border-white/60 bg-white/45 text-neutral-800 hover:bg-white/70"}`}
+                    >
+                      {showFlow ? "Hide electron flow" : "Show electron flow"}
+                    </Button>
+                    {showFlow && (
+                      <div className="mt-1 text-[10px] leading-snug text-neutral-600">
+                        <span className="font-semibold text-sky-600">Blue dots</span> = electrons
+                        (flow − → +).{" "}
+                        <span className="font-semibold text-amber-600">Amber arrows</span> =
+                        electric field / conventional current (+ → −). AC wires swing back and forth
+                        (slowed down). Only wires in a closed loop from a voltage source carry
+                        current.
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={() => { const on = !evWireMode; stopAllModes(); setEVWireMode(on); }}
-                    className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${evWireMode ? "border-orange-300/60 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
-                  >
-                    <Cable className="h-3.5 w-3.5" />
-                    {evWireMode ? "Wiring…" : "Wire objects"}
-                  </button>
-                   <p className="mt-1 text-[10px] text-neutral-600">{wireRoutingMode === "freehand" ? "Click a connection pin to start, click the ground for route corners, then click another pin to finish." : "Select start and end pins. The wire automatically finds a clear right-angle route around components."} The dashed preview snaps to the nearest pin.</p>
-                   {wireRouteWarning && <p className="mt-1 rounded-md border border-red-400/60 bg-red-500/15 px-2 py-1 text-[10px] font-semibold text-red-700">{wireRouteWarning}</p>}
-                </div>
-              )}
-            </DraggablePanel>
-          ); })()}
+                  <SectionHeader id="wires" label="Wires" hint="Single-core wires" />
+                  {wiringSection === "wires" && (
+                    <div className="px-4 pb-3">
+                      <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                        {(["freehand", "auto"] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            onClick={() => {
+                              setWireRoutingMode(mode);
+                              setCableDraft([]);
+                              setWireRouteWarning(null);
+                            }}
+                            className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition ${wireRoutingMode === mode ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                          >
+                            {mode === "freehand" ? "Free hand" : "Auto route"}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mb-1 text-[11px] text-neutral-600">Material</div>
+                      <div className="mb-2 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                        {(Object.keys(WIRE_MATERIALS) as WireMaterial[]).map((m) => (
+                          <button
+                            key={m}
+                            onClick={() => setWireMaterial(m)}
+                            className={`rounded-md px-2 py-1.5 text-[11px] font-semibold transition ${wireMaterial === m ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                          >
+                            {WIRE_MATERIALS[m].label}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="mb-2">
+                        <div className="mb-1 text-[11px] text-neutral-600">Wire (mm²)</div>
+                        <div className="grid grid-cols-5 gap-1">
+                          {WIRE_TYPES.map((t) => (
+                            <button
+                              key={t.id}
+                              onClick={() => setWireType(t.id)}
+                              className={`rounded-lg border px-1 py-1.5 text-[11px] font-semibold shadow-sm transition ${wireType === t.id ? "border-orange-300/70 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-800 hover:bg-white/60"}`}
+                            >
+                              {t.crossSection}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const on = !evWireMode;
+                          stopAllModes();
+                          setEVWireMode(on);
+                        }}
+                        className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold shadow-sm transition ${evWireMode ? "border-orange-300/60 bg-orange-500/80 text-white" : "border-white/50 bg-white/40 text-neutral-900 hover:bg-white/60"}`}
+                      >
+                        <Cable className="h-3.5 w-3.5" />
+                        {evWireMode ? "Wiring…" : "Wire objects"}
+                      </button>
+                      <p className="mt-1 text-[10px] text-neutral-600">
+                        {wireRoutingMode === "freehand"
+                          ? "Click a connection pin to start, click the ground for route corners, then click another pin to finish."
+                          : "Select start and end pins. The wire automatically finds a clear right-angle route around components."}{" "}
+                        The dashed preview snaps to the nearest pin.
+                      </p>
+                      {wireRouteWarning && (
+                        <p className="mt-1 rounded-md border border-red-400/60 bg-red-500/15 px-2 py-1 text-[10px] font-semibold text-red-700">
+                          {wireRouteWarning}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </DraggablePanel>
+              );
+            })()}
         </div>
         <button
           onClick={resetAll}
@@ -3548,13 +4242,16 @@ export default function Scene3DViewer() {
           <span>
             {wireTypeOf(wireType)?.label}:{" "}
             {evWireFirst
-               ? wireRoutingMode === "auto"
-                 ? "auto route — select the destination pin · Esc cancel"
-                 : `corners ${cableDraft.length} — click another pin to finish · Backspace undo, Esc cancel`
-               : "click a connection pin to start a wire"}
+              ? wireRoutingMode === "auto"
+                ? "auto route — select the destination pin · Esc cancel"
+                : `corners ${cableDraft.length} — click another pin to finish · Backspace undo, Esc cancel`
+              : "click a connection pin to start a wire"}
           </span>
           <button
-            onClick={() => { setEVWireMode(false); setEVWireFirst(null); }}
+            onClick={() => {
+              setEVWireMode(false);
+              setEVWireFirst(null);
+            }}
             aria-label="Stop wiring"
             className="rounded-md p-0.5 transition hover:bg-black/10"
           >
@@ -3568,7 +4265,9 @@ export default function Scene3DViewer() {
           <span>
             Click ground to place{" "}
             <strong>
-              {pendingEV ? EV_DEFS[pendingEV].name : ADDABLES.find((a) => a.type === pendingAdd)?.name}
+              {pendingEV
+                ? EV_DEFS[pendingEV].name
+                : ADDABLES.find((a) => a.type === pendingAdd)?.name}
             </strong>
           </span>
           <span className="flex items-center gap-1 rounded-md bg-white/50 px-2 py-0.5 text-[11px] text-neutral-700">
@@ -3580,7 +4279,10 @@ export default function Scene3DViewer() {
             to rotate
           </span>
           <button
-            onClick={() => { setPendingAdd(null); setPendingEV(null); }}
+            onClick={() => {
+              setPendingAdd(null);
+              setPendingEV(null);
+            }}
             aria-label="Cancel placement"
             className="rounded-md p-0.5 text-neutral-600 transition hover:bg-black/10 hover:text-neutral-900"
           >
@@ -3628,7 +4330,7 @@ export default function Scene3DViewer() {
               >
                 <X className="h-3.5 w-3.5" />
               </button>
-        </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-1">
               <button
@@ -3685,9 +4387,7 @@ export default function Scene3DViewer() {
                       {(["in", "out"] as FeederDirection[]).map((d) => (
                         <button
                           key={d}
-                          onClick={() =>
-                            updateFeeder(feederPanelKey, f.id, { direction: d })
-                          }
+                          onClick={() => updateFeeder(feederPanelKey, f.id, { direction: d })}
                           className={`rounded-md border px-2 py-1 text-[10px] font-semibold uppercase tracking-wide transition ${
                             f.direction === d
                               ? d === "in"
@@ -3722,8 +4422,7 @@ export default function Scene3DViewer() {
               })}
             </div>
             <p className="mt-2 text-[10px] leading-snug text-neutral-600">
-              Breakers appear on the panel front: green rail = incoming, blue rail
-              = outgoing.
+              Breakers appear on the panel front: green rail = incoming, blue rail = outgoing.
             </p>
           </div>
         </DraggablePanel>
@@ -3741,7 +4440,8 @@ export default function Scene3DViewer() {
           <div className="px-4 py-3 text-xs text-neutral-800">
             <div className="mb-2 flex items-start justify-between gap-2">
               <div className="font-semibold">
-                {cableSizeOf(selectedCable.size).mv ? "MV cable" : "LV cable"} {cableLabel(selectedCable.size)}
+                {cableSizeOf(selectedCable.size).mv ? "MV cable" : "LV cable"}{" "}
+                {cableLabel(selectedCable.size)}
                 <div className="text-[10px] font-normal text-neutral-600">
                   {selectedCable.conduit === "none"
                     ? "No conduit · sand bed"
@@ -3763,31 +4463,19 @@ export default function Scene3DViewer() {
 
             <dl className="grid grid-cols-2 gap-1.5">
               <div className="rounded-md bg-white/45 px-2 py-1.5">
-                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
-                  Length
-                </dt>
-                <dd className="font-semibold">
-                  {cableLengthOf(selectedCable).toFixed(2)} m
-                </dd>
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">Length</dt>
+                <dd className="font-semibold">{cableLengthOf(selectedCable).toFixed(2)} m</dd>
               </div>
               <div className="rounded-md bg-white/45 px-2 py-1.5">
-                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
-                  Current
-                </dt>
-                <dd className="font-semibold">
-                  {cableCurrentOf(selectedCable).toFixed(1)} A
-                </dd>
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">Current</dt>
+                <dd className="font-semibold">{cableCurrentOf(selectedCable).toFixed(1)} A</dd>
               </div>
               <div className="rounded-md bg-white/45 px-2 py-1.5">
-                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
-                  Voltage
-                </dt>
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">Voltage</dt>
                 <dd className="font-semibold">{selectedCable.voltage} V</dd>
               </div>
               <div className="rounded-md bg-white/45 px-2 py-1.5">
-                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">
-                  Power
-                </dt>
+                <dt className="text-[10px] uppercase tracking-wide text-neutral-600">Power</dt>
                 <dd className="font-semibold">{selectedCable.powerKw} kW</dd>
               </div>
             </dl>
@@ -3811,22 +4499,20 @@ export default function Scene3DViewer() {
             </div>
             {editRoute && (
               <div className="mt-1 text-[10px] text-neutral-600">
-                Drag orange corners to move them, drag white dots to add a corner, right-click (or Alt+click) a corner to remove it.
+                Drag orange corners to move them, drag white dots to add a corner, right-click (or
+                Alt+click) a corner to remove it.
               </div>
             )}
 
             <div className="mt-3 text-[10px] font-semibold uppercase tracking-wide text-neutral-600">
               Feeder assignment
             </div>
-            {(
-              [
-                { end: "a" as const, id: selectedCable.a, field: "feederA" as const },
-                { end: "b" as const, id: selectedCable.b, field: "feederB" as const },
-              ]
-            ).map(({ end, id, field }) => {
+            {[
+              { end: "a" as const, id: selectedCable.a, field: "feederA" as const },
+              { end: "b" as const, id: selectedCable.b, field: "feederB" as const },
+            ].map(({ end, id, field }) => {
               const list = feedersOf(id);
-              const endName =
-                cableEndpoints.find((e) => e.id === id)?.name ?? "Unknown";
+              const endName = cableEndpoints.find((e) => e.id === id)?.name ?? "Unknown";
               const value = selectedCable[field] ?? "";
               const chosen = list.find((f) => f.id === value);
               const br = chosen ? breakerById(chosen.breakerId) : null;
@@ -3836,13 +4522,10 @@ export default function Scene3DViewer() {
                     {end === "a" ? "From" : "To"} · {endName}
                   </div>
                   {id.startsWith("joint:") ? (
-                    <div className="text-[11px] text-neutral-600">
-                      Cable joint — no feeder
-                    </div>
+                    <div className="text-[11px] text-neutral-600">Cable joint — no feeder</div>
                   ) : list.length === 0 ? (
                     <div className="text-[11px] text-neutral-600">
-                      No feeders on this panel yet — add them from the panel’s
-                      Feeders tag.
+                      No feeders on this panel yet — add them from the panel’s Feeders tag.
                     </div>
                   ) : (
                     <>
@@ -3873,13 +4556,12 @@ export default function Scene3DViewer() {
                         >
                           {br.label} · {br.rating} A —{" "}
                           {cableCurrentOf(selectedCable) > br.rating
-                            ? `overloaded by ${(
-                                cableCurrentOf(selectedCable) - br.rating
-                              ).toFixed(1)} A`
-                            : `${(
-                                (cableCurrentOf(selectedCable) / br.rating) *
-                                100
-                              ).toFixed(0)}% of breaker rating`}
+                            ? `overloaded by ${(cableCurrentOf(selectedCable) - br.rating).toFixed(
+                                1,
+                              )} A`
+                            : `${((cableCurrentOf(selectedCable) / br.rating) * 100).toFixed(
+                                0,
+                              )}% of breaker rating`}
                         </div>
                       )}
                     </>
@@ -3937,8 +4619,8 @@ export default function Scene3DViewer() {
               className="mt-1 w-full rounded-md border border-white/60 bg-white/60 px-2 py-1 text-xs"
             />
             <p className="mt-2 text-[10px] leading-snug text-neutral-600">
-              Current from P / (√3 · U · cos φ) at cos φ = 0,95 (230 V single
-              phase: P / (U · cos φ)).
+              Current from P / (√3 · U · cos φ) at cos φ = 0,95 (230 V single phase: P / (U · cos
+              φ)).
             </p>
             <button
               onClick={() => removeCable(selectedCable.id)}
@@ -3950,7 +4632,6 @@ export default function Scene3DViewer() {
           </div>
         </DraggablePanel>
       )}
-
 
       {cableMode && !pendingAdd && (
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-500/85 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
@@ -3975,8 +4656,6 @@ export default function Scene3DViewer() {
         </div>
       )}
       {connectMode && !pendingAdd && (
-
-
         <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-3 rounded-xl border border-blue-300/60 bg-blue-500/80 px-3 py-1.5 text-xs font-medium text-white shadow-md backdrop-blur-md">
           <Link2 className="h-3.5 w-3.5" />
           <span>
@@ -3998,24 +4677,29 @@ export default function Scene3DViewer() {
         </div>
       )}
 
-
       {rulerActive && (
         <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-xl border border-white/40 bg-white/40 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
           {rulerPoints.length === 0
             ? "Ruler: click the first point (snaps to corners, hold Alt for free)"
             : rulerPoints.length === 1
-            ? "Click the second point to measure"
-            : `Distance: ${Math.hypot(
-                rulerPoints[1][0] - rulerPoints[0][0],
-                rulerPoints[1][1] - rulerPoints[0][1],
-                rulerPoints[1][2] - rulerPoints[0][2]
-              ).toFixed(2)} m — drag a point to adjust, click to restart`}
+              ? "Click the second point to measure"
+              : `Distance: ${Math.hypot(
+                  rulerPoints[1][0] - rulerPoints[0][0],
+                  rulerPoints[1][1] - rulerPoints[0][1],
+                  rulerPoints[1][2] - rulerPoints[0][2],
+                ).toFixed(2)} m — drag a point to adjust, click to restart`}
         </div>
       )}
 
       {/* Scene menu dropdown */}
       {menuOpen && (
-        <DraggablePanel initialX={16} initialY={64} title="Scenes" width={256} onClose={() => setMenuOpen(false)}>
+        <DraggablePanel
+          initialX={16}
+          initialY={64}
+          title="Scenes"
+          width={256}
+          onClose={() => setMenuOpen(false)}
+        >
           <ul className="flex flex-col">
             {SCENES.map((s) => {
               const active = s.id === sceneId;
@@ -4030,20 +4714,26 @@ export default function Scene3DViewer() {
                     }`}
                   >
                     <span>{s.name}</span>
-                    <span className="text-xs font-normal text-neutral-600">
-                      {s.subtitle}
-                    </span>
+                    <span className="text-xs font-normal text-neutral-600">{s.subtitle}</span>
                   </button>
                 </li>
               );
             })}
           </ul>
           <div className="flex flex-col gap-1.5 border-t border-white/40 px-4 py-3">
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Save file</div>
-            <button className="rounded-lg bg-white/70 px-3 py-1.5 text-left text-sm text-neutral-900 hover:bg-white" onClick={saveToFile}>
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+              Save file
+            </div>
+            <button
+              className="rounded-lg bg-white/70 px-3 py-1.5 text-left text-sm text-neutral-900 hover:bg-white"
+              onClick={saveToFile}
+            >
               Save to file
             </button>
-            <button className="rounded-lg bg-white/70 px-3 py-1.5 text-left text-sm text-neutral-900 hover:bg-white" onClick={() => loadInputRef.current?.click()}>
+            <button
+              className="rounded-lg bg-white/70 px-3 py-1.5 text-left text-sm text-neutral-900 hover:bg-white"
+              onClick={() => loadInputRef.current?.click()}
+            >
               Open save file
             </button>
             <input
@@ -4063,12 +4753,10 @@ export default function Scene3DViewer() {
         </DraggablePanel>
       )}
 
-
       {/* Active scene label */}
       <div className="pointer-events-none absolute right-4 top-4 rounded-xl border border-white/40 bg-white/30 px-3 py-1.5 text-xs font-medium text-neutral-800 shadow-md backdrop-blur-md">
         {activeScene.name}
       </div>
-
 
       {/* Properties panel (right click / Ctrl + click on a part) */}
       {propsTarget && (
@@ -4087,9 +4775,7 @@ export default function Scene3DViewer() {
               <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
                 Part
               </div>
-              <div className="pt-1 text-sm font-semibold text-neutral-900">
-                {propsTarget}
-              </div>
+              <div className="pt-1 text-sm font-semibold text-neutral-900">{propsTarget}</div>
             </div>
             {!evPropWire && (
               <div>
@@ -4103,16 +4789,26 @@ export default function Scene3DViewer() {
               const item = addedItems.find((i) => i.id === propsOwnerId);
               const obj = item ?? evPropPart;
               if (!obj) return null;
-              const update = (patch: { position?: [number, number, number]; rotationY?: number }) => {
-                if (item) setAddedItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
-                else if (evPropPart) setEVParts((prev) => prev.map((q) => (q.id === evPropPart.id ? { ...q, ...patch } : q)));
+              const update = (patch: {
+                position?: [number, number, number];
+                rotationY?: number;
+              }) => {
+                if (item)
+                  setAddedItems((prev) =>
+                    prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i)),
+                  );
+                else if (evPropPart)
+                  setEVParts((prev) =>
+                    prev.map((q) => (q.id === evPropPart.id ? { ...q, ...patch } : q)),
+                  );
               };
-              const deg = Math.round((((obj.rotationY ?? 0) * 180) / Math.PI) % 360 + 360) % 360;
+              const deg = Math.round(((((obj.rotationY ?? 0) * 180) / Math.PI) % 360) + 360) % 360;
               const axisInput = (idx: 0 | 2, label: string) => (
                 <label className="flex items-center gap-1.5">
                   <span className="w-3 text-[11px] font-semibold">{label}</span>
                   <input
-                    type="number" step={0.05}
+                    type="number"
+                    step={0.05}
                     value={Number(obj.position[idx].toFixed(3))}
                     onChange={(e) => {
                       const p = [...obj.position] as [number, number, number];
@@ -4126,23 +4822,52 @@ export default function Scene3DViewer() {
               );
               return (
                 <div className="space-y-2 text-xs text-neutral-800">
-                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Position &amp; rotation</div>
+                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                    Position &amp; rotation
+                  </div>
                   <div className="grid grid-cols-2 gap-2">
                     {axisInput(0, "X")}
                     {axisInput(2, "Z")}
                   </div>
                   <div>
-                    <span className="flex justify-between text-[11px]"><span>Rotation</span><span className="font-mono font-semibold">{deg}°</span></span>
+                    <span className="flex justify-between text-[11px]">
+                      <span>Rotation</span>
+                      <span className="font-mono font-semibold">{deg}°</span>
+                    </span>
                     <div className="flex items-center gap-1.5">
-                      <button onClick={() => update({ rotationY: ((deg - 15) * Math.PI) / 180 })} className="rounded-md border border-white/60 bg-white/55 px-2 py-0.5 text-[11px] font-semibold hover:bg-white/80" aria-label="Rotate left">⟲</button>
-                      <input type="range" min={0} max={359} step={1} value={deg}
-                        onChange={(e) => update({ rotationY: (Number(e.target.value) * Math.PI) / 180 })}
-                        className="w-full accent-orange-500" />
-                      <button onClick={() => update({ rotationY: ((deg + 15) * Math.PI) / 180 })} className="rounded-md border border-white/60 bg-white/55 px-2 py-0.5 text-[11px] font-semibold hover:bg-white/80" aria-label="Rotate right">⟳</button>
+                      <button
+                        onClick={() => update({ rotationY: ((deg - 15) * Math.PI) / 180 })}
+                        className="rounded-md border border-white/60 bg-white/55 px-2 py-0.5 text-[11px] font-semibold hover:bg-white/80"
+                        aria-label="Rotate left"
+                      >
+                        ⟲
+                      </button>
+                      <input
+                        type="range"
+                        min={0}
+                        max={359}
+                        step={1}
+                        value={deg}
+                        onChange={(e) =>
+                          update({ rotationY: (Number(e.target.value) * Math.PI) / 180 })
+                        }
+                        className="w-full accent-orange-500"
+                      />
+                      <button
+                        onClick={() => update({ rotationY: ((deg + 15) * Math.PI) / 180 })}
+                        className="rounded-md border border-white/60 bg-white/55 px-2 py-0.5 text-[11px] font-semibold hover:bg-white/80"
+                        aria-label="Rotate right"
+                      >
+                        ⟳
+                      </button>
                     </div>
                   </div>
                   <button
-                    onClick={() => { const on = !moveMode; stopAllModes(); setMoveMode(on); }}
+                    onClick={() => {
+                      const on = !moveMode;
+                      stopAllModes();
+                      setMoveMode(on);
+                    }}
                     className={`w-full rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${moveMode ? "border-amber-400 bg-amber-400/80 text-neutral-900" : "border-white/60 bg-white/45 text-neutral-800 hover:bg-white/70"}`}
                   >
                     {moveMode ? "Done moving" : "Drag to move with mouse"}
@@ -4153,294 +4878,722 @@ export default function Scene3DViewer() {
             {!evPropWire && (
               <BasePropsEditor
                 props={currentProps}
-                onChange={(next) =>
-                  setObjectProps((prev) => ({ ...prev, [propsKey]: next }))
-                }
+                onChange={(next) => setObjectProps((prev) => ({ ...prev, [propsKey]: next }))}
               />
             )}
-            {(propsModelId === "alajaam" || propsModelId === "gis") && propsOwnerId && (() => {
-              const sid = propsOwnerId;
-              const cubs = switchgearOf(sid);
-              const setC = (k: number, patch: Partial<Cubicle>) => setSwitchgear(sid, cubs.map((c, i) => (i === k ? { ...c, ...patch } : c)));
-              const inp = "w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30";
-              const btn = (on: boolean) => `rounded-md px-2 py-1 text-[11px] font-semibold transition ${on ? "bg-neutral-800 text-white" : "border border-white/60 bg-white/50 text-neutral-800 hover:bg-white/80"}`;
-              return (
-                <div className="space-y-2 text-xs text-neutral-800">
-                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">{propsModelId === "gis" ? "GIS feeders & relay automation" : "MV switchgear (10 kV)"}</div>
-                  {propsModelId === "gis" && (() => {
-                    const auto = relayAutoOn(currentProps.values.relayAuto);
-                    return (
-                      <div className="flex items-center justify-between rounded-lg border border-white/60 bg-white/50 p-2">
-                        <div>
-                          <div className="font-semibold">Relay automation {auto ? "ON" : "OFF"}</div>
-                          <div className="text-[10px] text-neutral-600">{auto ? "RTU, switch, router and antenna online; breakers trip on I> / I>>." : "Protection relays disabled; breakers will not trip automatically."}</div>
-                        </div>
-                        <button className={btn(auto)} onClick={() => setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...currentProps.values, relayAuto: auto ? "0" : "1" } } }))}>{auto ? "Turn off" : "Turn on"}</button>
-                      </div>
-                    );
-                  })()}
-                  <div className="text-[10px] text-neutral-600">Each cubicle has a 10 kV connector on the front wall for cables and lines. All cubicles share one busbar.</div>
-                  {cubs.map((c, k) => {
-                    const I = cubicleCurrent(sid, k);
-                    return (
-                      <div key={c.id} className={`space-y-1.5 rounded-lg border p-2 ${c.tripped ? "border-orange-400 bg-orange-100/50" : "border-white/50 bg-white/30"}`}>
-                        <div className="flex items-center gap-2">
-                          <input value={c.label} onChange={(e) => setC(k, { label: e.target.value })} className={inp} />
-                          <button aria-label="Remove cubicle" onClick={() => setSwitchgear(sid, cubs.filter((_, i) => i !== k))} className="rounded p-1 text-neutral-600 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
-                        </div>
-                        <select value={c.kind} onChange={(e) => setC(k, { kind: e.target.value as CubicleKind, tripped: undefined })} className={inp}>
-                          {(Object.keys(CUBICLE_KIND_LABEL) as CubicleKind[]).map((t) => <option key={t} value={t}>{CUBICLE_KIND_LABEL[t]}</option>)}
-                        </select>
-                        <div className="flex flex-wrap gap-1">
-                          <button className={btn(c.closed)} disabled={c.earthed} title={c.earthed ? "Interlock: open the earthing switch first" : ""}
-                            onClick={() => setC(k, { closed: !c.closed, tripped: undefined })}>{c.closed ? "Closed — open" : "Open — close"}</button>
-                          <button className={btn(c.earthed)} disabled={c.closed && !c.tripped} title={c.closed ? "Interlock: open the main switch first" : ""}
-                            onClick={() => setC(k, { earthed: !c.earthed })}>{c.earthed ? "Earthed — remove earth" : "Earth"}</button>
-                          {c.tripped && <button className={btn(false)} onClick={() => setC(k, { tripped: undefined, closed: false })}>Reset trip</button>}
-                        </div>
-                        <div className="font-mono text-[10px] text-neutral-700">
-                          {c.tripped ? <strong className="text-orange-700">TRIPPED: {c.tripped}</strong> : c.earthed ? "Earthed" : cubicleConducts(c) ? "Closed" : "Open"} · I = {I.toFixed(1)} A
-                        </div>
-                        {(c.closed || c.earthed) && <div className="text-[10px] text-neutral-500">{c.closed ? "Earthing switch locked (main switch closed)." : "Main switch locked (earthed)."}</div>}
-                        {c.kind === "cb" && (
-                          <div className="grid grid-cols-[90px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
-                            <span className="text-[11px]">I&gt; overcurrent</span>
-                            <input type="number" min={1} step={1} value={c.pickupA} onChange={(e) => setC(k, { pickupA: Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">A</span>
-                            <span className="text-[11px]">I&gt;&gt; short circuit</span>
-                            <input type="number" min={1} step={10} value={c.scA} onChange={(e) => setC(k, { scA: Number(e.target.value) })} className={inp} /><span className="text-[10px] text-neutral-500">A</span>
+            {(propsModelId === "alajaam" || propsModelId === "gis") &&
+              propsOwnerId &&
+              (() => {
+                const sid = propsOwnerId;
+                const cubs = switchgearOf(sid);
+                const setC = (k: number, patch: Partial<Cubicle>) =>
+                  setSwitchgear(
+                    sid,
+                    cubs.map((c, i) => (i === k ? { ...c, ...patch } : c)),
+                  );
+                const inp =
+                  "w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30";
+                const btn = (on: boolean) =>
+                  `rounded-md px-2 py-1 text-[11px] font-semibold transition ${on ? "bg-neutral-800 text-white" : "border border-white/60 bg-white/50 text-neutral-800 hover:bg-white/80"}`;
+                return (
+                  <div className="space-y-2 text-xs text-neutral-800">
+                    <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                      {propsModelId === "gis"
+                        ? "GIS feeders & relay automation"
+                        : "MV switchgear (10 kV)"}
+                    </div>
+                    {propsModelId === "gis" &&
+                      (() => {
+                        const auto = relayAutoOn(currentProps.values.relayAuto);
+                        return (
+                          <div className="flex items-center justify-between rounded-lg border border-white/60 bg-white/50 p-2">
+                            <div>
+                              <div className="font-semibold">
+                                Relay automation {auto ? "ON" : "OFF"}
+                              </div>
+                              <div className="text-[10px] text-neutral-600">
+                                {auto
+                                  ? "RTU, switch, router and antenna online; breakers trip on I> / I>>."
+                                  : "Protection relays disabled; breakers will not trip automatically."}
+                              </div>
+                            </div>
+                            <button
+                              className={btn(auto)}
+                              onClick={() =>
+                                setObjectProps((prev) => ({
+                                  ...prev,
+                                  [propsKey]: {
+                                    ...currentProps,
+                                    values: { ...currentProps.values, relayAuto: auto ? "0" : "1" },
+                                  },
+                                }))
+                              }
+                            >
+                              {auto ? "Turn off" : "Turn on"}
+                            </button>
                           </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <div className="flex gap-1">
-                    <button className={btn(false)} onClick={() => setSwitchgear(sid, [...cubs, makeCubicle("lbs", cubs.filter((c) => c.kind === "lbs").length + 1)])}>+ Cable cubicle</button>
-                    <button className={btn(false)} onClick={() => setSwitchgear(sid, [...cubs, makeCubicle("cb", cubs.filter((c) => c.kind === "cb").length + 1)])}>+ Breaker cubicle</button>
-                  </div>
-                </div>
-              );
-            })()}
-            {propsModelId === "lvpanel" && propsOwnerId && (() => {
-              const pid = propsOwnerId;
-              const devs = lvDevsOf(pid);
-              const setD = (k: number, patch: Partial<LVDevice>) => setLVDevs(pid, devs.map((d, i) => (i === k ? { ...d, ...patch } : d)));
-              const move = (k: number, dir: number) => {
-                const j = k + dir;
-                if (j < 0 || j >= devs.length) return;
-                const n = [...devs];
-                [n[k], n[j]] = [n[j], n[k]];
-                setLVDevs(pid, n);
-              };
-              const inp = "w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30";
-              const btn = (on: boolean) => `rounded-md px-2 py-1 text-[11px] font-semibold transition ${on ? "bg-neutral-800 text-white" : "border border-white/60 bg-white/50 text-neutral-800 hover:bg-white/80"}`;
-              const count = (k: LVKind) => devs.filter((d) => d.kind === k).length + 1;
-              return (
-                <div className="space-y-2 text-xs text-neutral-800">
-                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">LV panel devices (0.4 kV)</div>
-                  <div className="text-[10px] text-neutral-600">Feed the panel with a cable or line to its incoming connector, or wires to the L1 L2 L3 N PE pins at the top. Wire loads from breaker output pins (bottom of each device) to the N and PE bars. Devices set to "Manual wiring" get no busbar link — wire their input pins yourself.</div>
-                  {devs.map((d, k) => {
-                    const info = LV_KIND_INFO[d.kind];
-                    const I = lvDevCurrent(pid, d);
-                    const spd = d.kind === "spd" ? circuit.partStatus[lvSpdOwner(pid, d.id)] : undefined;
-                    return (
-                      <div key={d.id} className={`space-y-1.5 rounded-lg border p-2 ${d.tripped ? "border-orange-400 bg-orange-100/50" : "border-white/50 bg-white/30"}`}>
-                        <div className="flex items-center gap-1">
-                          <input value={d.label} onChange={(e) => setD(k, { label: e.target.value })} className={inp} />
-                          <button aria-label="Move left" onClick={() => move(k, -1)} className="rounded px-1 text-neutral-600">←</button>
-                          <button aria-label="Move right" onClick={() => move(k, 1)} className="rounded px-1 text-neutral-600">→</button>
-                          <button aria-label="Remove device" onClick={() => setLVDevs(pid, devs.filter((_, i) => i !== k))} className="rounded p-1 text-neutral-600 hover:text-red-600"><Trash2 className="h-3.5 w-3.5" /></button>
-                        </div>
-                        <div className="text-[10px] text-neutral-600">{info.label}</div>
-                        <div className="grid grid-cols-3 gap-1">
-                          <select aria-label="Rating" value={d.rating} onChange={(e) => setD(k, { rating: Number(e.target.value), tripped: undefined })} className={inp}>
-                            {info.ratings.map((r) => <option key={r} value={r}>{d.kind === "spd" ? `${r} kA` : `${r} A`}</option>)}
-                          </select>
-                          <select aria-label="Poles" value={d.poles} onChange={(e) => setD(k, { poles: Number(e.target.value) as 1 | 3 })} className={inp} disabled={info.poles.length < 2}>
-                            {info.poles.map((p) => <option key={p} value={p}>{p === 3 ? "3P" : "1P"}</option>)}
-                          </select>
-                          <select aria-label="Phase" value={d.poles === 3 ? "3" : d.phase} disabled={d.poles === 3} onChange={(e) => setD(k, { phase: e.target.value as LVPhase })} className={inp}>
-                            {d.poles === 3 ? <option value="3">L1 L2 L3</option> : (["L1", "L2", "L3"] as LVPhase[]).map((ph) => <option key={ph} value={ph}>{ph}</option>)}
-                          </select>
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          <button className={btn(d.feed === "bus")} onClick={() => setD(k, { feed: d.feed === "bus" ? "manual" : "bus" })}>{d.feed === "bus" ? "Fed from busbar" : "Manual wiring"}</button>
-                          {d.kind !== "spd" && <button className={btn(d.closed && !d.tripped)} onClick={() => setD(k, { closed: !d.closed, tripped: undefined })}>{d.closed && !d.tripped ? "ON — switch off" : "OFF — switch on"}</button>}
-                          {d.tripped && <button className={btn(false)} onClick={() => setD(k, { tripped: undefined, closed: false })}>Reset trip</button>}
-                        </div>
-                        <div className="font-mono text-[10px] text-neutral-700">
-                          {d.kind === "spd"
-                            ? `${spd?.state === "on" ? "Protecting" : spd?.state === "over" ? "Overvoltage!" : "No voltage"} · U = ${(spd?.voltage ?? 0).toFixed(0)} V`
-                            : <>{d.tripped ? <strong className="text-orange-700">TRIPPED: {d.tripped}</strong> : lvConducts(d) ? "ON" : "OFF"} · I = {I.toFixed(2)} A / In {d.rating} A</>}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  <div className="flex flex-wrap gap-1">
-                    <button className={btn(false)} onClick={() => setLVDevs(pid, [...devs, makeLVDevice("mccb", count("mccb"))])}>+ MCCB</button>
-                    <button className={btn(false)} onClick={() => setLVDevs(pid, [...devs, makeLVDevice("mcb", count("mcb"))])}>+ MCB</button>
-                    <button className={btn(false)} onClick={() => setLVDevs(pid, [...devs, makeLVDevice("mini", count("mini"))])}>+ Small breaker</button>
-                    <button className={btn(false)} onClick={() => setLVDevs(pid, [...devs, makeLVDevice("spd", count("spd"))])}>+ SPD</button>
-                  </div>
-                </div>
-              );
-            })()}
-            {propsModelId === "transformer" && propsOwnerId && (() => {
-              const v = { ...transformerDefaults(), ...currentProps.values };
-              const setV = (patch: Record<string, string | number>) =>
-                setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...v, ...patch } } }));
-              const m = transformerModel(v);
-              const st = circuit.transformerStatus[propsOwnerId];
-              const vec = String(v.tfVector) as VectorGroup;
-              return (
-                <div className="space-y-2 text-xs text-neutral-800">
-                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Model-specific</div>
-                  <div className="grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
-                    {(["Dyn11", "YNyn0"] as VectorGroup[]).map((k) => (
-                      <button key={k} onClick={() => setV({ tfVector: k })}
-                        className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${vec === k ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}>{k}</button>
-                    ))}
-                  </div>
-                  {TRANSFORMER_PARAMS.map((d) => (
-                    <div key={d.key} className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2">
-                      <span className="text-[11px]">{d.label}</span>
-                      <input type="number" min={d.min} max={d.max} step={d.step} value={Number(v[d.key] ?? 0)}
-                        onChange={(e) => {
-                          const n = Number(e.target.value);
-                          setV(d.key === "tfPrimaryV" ? { tfPrimaryV: n, nominalVoltage: n } : d.key === "tfRatedKVA" ? { tfRatedKVA: n, ratedPower: n } : { [d.key]: n });
-                        }}
-                        className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30" />
-                      <span className="text-[10px] text-neutral-500">{d.unit}</span>
+                        );
+                      })()}
+                    <div className="text-[10px] text-neutral-600">
+                      Each cubicle has a 10 kV connector on the front wall for cables and lines. All
+                      cubicles share one busbar.
                     </div>
-                  ))}
-                  <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700">
-                    <div>Turns ratio per winding: {m.ratio.toFixed(2)} : 1</div>
-                    <div>Rated LV current: {(m.ratedVA / (Math.sqrt(3) * m.vs)).toFixed(1)} A · HV: {(m.ratedVA / (Math.sqrt(3) * m.vp)).toFixed(2)} A</div>
-                    <div>LV impedance per phase: {(m.rSec * 1000).toFixed(2)} mΩ</div>
-                  </div>
-                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Operation</div>
-                  {!st || st.primaryV < 1 ? (
-                    <div className="text-[11px] text-neutral-600">Not energised — connect an AC source to the HV side (H1 H2 H3) with a cable, line or wires.</div>
-                  ) : (
-                    <div className={`rounded-md border px-2 py-1 font-mono text-[10px] leading-snug ${st.loadPct > 100 ? "border-red-400 bg-red-100/60 text-red-800" : "border-white/50 bg-white/35 text-neutral-700"}`}>
-                      <div>HV: {st.primaryV.toFixed(0)} V · LV: {st.secondaryV.toFixed(1)} V</div>
-                      <div>LV currents: {st.currents.map((c) => `${c.toFixed(1)} A`).join(" / ")}</div>
-                      <div>Load: {(st.loadVA / 1000).toFixed(1)} kVA ({st.loadPct.toFixed(0)}%){st.loadPct > 100 ? " — OVERLOADED" : ""}</div>
+                    {cubs.map((c, k) => {
+                      const I = cubicleCurrent(sid, k);
+                      return (
+                        <div
+                          key={c.id}
+                          className={`space-y-1.5 rounded-lg border p-2 ${c.tripped ? "border-orange-400 bg-orange-100/50" : "border-white/50 bg-white/30"}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <input
+                              value={c.label}
+                              onChange={(e) => setC(k, { label: e.target.value })}
+                              className={inp}
+                            />
+                            <button
+                              aria-label="Remove cubicle"
+                              onClick={() =>
+                                setSwitchgear(
+                                  sid,
+                                  cubs.filter((_, i) => i !== k),
+                                )
+                              }
+                              className="rounded p-1 text-neutral-600 hover:text-red-600"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <select
+                            value={c.kind}
+                            onChange={(e) =>
+                              setC(k, { kind: e.target.value as CubicleKind, tripped: undefined })
+                            }
+                            className={inp}
+                          >
+                            {(Object.keys(CUBICLE_KIND_LABEL) as CubicleKind[]).map((t) => (
+                              <option key={t} value={t}>
+                                {CUBICLE_KIND_LABEL[t]}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="flex flex-wrap gap-1">
+                            <button
+                              className={btn(c.closed)}
+                              disabled={c.earthed}
+                              title={c.earthed ? "Interlock: open the earthing switch first" : ""}
+                              onClick={() => setC(k, { closed: !c.closed, tripped: undefined })}
+                            >
+                              {c.closed ? "Closed — open" : "Open — close"}
+                            </button>
+                            <button
+                              className={btn(c.earthed)}
+                              disabled={c.closed && !c.tripped}
+                              title={c.closed ? "Interlock: open the main switch first" : ""}
+                              onClick={() => setC(k, { earthed: !c.earthed })}
+                            >
+                              {c.earthed ? "Earthed — remove earth" : "Earth"}
+                            </button>
+                            {c.tripped && (
+                              <button
+                                className={btn(false)}
+                                onClick={() => setC(k, { tripped: undefined, closed: false })}
+                              >
+                                Reset trip
+                              </button>
+                            )}
+                          </div>
+                          <div className="font-mono text-[10px] text-neutral-700">
+                            {c.tripped ? (
+                              <strong className="text-orange-700">TRIPPED: {c.tripped}</strong>
+                            ) : c.earthed ? (
+                              "Earthed"
+                            ) : cubicleConducts(c) ? (
+                              "Closed"
+                            ) : (
+                              "Open"
+                            )}{" "}
+                            · I = {I.toFixed(1)} A
+                          </div>
+                          {(c.closed || c.earthed) && (
+                            <div className="text-[10px] text-neutral-500">
+                              {c.closed
+                                ? "Earthing switch locked (main switch closed)."
+                                : "Main switch locked (earthed)."}
+                            </div>
+                          )}
+                          {c.kind === "cb" && (
+                            <div className="grid grid-cols-[90px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
+                              <span className="text-[11px]">I&gt; overcurrent</span>
+                              <input
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={c.pickupA}
+                                onChange={(e) => setC(k, { pickupA: Number(e.target.value) })}
+                                className={inp}
+                              />
+                              <span className="text-[10px] text-neutral-500">A</span>
+                              <span className="text-[11px]">I&gt;&gt; short circuit</span>
+                              <input
+                                type="number"
+                                min={1}
+                                step={10}
+                                value={c.scA}
+                                onChange={(e) => setC(k, { scA: Number(e.target.value) })}
+                                className={inp}
+                              />
+                              <span className="text-[10px] text-neutral-500">A</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                    <div className="flex gap-1">
+                      <button
+                        className={btn(false)}
+                        onClick={() =>
+                          setSwitchgear(sid, [
+                            ...cubs,
+                            makeCubicle("lbs", cubs.filter((c) => c.kind === "lbs").length + 1),
+                          ])
+                        }
+                      >
+                        + Cable cubicle
+                      </button>
+                      <button
+                        className={btn(false)}
+                        onClick={() =>
+                          setSwitchgear(sid, [
+                            ...cubs,
+                            makeCubicle("cb", cubs.filter((c) => c.kind === "cb").length + 1),
+                          ])
+                        }
+                      >
+                        + Breaker cubicle
+                      </button>
                     </div>
-                  )}
-                  <div className="text-[10px] text-neutral-600">HV pins H1–H3 (+N for YNyn0), LV pins X1–X3, N, PE. Cables and lines attach to the red (HV) or green (LV) markers; wires attach to single pins.</div>
-                </div>
-              );
-            })()}
-            {propsModelId === "vsource" && propsOwnerId && (() => {
-              const v = { ...sourceDefaults("AC"), ...currentProps.values };
-              const kind = String(v.sourceKind ?? "AC") as SourceKind;
-              const setV = (patch: Record<string, string | number>) =>
-                setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...v, ...patch } } }));
-              const loops = circuit.loops[propsOwnerId] ?? [];
-              const vph = Number(v.srcVoltage) / Math.sqrt(3);
-              return (
-                <div className="space-y-2 text-xs text-neutral-800">
-                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Model-specific</div>
-                  <div className="grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
-                    {(["AC", "DC"] as SourceKind[]).map((k) => (
-                      <button key={k}
-                        onClick={() => {
-                          if (k === kind) return;
-                          setV({ ...sourceDefaults(k), name: String(v.name ?? "Voltage source") });
-                          setEVWires((prev) => prev.filter((w) => ownerOfEnd(w.a) !== propsOwnerId && ownerOfEnd(w.b) !== propsOwnerId));
-                        }}
-                        className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${kind === k ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
-                      >{k === "AC" ? "AC (L1 L2 L3 N PE)" : "DC (+ −)"}</button>
-                    ))}
                   </div>
-                  {SOURCE_PARAMS.filter((d) => !d.dcOnly || kind === "DC").map((d) => (
-                    <div key={d.key} className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2">
-                      <span className="text-[11px]">{d.key === "srcVoltage" && kind === "AC" ? "Voltage (L-L)" : d.label}</span>
-                      <input type="number" min={d.min} max={d.max} step={d.step} value={Number(v[d.key] ?? 0)}
-                        onChange={(e) => setV(d.key === "srcVoltage" ? { srcVoltage: Number(e.target.value), nominalVoltage: Number(e.target.value) } : { [d.key]: Number(e.target.value) })}
-                        className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30" />
-                      <span className="text-[10px] text-neutral-500">{d.unit}</span>
+                );
+              })()}
+            {propsModelId === "lvpanel" &&
+              propsOwnerId &&
+              (() => {
+                const pid = propsOwnerId;
+                const devs = lvDevsOf(pid);
+                const setD = (k: number, patch: Partial<LVDevice>) =>
+                  setLVDevs(
+                    pid,
+                    devs.map((d, i) => (i === k ? { ...d, ...patch } : d)),
+                  );
+                const move = (k: number, dir: number) => {
+                  const j = k + dir;
+                  if (j < 0 || j >= devs.length) return;
+                  const n = [...devs];
+                  [n[k], n[j]] = [n[j], n[k]];
+                  setLVDevs(pid, n);
+                };
+                const inp =
+                  "w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30";
+                const btn = (on: boolean) =>
+                  `rounded-md px-2 py-1 text-[11px] font-semibold transition ${on ? "bg-neutral-800 text-white" : "border border-white/60 bg-white/50 text-neutral-800 hover:bg-white/80"}`;
+                const count = (k: LVKind) => devs.filter((d) => d.kind === k).length + 1;
+                return (
+                  <div className="space-y-2 text-xs text-neutral-800">
+                    <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                      LV panel devices (0.4 kV)
                     </div>
-                  ))}
-                  {kind === "AC" && (
-                    <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700">
-                      {(["l1", "l2", "l3"] as const).map((p) => (
-                        <div key={p}>{p.toUpperCase()}–N: {vph.toFixed(1)} V ∠ {PHASE_ANGLES[p]}° · {Number(v.frequency || 50)} Hz</div>
+                    <div className="text-[10px] text-neutral-600">
+                      Feed the panel with a cable or line to its incoming connector, or wires to the
+                      L1 L2 L3 N PE pins at the top. Wire loads from breaker output pins (bottom of
+                      each device) to the N and PE bars. Devices set to "Manual wiring" get no
+                      busbar link — wire their input pins yourself.
+                    </div>
+                    {devs.map((d, k) => {
+                      const info = LV_KIND_INFO[d.kind];
+                      const I = lvDevCurrent(pid, d);
+                      const spd =
+                        d.kind === "spd" ? circuit.partStatus[lvSpdOwner(pid, d.id)] : undefined;
+                      return (
+                        <div
+                          key={d.id}
+                          className={`space-y-1.5 rounded-lg border p-2 ${d.tripped ? "border-orange-400 bg-orange-100/50" : "border-white/50 bg-white/30"}`}
+                        >
+                          <div className="flex items-center gap-1">
+                            <input
+                              value={d.label}
+                              onChange={(e) => setD(k, { label: e.target.value })}
+                              className={inp}
+                            />
+                            <button
+                              aria-label="Move left"
+                              onClick={() => move(k, -1)}
+                              className="rounded px-1 text-neutral-600"
+                            >
+                              ←
+                            </button>
+                            <button
+                              aria-label="Move right"
+                              onClick={() => move(k, 1)}
+                              className="rounded px-1 text-neutral-600"
+                            >
+                              →
+                            </button>
+                            <button
+                              aria-label="Remove device"
+                              onClick={() =>
+                                setLVDevs(
+                                  pid,
+                                  devs.filter((_, i) => i !== k),
+                                )
+                              }
+                              className="rounded p-1 text-neutral-600 hover:text-red-600"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <div className="text-[10px] text-neutral-600">{info.label}</div>
+                          <div className="grid grid-cols-3 gap-1">
+                            <select
+                              aria-label="Rating"
+                              value={d.rating}
+                              onChange={(e) =>
+                                setD(k, { rating: Number(e.target.value), tripped: undefined })
+                              }
+                              className={inp}
+                            >
+                              {info.ratings.map((r) => (
+                                <option key={r} value={r}>
+                                  {d.kind === "spd" ? `${r} kA` : `${r} A`}
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              aria-label="Poles"
+                              value={d.poles}
+                              onChange={(e) => setD(k, { poles: Number(e.target.value) as 1 | 3 })}
+                              className={inp}
+                              disabled={info.poles.length < 2}
+                            >
+                              {info.poles.map((p) => (
+                                <option key={p} value={p}>
+                                  {p === 3 ? "3P" : "1P"}
+                                </option>
+                              ))}
+                            </select>
+                            <select
+                              aria-label="Phase"
+                              value={d.poles === 3 ? "3" : d.phase}
+                              disabled={d.poles === 3}
+                              onChange={(e) => setD(k, { phase: e.target.value as LVPhase })}
+                              className={inp}
+                            >
+                              {d.poles === 3 ? (
+                                <option value="3">L1 L2 L3</option>
+                              ) : (
+                                (["L1", "L2", "L3"] as LVPhase[]).map((ph) => (
+                                  <option key={ph} value={ph}>
+                                    {ph}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                          </div>
+                          <div className="flex flex-wrap gap-1">
+                            <button
+                              className={btn(d.feed === "bus")}
+                              onClick={() => setD(k, { feed: d.feed === "bus" ? "manual" : "bus" })}
+                            >
+                              {d.feed === "bus" ? "Fed from busbar" : "Manual wiring"}
+                            </button>
+                            {d.kind !== "spd" && (
+                              <button
+                                className={btn(d.closed && !d.tripped)}
+                                onClick={() => setD(k, { closed: !d.closed, tripped: undefined })}
+                              >
+                                {d.closed && !d.tripped ? "ON — switch off" : "OFF — switch on"}
+                              </button>
+                            )}
+                            {d.tripped && (
+                              <button
+                                className={btn(false)}
+                                onClick={() => setD(k, { tripped: undefined, closed: false })}
+                              >
+                                Reset trip
+                              </button>
+                            )}
+                          </div>
+                          <div className="font-mono text-[10px] text-neutral-700">
+                            {d.kind === "spd" ? (
+                              `${spd?.state === "on" ? "Protecting" : spd?.state === "over" ? "Overvoltage!" : "No voltage"} · U = ${(spd?.voltage ?? 0).toFixed(0)} V`
+                            ) : (
+                              <>
+                                {d.tripped ? (
+                                  <strong className="text-orange-700">TRIPPED: {d.tripped}</strong>
+                                ) : lvConducts(d) ? (
+                                  "ON"
+                                ) : (
+                                  "OFF"
+                                )}{" "}
+                                · I = {I.toFixed(2)} A / In {d.rating} A
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        className={btn(false)}
+                        onClick={() =>
+                          setLVDevs(pid, [...devs, makeLVDevice("mccb", count("mccb"))])
+                        }
+                      >
+                        + MCCB
+                      </button>
+                      <button
+                        className={btn(false)}
+                        onClick={() => setLVDevs(pid, [...devs, makeLVDevice("mcb", count("mcb"))])}
+                      >
+                        + MCB
+                      </button>
+                      <button
+                        className={btn(false)}
+                        onClick={() =>
+                          setLVDevs(pid, [...devs, makeLVDevice("mini", count("mini"))])
+                        }
+                      >
+                        + Small breaker
+                      </button>
+                      <button
+                        className={btn(false)}
+                        onClick={() => setLVDevs(pid, [...devs, makeLVDevice("spd", count("spd"))])}
+                      >
+                        + SPD
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            {propsModelId === "transformer" &&
+              propsOwnerId &&
+              (() => {
+                const v = { ...transformerDefaults(), ...currentProps.values };
+                const setV = (patch: Record<string, string | number>) =>
+                  setObjectProps((prev) => ({
+                    ...prev,
+                    [propsKey]: { ...currentProps, values: { ...v, ...patch } },
+                  }));
+                const m = transformerModel(v);
+                const st = circuit.transformerStatus[propsOwnerId];
+                const vec = String(v.tfVector) as VectorGroup;
+                return (
+                  <div className="space-y-2 text-xs text-neutral-800">
+                    <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                      Model-specific
+                    </div>
+                    <div className="grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                      {(["Dyn11", "YNyn0"] as VectorGroup[]).map((k) => (
+                        <button
+                          key={k}
+                          onClick={() => setV({ tfVector: k })}
+                          className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${vec === k ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                        >
+                          {k}
+                        </button>
                       ))}
                     </div>
-                  )}
-                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Current</div>
-                  {loops.length === 0 ? (
-                    <div className="text-[11px] text-neutral-600">0 A — no closed wire loop between this source's {kind === "DC" ? "DC+ and DC−" : "phase and N"} pins.</div>
-                  ) : loops.map((l) => (
-                    <div key={l.from} className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700 break-words">
-                      {l.from.toUpperCase()}→{l.to.toUpperCase()}: I = U / R = {l.voltage.toFixed(1)} V / {(l.resistance * 1000).toFixed(2)} mΩ = <strong>{Number.isFinite(l.current) ? `${l.current.toFixed(1)} A` : "∞ (short)"}</strong>
-                      {kind === "DC" && Number(v.capacityAh) > 0 && Number.isFinite(l.current) && l.current > 0 && (
-                        <div className="font-sans text-neutral-500">Runtime at this current ≈ {(Number(v.capacityAh) / l.current * 60).toFixed(1)} min</div>
-                      )}
-                    </div>
-                  ))}
-                  <div className="text-[10px] text-neutral-600">Current is set by the wires' resistance{kind === "DC" ? " plus the internal resistance" : ""}. Wire the pins with Wiring → Wires.</div>
-                </div>
-              );
-            })()}
-            {propsModelId === "evcharger" && propsOwnerId && (() => {
-              const v = currentProps.values;
-              const setV = (patch: Record<string, string | number>) =>
-                setObjectProps((prev) => ({ ...prev, [propsKey]: { ...currentProps, values: { ...currentProps.values, ...patch } } }));
-              const feeding = cables.filter((c) => c.a === propsOwnerId || c.b === propsOwnerId);
-              const inKw = chargerInputKw(v);
-              const supplyKw = feeding.reduce((s, c) => s + c.powerKw, 0);
-              const tooSmall = feeding.length > 0 && supplyKw < inKw;
-              const breakerLow = Number(v.breaker) < Number(v.inputCurrent);
-              return (
-                <div className="space-y-2">
-                  <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Model-specific</div>
-                  <div className={`rounded-lg border px-2 py-1.5 text-[11px] ${feeding.length ? "border-green-500/50 bg-green-500/15 text-green-800" : "border-neutral-400/50 bg-white/40 text-neutral-700"}`}>
-                    Supply: <strong>{feeding.length ? `connected (${feeding.length} cable${feeding.length > 1 ? "s" : ""}, ${supplyKw} kW)` : "not connected"}</strong>
-                    <div>Draws from grid: <strong>{inKw.toFixed(1)} kW</strong></div>
-                    {tooSmall && <div className="font-semibold text-red-700">Feeding cable power is below the charger's input power.</div>}
-                    {breakerLow && <div className="font-semibold text-red-700">Breaker is smaller than the input current.</div>}
-                  </div>
-                  {CHARGER_PARAMS.map((d) => (
-                    <div key={d.key} className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2 text-xs text-neutral-800">
-                      <span className="text-[11px]">{d.label}</span>
-                      {d.kind === "select" ? (
-                        <select
-                          value={String(v[d.key] ?? "")}
-                          onChange={(e) =>
-                            d.key === "chargerType"
-                              ? setV({ ...chargerDefaults(e.target.value as ChargerKind), name: String(v.name ?? "EV charger") })
-                              : setV({ [d.key]: e.target.value })
-                          }
-                          className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
-                        >
-                          {d.options.map((o) => (
-                            <option key={o} value={o}>{d.key === "chargerType" ? CHARGER_KIND_LABEL[o as ChargerKind] : o}</option>
-                          ))}
-                        </select>
-                      ) : d.kind === "toggle" ? (
-                        <button
-                          onClick={() => setV({ [d.key]: Number(v[d.key]) ? 0 : 1 })}
-                          className={`rounded-lg border px-2 py-1 text-[11px] font-semibold shadow-sm ${Number(v[d.key]) ? "border-amber-400 bg-amber-400/80 text-neutral-900" : "border-white/60 bg-white/55 text-neutral-600"}`}
-                        >
-                          {Number(v[d.key]) ? "On" : "Off"}
-                        </button>
-                      ) : (
+                    {TRANSFORMER_PARAMS.map((d) => (
+                      <div
+                        key={d.key}
+                        className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2"
+                      >
+                        <span className="text-[11px]">{d.label}</span>
                         <input
-                          type="number" min={d.min} max={d.max} step={d.step}
+                          type="number"
+                          min={d.min}
+                          max={d.max}
+                          step={d.step}
                           value={Number(v[d.key] ?? 0)}
-                          onChange={(e) => setV(d.key === "outputPower" ? { outputPower: Number(e.target.value), ratedPower: Number(e.target.value) } : { [d.key]: Number(e.target.value) })}
+                          onChange={(e) => {
+                            const n = Number(e.target.value);
+                            setV(
+                              d.key === "tfPrimaryV"
+                                ? { tfPrimaryV: n, nominalVoltage: n }
+                                : d.key === "tfRatedKVA"
+                                  ? { tfRatedKVA: n, ratedPower: n }
+                                  : { [d.key]: n },
+                            );
+                          }}
                           className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
                         />
-                      )}
-                      <span className="text-[10px] text-neutral-500">{d.kind === "number" ? d.unit ?? "" : ""}</span>
+                        <span className="text-[10px] text-neutral-500">{d.unit}</span>
+                      </div>
+                    ))}
+                    <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700">
+                      <div>Turns ratio per winding: {m.ratio.toFixed(2)} : 1</div>
+                      <div>
+                        Rated LV current: {(m.ratedVA / (Math.sqrt(3) * m.vs)).toFixed(1)} A · HV:{" "}
+                        {(m.ratedVA / (Math.sqrt(3) * m.vp)).toFixed(2)} A
+                      </div>
+                      <div>LV impedance per phase: {(m.rSec * 1000).toFixed(2)} mΩ</div>
                     </div>
-                  ))}
-                  <div className="text-[10px] text-neutral-600">Feed it with an underground cable from a substation or distribution panel (Wiring → Cables), and connect the car's charge port with Wiring → Wires.</div>
-                </div>
-              );
-            })()}
+                    <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                      Operation
+                    </div>
+                    {!st || st.primaryV < 1 ? (
+                      <div className="text-[11px] text-neutral-600">
+                        Not energised — connect an AC source to the HV side (H1 H2 H3) with a cable,
+                        line or wires.
+                      </div>
+                    ) : (
+                      <div
+                        className={`rounded-md border px-2 py-1 font-mono text-[10px] leading-snug ${st.loadPct > 100 ? "border-red-400 bg-red-100/60 text-red-800" : "border-white/50 bg-white/35 text-neutral-700"}`}
+                      >
+                        <div>
+                          HV: {st.primaryV.toFixed(0)} V · LV: {st.secondaryV.toFixed(1)} V
+                        </div>
+                        <div>
+                          LV currents: {st.currents.map((c) => `${c.toFixed(1)} A`).join(" / ")}
+                        </div>
+                        <div>
+                          Load: {(st.loadVA / 1000).toFixed(1)} kVA ({st.loadPct.toFixed(0)}%)
+                          {st.loadPct > 100 ? " — OVERLOADED" : ""}
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-[10px] text-neutral-600">
+                      HV pins H1–H3 (+N for YNyn0), LV pins X1–X3, N, PE. Cables and lines attach to
+                      the red (HV) or green (LV) markers; wires attach to single pins.
+                    </div>
+                  </div>
+                );
+              })()}
+            {propsModelId === "vsource" &&
+              propsOwnerId &&
+              (() => {
+                const v = { ...sourceDefaults("AC"), ...currentProps.values };
+                const kind = String(v.sourceKind ?? "AC") as SourceKind;
+                const setV = (patch: Record<string, string | number>) =>
+                  setObjectProps((prev) => ({
+                    ...prev,
+                    [propsKey]: { ...currentProps, values: { ...v, ...patch } },
+                  }));
+                const loops = circuit.loops[propsOwnerId] ?? [];
+                const vph = Number(v.srcVoltage) / Math.sqrt(3);
+                return (
+                  <div className="space-y-2 text-xs text-neutral-800">
+                    <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                      Model-specific
+                    </div>
+                    <div className="grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
+                      {(["AC", "DC"] as SourceKind[]).map((k) => (
+                        <button
+                          key={k}
+                          onClick={() => {
+                            if (k === kind) return;
+                            setV({
+                              ...sourceDefaults(k),
+                              name: String(v.name ?? "Voltage source"),
+                            });
+                            setEVWires((prev) =>
+                              prev.filter(
+                                (w) =>
+                                  ownerOfEnd(w.a) !== propsOwnerId &&
+                                  ownerOfEnd(w.b) !== propsOwnerId,
+                              ),
+                            );
+                          }}
+                          className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${kind === k ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
+                        >
+                          {k === "AC" ? "AC (L1 L2 L3 N PE)" : "DC (+ −)"}
+                        </button>
+                      ))}
+                    </div>
+                    {SOURCE_PARAMS.filter((d) => !d.dcOnly || kind === "DC").map((d) => (
+                      <div
+                        key={d.key}
+                        className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2"
+                      >
+                        <span className="text-[11px]">
+                          {d.key === "srcVoltage" && kind === "AC" ? "Voltage (L-L)" : d.label}
+                        </span>
+                        <input
+                          type="number"
+                          min={d.min}
+                          max={d.max}
+                          step={d.step}
+                          value={Number(v[d.key] ?? 0)}
+                          onChange={(e) =>
+                            setV(
+                              d.key === "srcVoltage"
+                                ? {
+                                    srcVoltage: Number(e.target.value),
+                                    nominalVoltage: Number(e.target.value),
+                                  }
+                                : { [d.key]: Number(e.target.value) },
+                            )
+                          }
+                          className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+                        />
+                        <span className="text-[10px] text-neutral-500">{d.unit}</span>
+                      </div>
+                    ))}
+                    {kind === "AC" && (
+                      <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700">
+                        {(["l1", "l2", "l3"] as const).map((p) => (
+                          <div key={p}>
+                            {p.toUpperCase()}–N: {vph.toFixed(1)} V ∠ {PHASE_ANGLES[p]}° ·{" "}
+                            {Number(v.frequency || 50)} Hz
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                      Current
+                    </div>
+                    {loops.length === 0 ? (
+                      <div className="text-[11px] text-neutral-600">
+                        0 A — no closed wire loop between this source's{" "}
+                        {kind === "DC" ? "DC+ and DC−" : "phase and N"} pins.
+                      </div>
+                    ) : (
+                      loops.map((l) => (
+                        <div
+                          key={l.from}
+                          className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700 break-words"
+                        >
+                          {l.from.toUpperCase()}→{l.to.toUpperCase()}: I = U / R ={" "}
+                          {l.voltage.toFixed(1)} V / {(l.resistance * 1000).toFixed(2)} mΩ ={" "}
+                          <strong>
+                            {Number.isFinite(l.current) ? `${l.current.toFixed(1)} A` : "∞ (short)"}
+                          </strong>
+                          {kind === "DC" &&
+                            Number(v.capacityAh) > 0 &&
+                            Number.isFinite(l.current) &&
+                            l.current > 0 && (
+                              <div className="font-sans text-neutral-500">
+                                Runtime at this current ≈{" "}
+                                {((Number(v.capacityAh) / l.current) * 60).toFixed(1)} min
+                              </div>
+                            )}
+                        </div>
+                      ))
+                    )}
+                    <div className="text-[10px] text-neutral-600">
+                      Current is set by the wires' resistance
+                      {kind === "DC" ? " plus the internal resistance" : ""}. Wire the pins with
+                      Wiring → Wires.
+                    </div>
+                  </div>
+                );
+              })()}
+            {propsModelId === "evcharger" &&
+              propsOwnerId &&
+              (() => {
+                const v = currentProps.values;
+                const setV = (patch: Record<string, string | number>) =>
+                  setObjectProps((prev) => ({
+                    ...prev,
+                    [propsKey]: { ...currentProps, values: { ...currentProps.values, ...patch } },
+                  }));
+                const feeding = cables.filter((c) => c.a === propsOwnerId || c.b === propsOwnerId);
+                const inKw = chargerInputKw(v);
+                const supplyKw = feeding.reduce((s, c) => s + c.powerKw, 0);
+                const tooSmall = feeding.length > 0 && supplyKw < inKw;
+                const breakerLow = Number(v.breaker) < Number(v.inputCurrent);
+                return (
+                  <div className="space-y-2">
+                    <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                      Model-specific
+                    </div>
+                    <div
+                      className={`rounded-lg border px-2 py-1.5 text-[11px] ${feeding.length ? "border-green-500/50 bg-green-500/15 text-green-800" : "border-neutral-400/50 bg-white/40 text-neutral-700"}`}
+                    >
+                      Supply:{" "}
+                      <strong>
+                        {feeding.length
+                          ? `connected (${feeding.length} cable${feeding.length > 1 ? "s" : ""}, ${supplyKw} kW)`
+                          : "not connected"}
+                      </strong>
+                      <div>
+                        Draws from grid: <strong>{inKw.toFixed(1)} kW</strong>
+                      </div>
+                      {tooSmall && (
+                        <div className="font-semibold text-red-700">
+                          Feeding cable power is below the charger's input power.
+                        </div>
+                      )}
+                      {breakerLow && (
+                        <div className="font-semibold text-red-700">
+                          Breaker is smaller than the input current.
+                        </div>
+                      )}
+                    </div>
+                    {CHARGER_PARAMS.map((d) => (
+                      <div
+                        key={d.key}
+                        className="grid grid-cols-[110px_minmax(0,1fr)_auto] items-center gap-2 text-xs text-neutral-800"
+                      >
+                        <span className="text-[11px]">{d.label}</span>
+                        {d.kind === "select" ? (
+                          <select
+                            value={String(v[d.key] ?? "")}
+                            onChange={(e) =>
+                              d.key === "chargerType"
+                                ? setV({
+                                    ...chargerDefaults(e.target.value as ChargerKind),
+                                    name: String(v.name ?? "EV charger"),
+                                  })
+                                : setV({ [d.key]: e.target.value })
+                            }
+                            className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+                          >
+                            {d.options.map((o) => (
+                              <option key={o} value={o}>
+                                {d.key === "chargerType" ? CHARGER_KIND_LABEL[o as ChargerKind] : o}
+                              </option>
+                            ))}
+                          </select>
+                        ) : d.kind === "toggle" ? (
+                          <button
+                            onClick={() => setV({ [d.key]: Number(v[d.key]) ? 0 : 1 })}
+                            className={`rounded-lg border px-2 py-1 text-[11px] font-semibold shadow-sm ${Number(v[d.key]) ? "border-amber-400 bg-amber-400/80 text-neutral-900" : "border-white/60 bg-white/55 text-neutral-600"}`}
+                          >
+                            {Number(v[d.key]) ? "On" : "Off"}
+                          </button>
+                        ) : (
+                          <input
+                            type="number"
+                            min={d.min}
+                            max={d.max}
+                            step={d.step}
+                            value={Number(v[d.key] ?? 0)}
+                            onChange={(e) =>
+                              setV(
+                                d.key === "outputPower"
+                                  ? {
+                                      outputPower: Number(e.target.value),
+                                      ratedPower: Number(e.target.value),
+                                    }
+                                  : { [d.key]: Number(e.target.value) },
+                              )
+                            }
+                            className="w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
+                          />
+                        )}
+                        <span className="text-[10px] text-neutral-500">
+                          {d.kind === "number" ? (d.unit ?? "") : ""}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="text-[10px] text-neutral-600">
+                      Feed it with an underground cable from a substation or distribution panel
+                      (Wiring → Cables), and connect the car's charge port with Wiring → Wires.
+                    </div>
+                  </div>
+                );
+              })()}
             {evPropPart && EV_DEFS[evPropPart.type].params.length > 0 && (
               <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
                 Model-specific
@@ -4470,33 +5623,69 @@ export default function Scene3DViewer() {
                 {(() => {
                   const st: PartStatus | undefined = circuit.partStatus[evPropPart.id];
                   const state = st?.state ?? "off";
-                  const style = state === "on" ? "border-green-500/50 bg-green-500/15 text-green-800" : state === "off" ? "border-neutral-400/50 bg-white/40 text-neutral-700" : "border-red-400/60 bg-red-500/15 text-red-700";
-                  const label = state === "on" ? "Powered on" : state === "low" ? "Undervoltage — not enough to run" : state === "over" ? "Overvoltage — supply too high" : "Off — no supply";
+                  const style =
+                    state === "on"
+                      ? "border-green-500/50 bg-green-500/15 text-green-800"
+                      : state === "off"
+                        ? "border-neutral-400/50 bg-white/40 text-neutral-700"
+                        : "border-red-400/60 bg-red-500/15 text-red-700";
+                  const label =
+                    state === "on"
+                      ? "Powered on"
+                      : state === "low"
+                        ? "Undervoltage — not enough to run"
+                        : state === "over"
+                          ? "Overvoltage — supply too high"
+                          : "Off — no supply";
                   return (
                     <div className={`rounded-lg border px-2 py-1.5 text-[11px] ${style}`}>
                       <div className="font-semibold">{label}</div>
                       {st && state !== "off" && (
-                        <div className="font-mono text-[10px]">U = {st.voltage.toFixed(1)} V (rated {st.ratedV.toFixed(0)} V) · I = {st.current.toFixed(2)} A · P = {st.powerW >= 1000 ? `${(st.powerW / 1000).toFixed(2)} kW` : `${st.powerW.toFixed(1)} W`}</div>
+                        <div className="font-mono text-[10px]">
+                          U = {st.voltage.toFixed(1)} V (rated {st.ratedV.toFixed(0)} V) · I ={" "}
+                          {st.current.toFixed(2)} A · P ={" "}
+                          {st.powerW >= 1000
+                            ? `${(st.powerW / 1000).toFixed(2)} kW`
+                            : `${st.powerW.toFixed(1)} W`}
+                        </div>
                       )}
                     </div>
                   );
                 })()}
-                <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">Pins</div>
+                <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
+                  Pins
+                </div>
                 <div className="space-y-0.5">
                   {pinsOf(evPropPart.type).map((pin) => {
                     const endId = `${evPropPart.id}#${pin.id}`;
                     const ws = evWires.filter((w) => w.a === endId || w.b === endId);
                     return (
-                      <div key={pin.id} className="flex items-center gap-1.5 text-[11px] text-neutral-800">
-                        <span className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/70" style={{ background: PIN_COLORS[pin.role] }} />
+                      <div
+                        key={pin.id}
+                        className="flex items-center gap-1.5 text-[11px] text-neutral-800"
+                      >
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/70"
+                          style={{ background: PIN_COLORS[pin.role] }}
+                        />
                         <span className="w-24 shrink-0 font-semibold">{pin.label}</span>
-                        <span className="truncate text-neutral-600">{ws.length ? ws.map((w) => endName(w.a === endId ? w.b : w.a)).join(", ") : "—"}</span>
+                        <span className="truncate text-neutral-600">
+                          {ws.length
+                            ? ws.map((w) => endName(w.a === endId ? w.b : w.a)).join(", ")
+                            : "—"}
+                        </span>
                       </div>
                     );
                   })}
                 </div>
                 <button
-                  onClick={() => { removeEVPart(evPropPart.id); setPropsTarget(null); setPropsOwnerId(null); setPartLabel(null); setPartLabelPos(null); }}
+                  onClick={() => {
+                    removeEVPart(evPropPart.id);
+                    setPropsTarget(null);
+                    setPropsOwnerId(null);
+                    setPartLabel(null);
+                    setPartLabelPos(null);
+                  }}
                   className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-500/35"
                 >
                   Delete component
@@ -4504,18 +5693,33 @@ export default function Scene3DViewer() {
               </div>
             ) : evPropWire ? (
               <div className="space-y-2 text-xs text-neutral-800">
-                <div>Type: <strong>{wireLabel(evPropWire)}</strong></div>
-                <div>Routing: <strong>{evPropWire.routingMode === "auto" ? "Auto route" : "Free hand"}</strong></div>
-                <div>Length: <strong>{anyWireLength(evPropWire).toFixed(2)} m</strong></div>
-                <div>From: <strong>{endName(evPropWire.a)}</strong></div>
-                <div>To: <strong>{endName(evPropWire.b)}</strong></div>
+                <div>
+                  Type: <strong>{wireLabel(evPropWire)}</strong>
+                </div>
+                <div>
+                  Routing:{" "}
+                  <strong>{evPropWire.routingMode === "auto" ? "Auto route" : "Free hand"}</strong>
+                </div>
+                <div>
+                  Length: <strong>{anyWireLength(evPropWire).toFixed(2)} m</strong>
+                </div>
+                <div>
+                  From: <strong>{endName(evPropWire.a)}</strong>
+                </div>
+                <div>
+                  To: <strong>{endName(evPropWire.b)}</strong>
+                </div>
                 <div>
                   Material
                   <div className="mt-1 grid grid-cols-2 rounded-lg border border-white/50 bg-white/30 p-0.5">
                     {(Object.keys(WIRE_MATERIALS) as WireMaterial[]).map((m) => (
                       <button
                         key={m}
-                        onClick={() => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, material: m } : w)))}
+                        onClick={() =>
+                          setEVWires((prev) =>
+                            prev.map((w) => (w.id === evPropWire.id ? { ...w, material: m } : w)),
+                          )
+                        }
                         className={`rounded-md px-2 py-1 text-[11px] font-semibold transition ${(evPropWire.material ?? "copper") === m ? "bg-neutral-800 text-white shadow-sm" : "text-neutral-700 hover:bg-white/60"}`}
                       >
                         {WIRE_MATERIALS[m].label}
@@ -4523,51 +5727,120 @@ export default function Scene3DViewer() {
                     ))}
                   </div>
                 </div>
-                <div>Resistance: <strong>{(wireResistance(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material) * 1000).toFixed(2)} mΩ</strong> <span className="text-neutral-500">({WIRE_MATERIALS[evPropWire.material ?? "copper"].label.toLowerCase()}, 20 °C)</span></div>
+                <div>
+                  Resistance:{" "}
+                  <strong>
+                    {(
+                      wireResistance(
+                        anyWireLength(evPropWire),
+                        evPropWire.crossSection,
+                        evPropWire.material,
+                      ) * 1000
+                    ).toFixed(2)}{" "}
+                    mΩ
+                  </strong>{" "}
+                  <span className="text-neutral-500">
+                    ({WIRE_MATERIALS[evPropWire.material ?? "copper"].label.toLowerCase()}, 20 °C)
+                  </span>
+                </div>
                 <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700 break-words">
-                  {resistanceFormula(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material)}
-                  <div className="mt-0.5 font-sans text-neutral-500">ρ = resistivity, L = route length, A = conductor cross-section</div>
+                  {resistanceFormula(
+                    anyWireLength(evPropWire),
+                    evPropWire.crossSection,
+                    evPropWire.material,
+                  )}
+                  <div className="mt-0.5 font-sans text-neutral-500">
+                    ρ = resistivity, L = route length, A = conductor cross-section
+                  </div>
                 </div>
                 <label className="block">
                   <span className="flex justify-between">
                     <span>Current</span>
-                    <span className="font-mono font-semibold">{(evPropWire.currentA ?? 0).toFixed(1)} A</span>
+                    <span className="font-mono font-semibold">
+                      {(evPropWire.currentA ?? 0).toFixed(1)} A
+                    </span>
                   </span>
                   <input
-                    type="number" min={0} max={1000} step={0.5}
+                    type="number"
+                    min={0}
+                    max={1000}
+                    step={0.5}
                     value={evPropWire.currentA ?? 0}
-                    onChange={(e) => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, currentA: Math.max(0, Number(e.target.value) || 0) } : w)))}
+                    onChange={(e) =>
+                      setEVWires((prev) =>
+                        prev.map((w) =>
+                          w.id === evPropWire.id
+                            ? { ...w, currentA: Math.max(0, Number(e.target.value) || 0) }
+                            : w,
+                        ),
+                      )
+                    }
                     className="mt-0.5 w-full min-w-0 rounded-lg border border-white/70 bg-white/65 px-2 py-1 font-mono text-xs shadow-sm outline-none focus:ring-2 focus:ring-amber-400/30"
                   />
                 </label>
                 {circuit.wireCurrent[evPropWire.id] !== undefined && (
-                  <div className="rounded-lg border border-green-500/50 bg-green-500/15 px-2 py-1 text-[11px] text-green-800">Powered by a voltage source: <strong>{circuit.wireCurrent[evPropWire.id].toFixed(2)} A</strong> (calculated)</div>
+                  <div className="rounded-lg border border-green-500/50 bg-green-500/15 px-2 py-1 text-[11px] text-green-800">
+                    Powered by a voltage source:{" "}
+                    <strong>{circuit.wireCurrent[evPropWire.id].toFixed(2)} A</strong> (calculated)
+                  </div>
                 )}
                 {(() => {
-                  const r = wireResistance(anyWireLength(evPropWire), evPropWire.crossSection, evPropWire.material);
+                  const r = wireResistance(
+                    anyWireLength(evPropWire),
+                    evPropWire.crossSection,
+                    evPropWire.material,
+                  );
                   const i = circuit.wireCurrent[evPropWire.id] ?? evPropWire.currentA ?? 0;
                   const drop = r * i;
                   return (
                     <>
-                      <div>Voltage drop: <strong>{drop < 1 ? `${(drop * 1000).toFixed(1)} mV` : `${drop.toFixed(2)} V`}</strong></div>
+                      <div>
+                        Voltage drop:{" "}
+                        <strong>
+                          {drop < 1 ? `${(drop * 1000).toFixed(1)} mV` : `${drop.toFixed(2)} V`}
+                        </strong>
+                      </div>
                       <div className="rounded-md border border-white/50 bg-white/35 px-2 py-1 font-mono text-[10px] leading-snug text-neutral-700 break-words">
-                        U = R × I = {(r * 1000).toFixed(2)} mΩ × {i.toFixed(1)} A = {drop < 1 ? `${(drop * 1000).toFixed(1)} mV` : `${drop.toFixed(3)} V`}
-                        <div className="mt-0.5 font-sans text-neutral-500">Voltage lost along the wire at the current above (one conductor, 20 °C).</div>
+                        U = R × I = {(r * 1000).toFixed(2)} mΩ × {i.toFixed(1)} A ={" "}
+                        {drop < 1 ? `${(drop * 1000).toFixed(1)} mV` : `${drop.toFixed(3)} V`}
+                        <div className="mt-0.5 font-sans text-neutral-500">
+                          Voltage lost along the wire at the current above (one conductor, 20 °C).
+                        </div>
                       </div>
                     </>
                   );
                 })()}
-                {pinsIncompatible(pinInfo(evPropWire.a)?.pin.role, pinInfo(evPropWire.b)?.pin.role) && (
-                  <div className="rounded-lg border border-red-400/60 bg-red-500/15 px-2 py-1 font-semibold text-red-700">Warning: these pins are not normally connected ({pinInfo(evPropWire.a)?.pin.label} → {pinInfo(evPropWire.b)?.pin.label}).</div>
+                {pinsIncompatible(
+                  pinInfo(evPropWire.a)?.pin.role,
+                  pinInfo(evPropWire.b)?.pin.role,
+                ) && (
+                  <div className="rounded-lg border border-red-400/60 bg-red-500/15 px-2 py-1 font-semibold text-red-700">
+                    Warning: these pins are not normally connected (
+                    {pinInfo(evPropWire.a)?.pin.label} → {pinInfo(evPropWire.b)?.pin.label}).
+                  </div>
                 )}
-                <div>Colour: <strong>{wireTypeOf(evPropWire.wireType)?.colorName ?? (isHVWire(evPropWire, evParts) ? "Orange" : "Black")}</strong></div>
+                <div>
+                  Colour:{" "}
+                  <strong>
+                    {wireTypeOf(evPropWire.wireType)?.colorName ??
+                      (isHVWire(evPropWire, evParts) ? "Orange" : "Black")}
+                  </strong>
+                </div>
                 <div>
                   Wire type
                   <div className="mt-1 flex flex-wrap gap-1">
                     {ALL_WIRE_TYPES.map((t) => (
                       <button
                         key={t.id}
-                        onClick={() => setEVWires((prev) => prev.map((w) => w.id === evPropWire.id ? { ...w, wireType: t.id, crossSection: t.crossSection } : w))}
+                        onClick={() =>
+                          setEVWires((prev) =>
+                            prev.map((w) =>
+                              w.id === evPropWire.id
+                                ? { ...w, wireType: t.id, crossSection: t.crossSection }
+                                : w,
+                            ),
+                          )
+                        }
                         className={`rounded-lg border px-2 py-1 text-[11px] font-semibold shadow-sm transition ${evPropWire.wireType === t.id ? "border-orange-500 bg-orange-500/80 text-white" : "border-white/60 bg-white/55 text-neutral-800 hover:bg-white/75"}`}
                       >
                         {t.label}
@@ -4575,17 +5848,32 @@ export default function Scene3DViewer() {
                     ))}
                   </div>
                 </div>
-                <div className="text-[10px] text-neutral-600">Drag the orange corners on the ground to reroute, "+" to add a corner, right-click a corner to remove it. Editing an automatic route changes it to Free hand.</div>
+                <div className="text-[10px] text-neutral-600">
+                  Drag the orange corners on the ground to reroute, "+" to add a corner, right-click
+                  a corner to remove it. Editing an automatic route changes it to Free hand.
+                </div>
                 {evPropWire.waypoints?.length ? (
                   <button
-                    onClick={() => setEVWires((prev) => prev.map((w) => (w.id === evPropWire.id ? { ...w, waypoints: undefined, routingMode: "freehand" } : w)))}
+                    onClick={() =>
+                      setEVWires((prev) =>
+                        prev.map((w) =>
+                          w.id === evPropWire.id
+                            ? { ...w, waypoints: undefined, routingMode: "freehand" }
+                            : w,
+                        ),
+                      )
+                    }
                     className="w-full rounded-lg border border-white/60 bg-white/45 px-3 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-white/70"
                   >
                     Reset route
                   </button>
                 ) : null}
                 <button
-                  onClick={() => { setEVWires((prev) => prev.filter((w) => w.id !== evPropWire.id)); setPropsTarget(null); setPropsOwnerId(null); }}
+                  onClick={() => {
+                    setEVWires((prev) => prev.filter((w) => w.id !== evPropWire.id));
+                    setPropsTarget(null);
+                    setPropsOwnerId(null);
+                  }}
                   className="w-full rounded-lg border border-red-400/60 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-500/35"
                 >
                   Delete wire
@@ -4622,7 +5910,6 @@ export default function Scene3DViewer() {
           </div>
         </DraggablePanel>
       )}
-
     </div>
   );
 }

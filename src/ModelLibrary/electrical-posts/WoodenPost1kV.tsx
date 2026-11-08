@@ -88,14 +88,7 @@ function PhaseLine({
     return pts;
   }, [start, end]);
 
-  return (
-    <CatmullRomLine
-      points={points}
-      color="#1a1a1a"
-      lineWidth={1.8}
-      segments={32}
-    />
-  );
+  return <CatmullRomLine points={points} color="#1a1a1a" lineWidth={1.8} segments={32} />;
 }
 
 export const PUITMAST_PHASE_LOCAL: [number, number, number][] = [
@@ -144,12 +137,7 @@ export function ElectricalPost({
             <Pole from={braceBottom} to={braceTop} radius={0.16} color={WOOD_DARK} />
           </Part>
           <Part name="Crossarm">
-            <Pole
-              from={crossarmStart}
-              to={crossarmEnd}
-              radius={0.09}
-              color={WOOD_DARK}
-            />
+            <Pole from={crossarmStart} to={crossarmEnd} radius={0.09} color={WOOD_DARK} />
             <mesh position={[0, crossarmY, 0]} castShadow>
               <torusGeometry args={[MAST_RADIUS + 0.03, 0.025, 8, 24]} />
               <meshStandardMaterial color={METAL} metalness={0.7} roughness={0.4} />
@@ -171,7 +159,8 @@ export function ElectricalPost({
         ))}
 
       {/* Step 4: Phase lines */}
-      {step >= 4 && showAutoLines &&
+      {step >= 4 &&
+        showAutoLines &&
         phasePositions.map((p, i) => {
           const wireStart: [number, number, number] = [p[0], wireY, p[2]];
           const left: [number, number, number] = [-18, wireY - 1.5, p[2]];

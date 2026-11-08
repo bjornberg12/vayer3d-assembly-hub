@@ -27,7 +27,13 @@ export const CUBICLE_KIND_LABEL: Record<CubicleKind, string> = {
 
 const uid = () => `cub-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 export const makeCubicle = (kind: CubicleKind, n: number): Cubicle => ({
-  id: uid(), label: kind === "cb" ? `Breaker ${n}` : `Cable ${n}`, kind, closed: true, earthed: false, pickupA: 40, scA: 400,
+  id: uid(),
+  label: kind === "cb" ? `Breaker ${n}` : `Cable ${n}`,
+  kind,
+  closed: true,
+  earthed: false,
+  pickupA: 40,
+  scA: 400,
 });
 export const defaultSwitchgear = (): Cubicle[] => [
   { ...makeCubicle("lbs", 1), id: "c1" },
@@ -36,7 +42,12 @@ export const defaultSwitchgear = (): Cubicle[] => [
 ];
 export function parseSwitchgear(v: unknown): Cubicle[] {
   if (typeof v === "string" && v) {
-    try { const a = JSON.parse(v); if (Array.isArray(a)) return a; } catch { /* fall through */ }
+    try {
+      const a = JSON.parse(v);
+      if (Array.isArray(a)) return a;
+    } catch {
+      /* fall through */
+    }
   }
   return defaultSwitchgear();
 }
@@ -61,26 +72,40 @@ export function switchgearWires(subId: string, cubicles: Cubicle[]): SolverWire[
   cubicles.forEach((c, k) => {
     for (let p = 0; p < 3; p++) {
       const term = `${subId}#mv${k + 1}@${p}`;
-      if (cubicleConducts(c)) out.push({ id: `${subId}~sw${k}~${p}`, a: term, b: `${subId}#bus@${p}`, r: 1e-4 });
-      if (c.earthed) out.push({ id: `${subId}~es${k}~${p}`, a: term, b: `${subId}#earth`, r: 1e-4 });
+      if (cubicleConducts(c))
+        out.push({ id: `${subId}~sw${k}~${p}`, a: term, b: `${subId}#bus@${p}`, r: 1e-4 });
+      if (c.earthed)
+        out.push({ id: `${subId}~es${k}~${p}`, a: term, b: `${subId}#earth`, r: 1e-4 });
     }
   });
   return out;
 }
-
 
 export function SwitchgearModel({ cubicles }: { cubicles: Cubicle[] }) {
   return (
     <group>
       {cubicles.map((c, k) => {
         const [x, , z] = cubicleLocal(k, cubicles.length);
-        const lamp = c.tripped ? "#f97316" : c.earthed ? "#eab308" : cubicleConducts(c) ? "#ef4444" : "#22c55e";
+        const lamp = c.tripped
+          ? "#f97316"
+          : c.earthed
+            ? "#eab308"
+            : cubicleConducts(c)
+              ? "#ef4444"
+              : "#22c55e";
         return (
-          <Part key={c.id} name={`${c.label} · ${c.tripped ? "TRIPPED" : c.earthed ? "Earthed" : c.closed ? "Closed" : "Open"}`}>
+          <Part
+            key={c.id}
+            name={`${c.label} · ${c.tripped ? "TRIPPED" : c.earthed ? "Earthed" : c.closed ? "Closed" : "Open"}`}
+          >
             <group position={[x, 0, z]}>
               <mesh position={[0, 0.95, 0]} castShadow>
                 <boxGeometry args={[0.38, 1.4, 0.06]} />
-                <meshStandardMaterial color={c.kind === "cb" ? "#c7ccd1" : "#d9dcdf"} metalness={0.3} roughness={0.5} />
+                <meshStandardMaterial
+                  color={c.kind === "cb" ? "#c7ccd1" : "#d9dcdf"}
+                  metalness={0.3}
+                  roughness={0.5}
+                />
               </mesh>
               {/* mimic diagram line */}
               <mesh position={[0, 1.15, 0.031]}>
@@ -88,7 +113,10 @@ export function SwitchgearModel({ cubicles }: { cubicles: Cubicle[] }) {
                 <meshStandardMaterial color="#1f2937" />
               </mesh>
               {/* switch position indicator */}
-              <mesh position={[0, 1.15, 0.036]} rotation={[0, 0, cubicleConducts(c) ? 0 : Math.PI / 2]}>
+              <mesh
+                position={[0, 1.15, 0.036]}
+                rotation={[0, 0, cubicleConducts(c) ? 0 : Math.PI / 2]}
+              >
                 <boxGeometry args={[0.03, 0.14, 0.006]} />
                 <meshStandardMaterial color={cubicleConducts(c) ? "#dc2626" : "#16a34a"} />
               </mesh>

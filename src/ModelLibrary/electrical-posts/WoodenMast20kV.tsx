@@ -137,7 +137,7 @@ function Crossarm() {
         const len = dir.length();
         const q = new THREE.Quaternion().setFromUnitVectors(
           new THREE.Vector3(0, 1, 0),
-          dir.clone().normalize()
+          dir.clone().normalize(),
         );
         return (
           <mesh key={s} position={mid} quaternion={q} castShadow>
@@ -291,11 +291,7 @@ const phaseOffsets: [number, number, number][] = [
 ];
 
 // Wire attach points (top of insulators)
-const wireTops: [number, number, number][] = phaseOffsets.map((p) => [
-  p[0],
-  p[1] + 0.55,
-  p[2],
-]);
+const wireTops: [number, number, number][] = phaseOffsets.map((p) => [p[0], p[1] + 0.55, p[2]]);
 
 // Arrester positions (below crossarm, on secondary bracket)
 const arresterOffsets: [number, number, number][] = [
@@ -304,9 +300,11 @@ const arresterOffsets: [number, number, number][] = [
   [0, MAST_ABOVE - 2.2 + 0.03, 0.4],
 ];
 
-export const PUITMAST20_PHASE_LOCAL: [number, number, number][] = wireTops.map(
-  (p) => [p[0], p[1], p[2]]
-);
+export const PUITMAST20_PHASE_LOCAL: [number, number, number][] = wireTops.map((p) => [
+  p[0],
+  p[1],
+  p[2],
+]);
 
 export function WoodenMast20kV({
   step = 6,
@@ -403,10 +401,7 @@ export function WoodenMast20kV({
           </group>
           {wireTops.map((p, i) => (
             <Part key={`line-${i}`} name="Aerial phase conductor">
-              <AerialLine
-                start={p}
-                end={[NEXT_MAST_X + p[0], p[1], p[2]]}
-              />
+              <AerialLine start={p} end={[NEXT_MAST_X + p[0], p[1], p[2]]} />
             </Part>
           ))}
         </>

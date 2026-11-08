@@ -24,7 +24,14 @@ export * from "./cables/catalog";
 export * from "./car-components/EVComponents";
 export * from "./chargers/EVCharger";
 
-export type ModelGroup = "electrical-posts" | "distribution" | "substations" | "chargers" | "sources" | "transformers" | "car-components";
+export type ModelGroup =
+  | "electrical-posts"
+  | "distribution"
+  | "substations"
+  | "chargers"
+  | "sources"
+  | "transformers"
+  | "car-components";
 
 export type ModelCard = {
   id: string;
@@ -35,46 +42,182 @@ export type ModelCard = {
   base: BaseDefaults;
 };
 
-export const MODEL_REGISTRY: Record<"puitmast" | "puitmast20" | "jaotuskilp" | "alajaam" | "evcharger" | "vsource" | "transformer" | "gis" | "lvpanel", ModelCard> = {
+export const MODEL_REGISTRY: Record<
+  | "puitmast"
+  | "puitmast20"
+  | "jaotuskilp"
+  | "alajaam"
+  | "evcharger"
+  | "vsource"
+  | "transformer"
+  | "gis"
+  | "lvpanel",
+  ModelCard
+> = {
   puitmast: {
-    id: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole", group: "electrical-posts",
+    id: "puitmast",
+    name: "Puitmast - 1kV",
+    subtitle: "Wooden pole",
+    group: "electrical-posts",
     steps: ASSEMBLY_STEPS,
-    base: { active: ["modelId"], values: { modelId: "PM-1KV-10", mass: 380, material: "Wood (pine, impregnated)", height: 10, width: 0.26, depth: 0.26, nominalVoltage: 400, voltageKind: "AC", frequency: 50, phases: 3 } },
+    base: {
+      active: ["modelId"],
+      values: {
+        modelId: "PM-1KV-10",
+        mass: 380,
+        material: "Wood (pine, impregnated)",
+        height: 10,
+        width: 0.26,
+        depth: 0.26,
+        nominalVoltage: 400,
+        voltageKind: "AC",
+        frequency: 50,
+        phases: 3,
+      },
+    },
   },
   puitmast20: {
-    id: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast", group: "electrical-posts",
+    id: "puitmast20",
+    name: "Puitmast - 20kV",
+    subtitle: "20 kV mast",
+    group: "electrical-posts",
     steps: MAST_20KV_STEPS,
-    base: { active: ["modelId"], values: { modelId: "PM-20KV-11", mass: 450, material: "Wood (pine, impregnated)", height: 11, width: 0.28, depth: 0.28, nominalVoltage: 20000, voltageKind: "AC", frequency: 50, phases: 3 } },
+    base: {
+      active: ["modelId"],
+      values: {
+        modelId: "PM-20KV-11",
+        mass: 450,
+        material: "Wood (pine, impregnated)",
+        height: 11,
+        width: 0.28,
+        depth: 0.28,
+        nominalVoltage: 20000,
+        voltageKind: "AC",
+        frequency: 50,
+        phases: 3,
+      },
+    },
   },
   jaotuskilp: {
-    id: "jaotuskilp", name: "Jaotuskilp", subtitle: "Distribution panel", group: "distribution",
+    id: "jaotuskilp",
+    name: "Jaotuskilp",
+    subtitle: "Distribution panel",
+    group: "distribution",
     steps: PANEL_STEPS,
-    base: { active: ["modelId", "nominalVoltage"], values: { modelId: "JK-400", mass: 85, material: "Painted steel", height: 1.2, width: 0.8, depth: 0.35, nominalVoltage: 400, voltageKind: "AC", ratedCurrent: 250, maxCurrent: 400, frequency: 50, phases: 3 } },
+    base: {
+      active: ["modelId", "nominalVoltage"],
+      values: {
+        modelId: "JK-400",
+        mass: 85,
+        material: "Painted steel",
+        height: 1.2,
+        width: 0.8,
+        depth: 0.35,
+        nominalVoltage: 400,
+        voltageKind: "AC",
+        ratedCurrent: 250,
+        maxCurrent: 400,
+        frequency: 50,
+        phases: 3,
+      },
+    },
   },
   alajaam: {
-    id: "alajaam", name: "Alajaam 10kV/0,4kV", subtitle: "Substation", group: "substations",
+    id: "alajaam",
+    name: "Alajaam 10kV/0,4kV",
+    subtitle: "Substation",
+    group: "substations",
     steps: SUBSTATION_STEPS,
-    base: { active: ["modelId", "nominalVoltage", "ratedPower"], values: { modelId: "KAJ-10/0.4", mass: 9500, material: "Concrete / steel", height: 2.5, width: 3.5, depth: 2.2, nominalVoltage: 10000, voltageKind: "AC", ratedPower: 630, frequency: 50, phases: 3 } },
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedPower"],
+      values: {
+        modelId: "KAJ-10/0.4",
+        mass: 9500,
+        material: "Concrete / steel",
+        height: 2.5,
+        width: 3.5,
+        depth: 2.2,
+        nominalVoltage: 10000,
+        voltageKind: "AC",
+        ratedPower: 630,
+        frequency: 50,
+        phases: 3,
+      },
+    },
   },
   lvpanel: {
-    id: "lvpanel", name: "LV panel 0.4 kV", subtitle: "Low-voltage distribution panel", group: "distribution",
-    base: { active: ["modelId", "nominalVoltage", "ratedCurrent"], values: { modelId: "LVP-400-250", mass: 60, material: "Painted steel", height: 1.6, width: 0.8, depth: 0.25, nominalVoltage: 400, voltageKind: "AC", ratedCurrent: 250, frequency: 50, phases: 3 } },
+    id: "lvpanel",
+    name: "LV panel 0.4 kV",
+    subtitle: "Low-voltage distribution panel",
+    group: "distribution",
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedCurrent"],
+      values: {
+        modelId: "LVP-400-250",
+        mass: 60,
+        material: "Painted steel",
+        height: 1.6,
+        width: 0.8,
+        depth: 0.25,
+        nominalVoltage: 400,
+        voltageKind: "AC",
+        ratedCurrent: 250,
+        frequency: 50,
+        phases: 3,
+      },
+    },
   },
   gis: {
-    id: "gis", name: "MV GIS + automation", subtitle: "Gas-insulated switchgear", group: "substations",
-    base: { active: ["modelId", "nominalVoltage", "ratedCurrent"], values: { modelId: "GIS-24-630", mass: 1800, material: "Steel / SF6", height: 3.0, width: 2.4, depth: 1.0, nominalVoltage: 20000, voltageKind: "AC", ratedCurrent: 630, frequency: 50, phases: 3 } },
+    id: "gis",
+    name: "MV GIS + automation",
+    subtitle: "Gas-insulated switchgear",
+    group: "substations",
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedCurrent"],
+      values: {
+        modelId: "GIS-24-630",
+        mass: 1800,
+        material: "Steel / SF6",
+        height: 3.0,
+        width: 2.4,
+        depth: 1.0,
+        nominalVoltage: 20000,
+        voltageKind: "AC",
+        ratedCurrent: 630,
+        frequency: 50,
+        phases: 3,
+      },
+    },
   },
   evcharger: {
-    id: "evcharger", name: "EV charger", subtitle: "Electric car charger", group: "chargers",
-    base: { active: ["modelId", "nominalVoltage", "ratedPower", "phases"], values: chargerDefaults("ac-wall") as BaseDefaults["values"] },
+    id: "evcharger",
+    name: "EV charger",
+    subtitle: "Electric car charger",
+    group: "chargers",
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedPower", "phases"],
+      values: chargerDefaults("ac-wall") as BaseDefaults["values"],
+    },
   },
   vsource: {
-    id: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply", group: "sources",
-    base: { active: ["modelId", "nominalVoltage", "frequency", "phases"], values: sourceDefaults("AC") as BaseDefaults["values"] },
+    id: "vsource",
+    name: "Voltage source",
+    subtitle: "AC 3-phase or DC supply",
+    group: "sources",
+    base: {
+      active: ["modelId", "nominalVoltage", "frequency", "phases"],
+      values: sourceDefaults("AC") as BaseDefaults["values"],
+    },
   },
   transformer: {
-    id: "transformer", name: "Transformer", subtitle: "3-phase power transformer", group: "transformers",
-    base: { active: ["modelId", "ratedPower", "frequency"], values: transformerDefaults() as BaseDefaults["values"] },
+    id: "transformer",
+    name: "Transformer",
+    subtitle: "3-phase power transformer",
+    group: "transformers",
+    base: {
+      active: ["modelId", "ratedPower", "frequency"],
+      values: transformerDefaults() as BaseDefaults["values"],
+    },
   },
 };
 
