@@ -14,10 +14,7 @@ function ViewerFallback() {
   );
 }
 
-class ViewerErrorBoundary extends Component<
-  { children: ReactNode },
-  { error: Error | null }
-> {
+class ViewerErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state: { error: Error | null } = { error: null };
 
   static getDerivedStateFromError(error: Error) {

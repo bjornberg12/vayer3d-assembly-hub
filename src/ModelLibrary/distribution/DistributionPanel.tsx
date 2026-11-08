@@ -39,7 +39,7 @@ function Bracket() {
             <cylinderGeometry args={[0.018, 0.018, 0.012, 12]} />
             <meshStandardMaterial color="#5a5e63" metalness={0.9} roughness={0.4} />
           </mesh>
-        ))
+        )),
       )}
     </group>
   );
@@ -89,7 +89,11 @@ function GroundingRing() {
     const segs = 64;
     for (let i = 0; i <= segs; i++) {
       const a = (i / segs) * Math.PI * 2;
-      pts.push([Math.cos(a) * GROUND_RING_RADIUS, -GROUND_RING_DEPTH, Math.sin(a) * GROUND_RING_RADIUS]);
+      pts.push([
+        Math.cos(a) * GROUND_RING_RADIUS,
+        -GROUND_RING_DEPTH,
+        Math.sin(a) * GROUND_RING_RADIUS,
+      ]);
     }
     return pts;
   }, []);
@@ -119,7 +123,11 @@ function GroundingRod() {
 
 function GroundingConnection() {
   // copper wire from panel bracket down into earth to the ring
-  const start: [number, number, number] = [BODY_W / 2 - 0.05, ABOVE_GROUND_BRACKET - 0.05, BODY_D / 2 - 0.02];
+  const start: [number, number, number] = [
+    BODY_W / 2 - 0.05,
+    ABOVE_GROUND_BRACKET - 0.05,
+    BODY_D / 2 - 0.02,
+  ];
   const ringPoint: [number, number, number] = [
     Math.cos(Math.PI / 6) * GROUND_RING_RADIUS,
     -GROUND_RING_DEPTH,
@@ -167,4 +175,3 @@ export function DistributionPanel({ step = PANEL_STEPS.length }: { step?: number
     </group>
   );
 }
-

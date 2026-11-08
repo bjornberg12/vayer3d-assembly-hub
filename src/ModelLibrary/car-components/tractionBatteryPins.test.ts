@@ -4,15 +4,39 @@ import { EV_DEFS, evLoads, evPinWorld, pinsOf, type EVPartRecord } from "./EVCom
 import { TRACTION_BATTERY_PINS } from "./tractionBatteryPins";
 import { solveCircuits } from "../sources/solver";
 
-const pack: EVPartRecord = { id: "existing-pack", type: "battery", position: [0, 0, 0], rotationY: 0, params: {} };
+const pack: EVPartRecord = {
+  id: "existing-pack",
+  type: "battery",
+  position: [0, 0, 0],
+  rotationY: 0,
+  params: {},
+};
 describe("HV battery connector compatibility", () => {
   test("preserves the five electrical endpoint IDs and 400 V charging equivalent", () => {
-    expect(pinsOf("battery").map((p) => [p.id, p.role])).toEqual([["dcp", "dc+"], ["dcn", "dc-"], ["gnd", "PE"], ["bms", "sig"], ["hvil", "sig"]]);
-    expect(evLoads(pack)).toEqual([{ owner: pack.id, a: "existing-pack#dcp", b: "existing-pack#dcn", r: 160000 / 11000, ratedV: 400 }]);
+    expect(pinsOf("battery").map((p) => [p.id, p.role])).toEqual([
+      ["dcp", "dc+"],
+      ["dcn", "dc-"],
+      ["gnd", "PE"],
+      ["bms", "sig"],
+      ["hvil", "sig"],
+    ]);
+    expect(evLoads(pack)).toEqual([
+      {
+        owner: pack.id,
+        a: "existing-pack#dcp",
+        b: "existing-pack#dcn",
+        r: 160000 / 11000,
+        ratedV: 400,
+      },
+    ]);
   });
   test("wire endpoints follow the bulkhead contacts when the pack moves and rotates", () => {
     expect(pinsOf("battery")).toBe(TRACTION_BATTERY_PINS);
-    const moved = { ...pack, position: [2, 0.5, -1] as [number, number, number], rotationY: Math.PI / 2 };
+    const moved = {
+      ...pack,
+      position: [2, 0.5, -1] as [number, number, number],
+      rotationY: Math.PI / 2,
+    };
     for (const pin of TRACTION_BATTERY_PINS) {
       expect(evPinWorld(pack, pin.id)).toEqual(pin.local);
       const world = evPinWorld(moved, pin.id);
@@ -24,8 +48,15 @@ describe("HV battery connector compatibility", () => {
     }
   });
   test("the relocated DC contacts still power the pack charging load", () => {
-    const wires = [{ id: "positive", a: "supply#dcp", b: `${pack.id}#dcp`, r: 0.001 }, { id: "negative", a: `${pack.id}#dcn`, b: "supply#dcn", r: 0.001 }];
-    const result = solveCircuits([{ id: "supply", kind: "DC", voltage: 400, internalR: 0 }], wires, evLoads(pack));
+    const wires = [
+      { id: "positive", a: "supply#dcp", b: `${pack.id}#dcp`, r: 0.001 },
+      { id: "negative", a: `${pack.id}#dcn`, b: "supply#dcn", r: 0.001 },
+    ];
+    const result = solveCircuits(
+      [{ id: "supply", kind: "DC", voltage: 400, internalR: 0 }],
+      wires,
+      evLoads(pack),
+    );
     expect(result.partStatus[pack.id]?.state).toBe("on");
     expect(result.partStatus[pack.id]?.powerW).toBeGreaterThan(10990);
     expect(result.partStatus[pack.id]?.powerW).toBeLessThan(11000);

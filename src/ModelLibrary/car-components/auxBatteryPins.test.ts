@@ -3,11 +3,28 @@ import { describe, expect, test } from "bun:test";
 import { evLoads, evPinWorld, pinsOf, type EVPartRecord } from "./EVComponents";
 import { AUX_BATTERY_PINS } from "./auxBatteryPins";
 
-const part: EVPartRecord = { id: "existing-aux12", type: "aux12", position: [2, 0, 3], rotationY: 0, params: { capacity: 60 } };
+const part: EVPartRecord = {
+  id: "existing-aux12",
+  type: "aux12",
+  position: [2, 0, 3],
+  rotationY: 0,
+  params: { capacity: 60 },
+};
 describe("auxiliary battery terminal compatibility", () => {
   test("preserves positive and negative endpoints and the existing electrical load", () => {
-    expect(pinsOf("aux12").map((pin) => [pin.id, pin.role])).toEqual([["p", "12+"], ["n", "12-"]]);
-    expect(evLoads(part)).toEqual([{ owner: "existing-aux12", a: "existing-aux12#p", b: "existing-aux12#n", r: 0.288, ratedV: 12 }]);
+    expect(pinsOf("aux12").map((pin) => [pin.id, pin.role])).toEqual([
+      ["p", "12+"],
+      ["n", "12-"],
+    ]);
+    expect(evLoads(part)).toEqual([
+      {
+        owner: "existing-aux12",
+        a: "existing-aux12#p",
+        b: "existing-aux12#n",
+        r: 0.288,
+        ratedV: 12,
+      },
+    ]);
   });
   test("wires follow the actual post faces when moved and rotated", () => {
     expect(pinsOf("aux12")).toBe(AUX_BATTERY_PINS);

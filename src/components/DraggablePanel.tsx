@@ -95,7 +95,9 @@ export function DraggablePanel({
       >
         <span>{title}</span>
         <div className="flex items-center gap-1.5">
-          <span className="text-neutral-500" aria-hidden="true">⋮⋮</span>
+          <span className="text-neutral-500" aria-hidden="true">
+            ⋮⋮
+          </span>
           <button
             type="button"
             onPointerDown={(event) => event.stopPropagation()}
@@ -107,9 +109,7 @@ export function DraggablePanel({
           </button>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        {children}
-      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
     </div>
   );
 }

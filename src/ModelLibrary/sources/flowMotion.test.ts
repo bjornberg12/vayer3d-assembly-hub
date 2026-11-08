@@ -5,8 +5,10 @@ import { solveCircuits } from "./solver";
 test("a closed powered device circuit drives electron motion", () => {
   const result = solveCircuits(
     [{ id: "source", kind: "DC", voltage: 400, internalR: 0 }],
-    [{ id: "positive", a: "source#dcp", b: "heater#dcp", r: 0.01 },
-     { id: "return", a: "heater#dcn", b: "source#dcn", r: 0.01 }],
+    [
+      { id: "positive", a: "source#dcp", b: "heater#dcp", r: 0.01 },
+      { id: "return", a: "heater#dcn", b: "source#dcn", r: 0.01 },
+    ],
     [{ owner: "heater", a: "heater#dcp", b: "heater#dcn", r: 32, ratedV: 400 }],
   );
   expect(result.partStatus.heater.state).toBe("on");

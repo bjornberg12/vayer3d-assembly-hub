@@ -25,11 +25,17 @@ export interface SceneSave {
 }
 
 export function serializeScene(data: SceneData, now = new Date()): string {
-  const save: SceneSave = { format: SAVE_FORMAT, version: SAVE_VERSION, savedAt: now.toISOString(), data };
+  const save: SceneSave = {
+    format: SAVE_FORMAT,
+    version: SAVE_VERSION,
+    savedAt: now.toISOString(),
+    data,
+  };
   return JSON.stringify(save, null, 2);
 }
 
-const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+const isObj = (v: unknown): v is Record<string, unknown> =>
+  !!v && typeof v === "object" && !Array.isArray(v);
 
 export function parseScene(text: string): SceneData {
   let raw: unknown;
@@ -38,7 +44,8 @@ export function parseScene(text: string): SceneData {
   } catch {
     throw new Error("This file is not a valid scene save.");
   }
-  if (!isObj(raw) || raw.format !== SAVE_FORMAT) throw new Error("This file is not a valid scene save.");
+  if (!isObj(raw) || raw.format !== SAVE_FORMAT)
+    throw new Error("This file is not a valid scene save.");
   if (typeof raw.version !== "number" || raw.version > SAVE_VERSION)
     throw new Error("This save was made with a newer version of the app.");
   const d = raw.data;

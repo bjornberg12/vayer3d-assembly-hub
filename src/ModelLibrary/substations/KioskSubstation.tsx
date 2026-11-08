@@ -59,7 +59,7 @@ function Louver({
       </mesh>
       {Array.from({ length: rows }).map((_, i) => (
         <mesh key={i} position={[0, height / 2 - (i + 0.5) * (height / rows), 0.004]}>
-          <planeGeometry args={[width * 0.96, height / rows * 0.42]} />
+          <planeGeometry args={[width * 0.96, (height / rows) * 0.42]} />
           <meshStandardMaterial color="#6f6c66" roughness={0.9} />
         </mesh>
       ))}
@@ -135,8 +135,16 @@ function Doors() {
       ))}
 
       {/* Ventilation louvers low on the two centre doors */}
-      <Louver position={[-W / 2 + 1.2, PLINTH_H + 0.42, zFront + 0.012]} width={0.52} height={0.5} />
-      <Louver position={[-W / 2 + 1.96, PLINTH_H + 0.42, zFront + 0.012]} width={0.52} height={0.5} />
+      <Louver
+        position={[-W / 2 + 1.2, PLINTH_H + 0.42, zFront + 0.012]}
+        width={0.52}
+        height={0.5}
+      />
+      <Louver
+        position={[-W / 2 + 1.96, PLINTH_H + 0.42, zFront + 0.012]}
+        width={0.52}
+        height={0.5}
+      />
       {/* Side louver */}
       <group position={[W / 2 + 0.006, PLINTH_H + 0.9, 0]} rotation={[0, Math.PI / 2, 0]}>
         <Louver position={[0, 0, 0]} width={0.7} height={0.5} />

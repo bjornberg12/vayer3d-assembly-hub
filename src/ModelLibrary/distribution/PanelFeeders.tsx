@@ -16,19 +16,110 @@ export type Breaker = {
 };
 
 export const BREAKERS: Breaker[] = [
-  { id: "mcb-1p-16", label: "MCB 1P C16", kind: "MCB", rating: 16, poles: 1, note: "Lighting / socket circuit" },
-  { id: "mcb-1p-20", label: "MCB 1P C20", kind: "MCB", rating: 20, poles: 1, note: "Socket circuit" },
-  { id: "mcb-3p-16", label: "MCB 3P C16", kind: "MCB", rating: 16, poles: 3, note: "Small three-phase load" },
-  { id: "mcb-3p-25", label: "MCB 3P C25", kind: "MCB", rating: 25, poles: 3, note: "Three-phase load" },
-  { id: "mcb-3p-32", label: "MCB 3P C32", kind: "MCB", rating: 32, poles: 3, note: "Three-phase load" },
-  { id: "mcb-3p-40", label: "MCB 3P C40", kind: "MCB", rating: 40, poles: 3, note: "Three-phase load" },
-  { id: "mcb-3p-63", label: "MCB 3P C63", kind: "MCB", rating: 63, poles: 3, note: "Service / sub-feed" },
-  { id: "mccb-3p-100", label: "MCCB 3P 100 A", kind: "MCCB", rating: 100, poles: 3, note: "Sub-distribution feed" },
-  { id: "mccb-3p-160", label: "MCCB 3P 160 A", kind: "MCCB", rating: 160, poles: 3, note: "Main / sub-feed" },
-  { id: "mccb-3p-250", label: "MCCB 3P 250 A", kind: "MCCB", rating: 250, poles: 3, note: "Main incomer" },
-  { id: "fuse-3p-63", label: "Fuse switch 3P 63 A", kind: "Fuse", rating: 63, poles: 3, note: "NH fuse base" },
-  { id: "fuse-3p-160", label: "Fuse switch 3P 160 A", kind: "Fuse", rating: 160, poles: 3, note: "NH fuse base" },
-  { id: "fuse-3p-250", label: "Fuse switch 3P 250 A", kind: "Fuse", rating: 250, poles: 3, note: "NH main fuse base" },
+  {
+    id: "mcb-1p-16",
+    label: "MCB 1P C16",
+    kind: "MCB",
+    rating: 16,
+    poles: 1,
+    note: "Lighting / socket circuit",
+  },
+  {
+    id: "mcb-1p-20",
+    label: "MCB 1P C20",
+    kind: "MCB",
+    rating: 20,
+    poles: 1,
+    note: "Socket circuit",
+  },
+  {
+    id: "mcb-3p-16",
+    label: "MCB 3P C16",
+    kind: "MCB",
+    rating: 16,
+    poles: 3,
+    note: "Small three-phase load",
+  },
+  {
+    id: "mcb-3p-25",
+    label: "MCB 3P C25",
+    kind: "MCB",
+    rating: 25,
+    poles: 3,
+    note: "Three-phase load",
+  },
+  {
+    id: "mcb-3p-32",
+    label: "MCB 3P C32",
+    kind: "MCB",
+    rating: 32,
+    poles: 3,
+    note: "Three-phase load",
+  },
+  {
+    id: "mcb-3p-40",
+    label: "MCB 3P C40",
+    kind: "MCB",
+    rating: 40,
+    poles: 3,
+    note: "Three-phase load",
+  },
+  {
+    id: "mcb-3p-63",
+    label: "MCB 3P C63",
+    kind: "MCB",
+    rating: 63,
+    poles: 3,
+    note: "Service / sub-feed",
+  },
+  {
+    id: "mccb-3p-100",
+    label: "MCCB 3P 100 A",
+    kind: "MCCB",
+    rating: 100,
+    poles: 3,
+    note: "Sub-distribution feed",
+  },
+  {
+    id: "mccb-3p-160",
+    label: "MCCB 3P 160 A",
+    kind: "MCCB",
+    rating: 160,
+    poles: 3,
+    note: "Main / sub-feed",
+  },
+  {
+    id: "mccb-3p-250",
+    label: "MCCB 3P 250 A",
+    kind: "MCCB",
+    rating: 250,
+    poles: 3,
+    note: "Main incomer",
+  },
+  {
+    id: "fuse-3p-63",
+    label: "Fuse switch 3P 63 A",
+    kind: "Fuse",
+    rating: 63,
+    poles: 3,
+    note: "NH fuse base",
+  },
+  {
+    id: "fuse-3p-160",
+    label: "Fuse switch 3P 160 A",
+    kind: "Fuse",
+    rating: 160,
+    poles: 3,
+    note: "NH fuse base",
+  },
+  {
+    id: "fuse-3p-250",
+    label: "Fuse switch 3P 250 A",
+    kind: "Fuse",
+    rating: 250,
+    poles: 3,
+    note: "NH main fuse base",
+  },
 ];
 
 export const breakerById = (id: string): Breaker =>
@@ -84,7 +175,8 @@ export function FeederBlocks({ feeders }: { feeders: Feeder[] }) {
         const gap = 0.012;
         const total = list.length * w + (list.length - 1) * gap;
         const startX = -Math.min(total, BODY_W * 0.82) / 2 + w / 2;
-        const stride = list.length > 1 ? (Math.min(total, BODY_W * 0.82) - w) / (list.length - 1) : 0;
+        const stride =
+          list.length > 1 ? (Math.min(total, BODY_W * 0.82) - w) / (list.length - 1) : 0;
         return (
           <group key={row.dir}>
             {/* DIN rail */}
