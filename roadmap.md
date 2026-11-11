@@ -29,3 +29,9 @@
 
 ## LV panel
 - [x] LV panel with MCCB, MCB, small breaker and SPD devices, phase choice, busbar or manual feed, outgoing pins/cable ends, solver trips
+
+## Grid designer realism
+- [x] Short-circuit (IEC 60909), voltage-drop and breaking-capacity calculations with tests
+- [ ] Show fault level and voltage drop in Properties; external grid source; R+jX cables
+- [ ] Constant-power loads, cable ampacity, protection curves, design-rule checker
+- [ ] Generic loads, PV/storage, fuses; reports, single-line diagram, scenarios
