@@ -1,39 +1,11 @@
-- [x] Refine the 12V auxiliary battery housing and realistic terminal posts.
-- [x] Preserve endpoint IDs and the electrical equivalent; add compatibility tests.
-- [x] Run compatibility tests and visually inspect the battery and selectable terminal posts in the app.
-- [x] Refine PTC heater and electric A/C compressor housings while preserving pins and simulation.
-- [x] Check both thermal models in the scene and run regression tests.
-- [x] Refine PTC heater HV, control and ground connections while preserving existing endpoints.
-- [x] Test heater endpoint compatibility and inspect selectable connections in the scene.
-- [x] Refine the traction motor casing, end covers, cooling connections and axle details.
-- [x] Verify the motor appearance, existing pins, simulation and turning-wheel compatibility.
-- [x] Refine traction motor phase, ground and resolver connectors while preserving existing endpoints.
-- [x] Test motor endpoint compatibility and inspect selectable connections in the scene.
-- [x] Refine the charge port into a realistic CCS2 inlet (flange, socket wells, hinged lid, cable glands) while preserving pins and simulation.
-- [x] Add charge port compatibility tests and run the car-component test suite.
-- [x] Visually inspect the charge port and its selectable contacts in the app.
-- [x] Relocate charge port contacts to the CCS2 socket wells (stable IDs, kinds, rotations) while preserving wiring and simulation.
-- [x] Update charge port compatibility tests and run the car-component test suite.
-- [x] Visually inspect the relocated selectable contacts in the app.
-- [x] Detail HV traction battery enclosure, cooling fittings and realistic selectable connectors.
-- [x] Verify battery endpoint compatibility, simulation and appearance in the scene.
-- [x] Add a small green triangle on direct wiring-pin hover, with off-pin clearing.
-- [ ] Visually verify pin hover and off-pin clearing; blocked by repeated browser-check timeouts.
-- [x] Refine the onboard charger housing while preserving its wiring pins and simulation.
-- [x] Check onboard charger appearance and run car-component regression tests.
-- [x] Automatically show solver-driven electrons and current arrows on small wires, with live device power readings.
-- [x] Test powered and unpowered flow behavior (19 tests pass).
-- [ ] Verify connected-device animation in the scene; browser wiring check did not complete successfully.
-- [x] Refine the battery management system housing and realistic harness contacts, retaining existing wiring and simulation.
-- [x] Test BMS endpoint compatibility (22 regression tests pass) and visually verify the model and visible connector faces; no runtime errors.
-
-## LV panel
-- [x] LV panel with MCCB, MCB, small breaker and SPD devices, phase choice, busbar or manual feed, outgoing pins/cable ends, solver trips
-
-## Grid designer realism
-- [x] Add offline TN/TT/IT settings, modeled fault paths, touch-voltage screening and save compatibility.
-- [x] Test grounding calculations (51 regression tests pass) and verify wired-grid results, save/reset/open, offline use and narrow-screen layout in the browser.
-- [x] Short-circuit (IEC 60909), voltage-drop and breaking-capacity calculations with tests
-- [ ] Show fault level and voltage drop in Properties; external grid source; R+jX cables
-- [ ] Constant-power loads, cable ampacity, protection curves, design-rule checker
-- [ ] Generic loads, PV/storage, fuses; reports, single-line diagram, scenarios
+# Roadmap — buildable grid design
+- [x] Phase 1a: engineering conductor catalogue (R, X, Iz, k), temperature correction, derating, transformer standard data
+- [x] Phase 2a: radial load flow engine (PQ loads, losses, loading) + Velander coincidence
+- [x] Phase 4a: rule checks (voltage drop, loading, breaking capacity, thermal withstand)
+- [ ] Studies panel in the app showing load flow + checks on the drawn grid
+- [ ] Link scene cables/lines to conductor catalogue entries
+- [ ] Phase 3: meshed short circuit, protection curves, TCC, auto-reclose, FLISR
+- [ ] Phase 5: geography, line sag/clearances
+- [ ] Phase 6: new models (grid infeed, RMU, recloser, PV, storage, house connections)
+- [ ] Phase 7: SLD, BOM, cable schedule, PDF report
+- [ ] Phase 8: Cloud collaboration
