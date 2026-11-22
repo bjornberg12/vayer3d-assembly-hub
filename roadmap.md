@@ -16,3 +16,11 @@
 - [x] Phase 6 new 3D models: grid infeed, RMU, recloser, PV, storage, ground-mounted house-connection kiosk; properties, terminals, solver behavior and tests included
 - [ ] Single-line diagram view and PDF report
 - [ ] Phase 8 Cloud collaboration — needs user decision to enable Cloud
+## Gap analysis follow-up (approved plan)
+- [x] Meshed power flow with PV/storage generation, reverse-flow detection (`grid/powerflow.ts`)
+- [x] Earthing screening: rods, mesh, neutral earthing fault currents, permissible touch voltage (`grid/earthing.ts`)
+- [ ] Connect meshed power flow and earthing to the Grid design studies panel
+- [ ] Directional, distance and differential protection; auto-coordination; fault records
+- [ ] Time-series profiles, hosting capacity, power quality, cable laying conditions
+- [ ] New models: pole transformer, LV cabinet, capacitor bank, regulator, arresters, CT/VT, earth rods, joints
+- [ ] Usability: undo/redo, copy/paste, templates, warnings list
