@@ -1,11 +1,13 @@
 # Roadmap — buildable grid design
-- [x] Phase 1a: engineering conductor catalogue (R, X, Iz, k), temperature correction, derating, transformer standard data
-- [x] Phase 2a: radial load flow engine (PQ loads, losses, loading) + Velander coincidence
-- [x] Phase 4a: rule checks (voltage drop, loading, breaking capacity, thermal withstand)
-- [ ] Studies panel in the app showing load flow + checks on the drawn grid
-- [ ] Link scene cables/lines to conductor catalogue entries
-- [ ] Phase 3: meshed short circuit, protection curves, TCC, auto-reclose, FLISR
-- [ ] Phase 5: geography, line sag/clearances
-- [ ] Phase 6: new models (grid infeed, RMU, recloser, PV, storage, house connections)
-- [ ] Phase 7: SLD, BOM, cable schedule, PDF report
-- [ ] Phase 8: Cloud collaboration
+- [x] Phase 1: conductor catalogue (R, X, Iz, k), temperature correction, derating, standard transformers; scene cables/lines mapped to catalogue
+- [x] Phase 2: radial load flow (PQ loads, losses, loading) + Velander coincidence
+- [x] Phase 4: rule checks (voltage drop, loading, breaking capacity, thermal withstand) + auto-sizing suggestion
+- [x] Studies panel (Scenes menu → Grid design studies)
+- [x] Phase 3 (part): IEC relay curves, gG fuse, MCB, TCC plot, selectivity, auto-reclose, FLISR ring logic
+- [x] Phase 5 (part): line sag with ice/wind, ground/road clearance check
+- [x] Phase 7 (part): cable schedule + BOM CSV export
+- [ ] Meshed short circuit at a clicked node and 3D fault placement (next)
+- [ ] Map/terrain base layer
+- [ ] Phase 6 new 3D models (grid infeed, RMU, recloser, PV, storage, house connections)
+- [ ] Single-line diagram view and PDF report
+- [ ] Phase 8 Cloud collaboration — needs user decision to enable Cloud

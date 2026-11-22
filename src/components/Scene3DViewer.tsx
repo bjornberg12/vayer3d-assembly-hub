@@ -41,6 +41,7 @@ import {
   type GroundingTarget,
 } from "@/lib/grounding";
 import { GroundingPanel } from "./GroundingPanel";
+import { StudiesPanel } from "./StudiesPanel";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "@/ModelLibrary";
 import { DistributionPanel, PANEL_STEPS } from "@/ModelLibrary";
@@ -1513,6 +1514,7 @@ export default function Scene3DViewer() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [groundingOpen, setGroundingOpen] = useState(false);
+  const [studiesOpen, setStudiesOpen] = useState(false);
   const [grounding, setGrounding] = useState<GroundingSettings>({ ...DEFAULT_GROUNDING });
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
@@ -4778,6 +4780,17 @@ export default function Scene3DViewer() {
           onClose={() => setGroundingOpen(false)}
         />
       )}
+      {studiesOpen && (
+        <StudiesPanel
+          links={[
+            ...cables.map((c) => ({ id: c.id, from: c.a, to: c.b, sceneType: c.size, lengthM: cableLengthOf(c), loadKW: c.powerKw || 0 })),
+            ...connections
+              .map((c) => ({ id: c.id, from: c.a, to: c.b, sceneType: c.type ?? DEFAULT_LINE_TYPE, lengthM: lineLengthOf(c), loadKW: 0 })),
+          ]}
+          objects={addedItems.map((i) => i.type)}
+          onClose={() => setStudiesOpen(false)}
+        />
+      )}
       {menuOpen && (
         <DraggablePanel
           initialX={16}
@@ -4817,6 +4830,17 @@ export default function Scene3DViewer() {
               }}
             >
               Grounding & earth faults
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 w-full"
+              onClick={() => {
+                setStudiesOpen(true);
+                setMenuOpen(false);
+              }}
+            >
+              Grid design studies
             </Button>
           </div>
           <div className="flex flex-col gap-1.5 border-t border-white/40 px-4 py-3">
