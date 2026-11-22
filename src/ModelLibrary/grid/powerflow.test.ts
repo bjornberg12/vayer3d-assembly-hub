@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "bun:test";
 import { meshedPowerFlow } from "./powerflow";
 import { radialLoadFlow } from "./loadflow";
 import { conductorOf } from "./conductors";
