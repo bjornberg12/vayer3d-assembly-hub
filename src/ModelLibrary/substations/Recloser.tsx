@@ -3,10 +3,9 @@ import { Text } from "@react-three/drei";
 import { Part } from "@/components/PartLabel";
 import type { SolverWire } from "../sources/solver";
 import { CableSocket, EquipmentBox, StatusLed } from "../common/EquipmentDetails";
+import { defaultRelaySettings } from "../grid/relay";
 
-export const RECLOSER_PARAMS = [
-  { key: "recTripA", label: "Overcurrent pickup I>", unit: "A", min: 10, max: 2000, step: 10 },
-] as const;
+export const RECLOSER_PARAMS = [] as const;
 
 export function recloserDefaults(): Record<string, string | number> {
   return {
@@ -15,6 +14,7 @@ export function recloserDefaults(): Record<string, string | number> {
     recAuto: 1,
     recTripped: "",
     recAttempts: 0,
+    relay: JSON.stringify(defaultRelaySettings(20000)),
     modelId: "REC-24-630",
     manufacturer: "Generic IEC",
     mass: 185,

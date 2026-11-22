@@ -30,6 +30,7 @@ export const TRANSFORMER_PARAMS: TransformerParam[] = [
   },
   { key: "tfRatedKVA", label: "Rated power", unit: "kVA", min: 1, max: 100000, step: 10 },
   { key: "tfUk", label: "Short-circuit impedance uk", unit: "%", min: 0.5, max: 20, step: 0.1 },
+  { key: "tfUkr", label: "Resistive impedance uR", unit: "%", min: 0.05, max: 10, step: 0.05 },
   { key: "tfTap", label: "Tap position", unit: "%", min: -10, max: 10, step: 2.5 },
 ];
 
@@ -39,6 +40,7 @@ export function transformerDefaults(): Record<string, string | number> {
     tfSecondaryV: 400,
     tfRatedKVA: 630,
     tfUk: 4,
+    tfUkr: 1,
     tfTap: 0,
     tfVector: "Dyn11",
     modelId: "TMG-630/10",

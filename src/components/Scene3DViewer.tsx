@@ -136,6 +136,7 @@ import {
 import {
   RecloserModel,
   recloserWires,
+  recloserConducts,
   recloserTerminalLocals,
 } from "@/ModelLibrary/substations/Recloser";
 import {
@@ -145,12 +146,23 @@ import {
   houseTerminalLocals,
 } from "@/ModelLibrary/distribution/HouseConnection";
 import { GridEquipmentProps } from "./GridEquipmentProps";
+import { RelayEditor } from "./RelayEditor";
+import { buildSceneFaultNetwork } from "@/ModelLibrary/grid/faultNetwork";
+import type { RelayTarget } from "./ProtectionStudy";
+import {
+  activeRelayGroup,
+  defaultMeasurement,
+  fastestTrip,
+  parseRelaySettings,
+  type RelaySettings,
+} from "@/ModelLibrary/grid/relay";
 import {
   SwitchgearModel,
   parseSwitchgear,
   switchgearWires,
   cubicleTerminalLocals,
   cubicleConducts,
+  cubicleRelay,
   makeCubicle,
   CUBICLE_KIND_LABEL,
   type Cubicle,
@@ -2406,6 +2418,73 @@ export default function Scene3DViewer() {
     Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${id}~recloser~${p}`] ?? 0));
   const bundleCurrent = (id: string) =>
     Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
+
+  // Study-only sequence network: closed scene switches and conductor R/X data.
+  const gridStudyLinks = [
+    ...cables.map((c) => ({
+      id: c.id,
+      from: c.a,
+      to: c.b,
+      a: c.a,
+      b: c.b,
+      sceneType: c.size,
+      lengthM: cableLengthOf(c),
+      loadKW: c.powerKw || 0,
+    })),
+    ...connections.map((c) => ({
+      id: c.id,
+      from: c.a,
+      to: c.b,
+      a: c.a,
+      b: c.b,
+      sceneType: c.type ?? DEFAULT_LINE_TYPE,
+      lengthM: lineLengthOf(c),
+      loadKW: 0,
+    })),
+  ];
+  const faultNetwork = buildSceneFaultNetwork(
+    addedItems.map((item) => ({ id: item.id, type: item.type, values: objectProps[item.id]?.values ?? initPropsFor(item.type).values })),
+    gridStudyLinks,
+    addedItems.flatMap((item) => {
+      if (item.type === "recloser") {
+        const values = objectProps[item.id]?.values ?? initPropsFor("recloser").values;
+        return [{ id: `${item.id}~recloser`, a: `${item.id}#in`, b: `${item.id}#out`, closed: recloserConducts(values) }];
+      }
+      if (isSwg(item.type)) {
+        return switchgearOf(item.id).map((cubicle, k) => ({
+          id: `${item.id}~sw${k}`,
+          a: `${item.id}#mv${k + 1}`,
+          b: `${item.id}#bus`,
+          closed: cubicleConducts(cubicle),
+        }));
+      }
+      return [];
+    }),
+  );
+  const updateRelayTarget = (targetId: string, settings: RelaySettings) => {
+    const [kind, ownerId, ...rest] = targetId.split(":");
+    const group = activeRelayGroup(settings);
+    if (kind === "recloser" && ownerId) {
+      setObjectProps((prev) => {
+        const current = prev[ownerId] ?? initPropsFor("recloser");
+        return { ...prev, [ownerId]: { ...current, values: {
+          ...current.values,
+          relay: JSON.stringify(settings),
+          recTripA: group.phase51.pickupA,
+          recAuto: group.reclose79.enabled ? 1 : 0,
+        } } };
+      });
+    } else if (kind === "cubicle" && ownerId) {
+      const cubicleId = rest.join(":");
+      setSwitchgear(ownerId, switchgearOf(ownerId).map((cubicle) => cubicle.id === cubicleId ? {
+        ...cubicle,
+        relay: settings,
+        pickupA: group.phase51.pickupA,
+        scA: group.phase50.pickupA,
+      } : cubicle));
+    }
+  };
+
   // The circuit is solved only when something electrical changes (objects,
   // wires, cables, lines, settings) — not on hover, menus or camera moves.
   // Deferred inputs let React skip intermediate solves while dragging.
@@ -2523,6 +2602,29 @@ export default function Scene3DViewer() {
     );
     return { ...solved, studyWires };
   }, [dItems, dEvParts, dEvWires, dCables, dConns, dProps]);
+
+  const relayTargets: RelayTarget[] = addedItems.flatMap((item) => {
+    if (item.type === "recloser") {
+      const values = objectProps[item.id]?.values ?? initPropsFor("recloser").values;
+      return [{
+        id: `recloser:${item.id}`,
+        label: `${String(values.name ?? "MV auto-recloser")} (${item.id})`,
+        settings: parseRelaySettings(values.relay, Number(values.nominalVoltage ?? 20000)),
+        liveCurrentA: recloserCurrent(item.id),
+      }];
+    }
+    if (isSwg(item.type)) {
+      const nominalVoltage = Number(objectProps[item.id]?.values.nominalVoltage ?? 20000);
+      return switchgearOf(item.id).flatMap((cubicle, k) => cubicle.kind === "cb" ? [{
+        id: `cubicle:${item.id}:${cubicle.id}`,
+        label: `${String(objectProps[item.id]?.values.name ?? item.type)} · ${cubicle.label}`,
+        settings: cubicleRelay(cubicle, nominalVoltage),
+        liveCurrentA: cubicleCurrent(item.id, k),
+      }] : []);
+    }
+    return [];
+  });
+
   const groundingSources = useMemo<GroundingSource[]>(
     () =>
       dItems.flatMap((item) => {
@@ -2602,7 +2704,7 @@ export default function Scene3DViewer() {
         }));
     });
   }, [dItems, dEvParts, dProps]);
-  // Protection: closed breakers trip instantly when current exceeds I> / I>>.
+  // Protection: active setting group and IEC curves determine the actual trip delay.
   const tripKey = addedItems
     .filter((i) => isSwg(i.type))
     .map((i) =>
@@ -2612,94 +2714,110 @@ export default function Scene3DViewer() {
     )
     .join("|");
   useEffect(() => {
+    const timers: number[] = [];
     for (const it of addedItems.filter((i) => isSwg(i.type))) {
-      const cubs = switchgearOf(it.id);
-      let changed = false;
-      const next = cubs.map((c, k) => {
-        if (c.kind !== "cb" || !cubicleConducts(c)) return c;
-        if (it.type === "gis" && !relayAutoOn(objectProps[it.id]?.values.relayAuto)) return c;
-        const I = cubicleCurrent(it.id, k);
-        if (I <= c.pickupA) return c;
-        changed = true;
-        return {
-          ...c,
-          tripped:
-            I > c.scA
-              ? `I>> short circuit (${I.toFixed(0)} A)`
-              : `I> overcurrent (${I.toFixed(0)} A)`,
+      if (it.type === "gis" && !relayAutoOn(objectProps[it.id]?.values.relayAuto)) continue;
+      switchgearOf(it.id).forEach((cubicle, k) => {
+        if (cubicle.kind !== "cb" || !cubicleConducts(cubicle)) return;
+        const current = cubicleCurrent(it.id, k);
+        const settings = cubicleRelay(cubicle, Number(objectProps[it.id]?.values.nominalVoltage ?? 20000));
+        const measurement = {
+          ...defaultMeasurement(settings.nominalVoltageV),
+          phaseA: [current, current, current] as [number, number, number],
         };
+        const trip = fastestTrip(settings, measurement);
+        if (!trip) return;
+        timers.push(window.setTimeout(() => {
+          const latest = switchgearOf(it.id);
+          setSwitchgear(it.id, latest.map((item, index) => index === k && cubicleConducts(item) ? {
+            ...item,
+            tripped: `${trip.iec} ${trip.name} (${current.toFixed(0)} A), ${trip.totalTimeS.toFixed(3)} s`,
+          } : item));
+        }, Math.max(20, trip.totalTimeS * 1000)));
       });
-      if (changed) setSwitchgear(it.id, next);
     }
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tripKey, addedItems.map((i) => String(objectProps[i.id]?.values.relayAuto ?? "")).join()]);
+  }, [tripKey, addedItems, objectProps]);
 
-  // Recloser: instantaneous I> trip, one automatic reclose, then lockout on a permanent fault.
+  // Recloser: the active relay group controls curves, trip delay and auto-reclose sequence.
   const recloserItems = addedItems.filter((i) => i.type === "recloser");
   const recloserTripKey = recloserItems
     .map((i) => `${i.id}:${recloserCurrent(i.id).toFixed(1)}`)
     .join("|");
   useEffect(() => {
+    const timers: number[] = [];
     for (const item of recloserItems) {
-      const current = objectProps[item.id]?.values ?? initPropsFor("recloser").values;
-      if (String(current.recTripped ?? "") || Number(current.recClosed ?? 1) === 0) continue;
+      const values = objectProps[item.id]?.values ?? initPropsFor("recloser").values;
+      if (String(values.recTripped ?? "") || Number(values.recClosed ?? 1) === 0) continue;
       const measured = recloserCurrent(item.id);
-      const pickup = Math.max(Number(current.recTripA ?? 400), 1);
-      if (measured <= pickup) continue;
-      setObjectProps((prev) => {
-        const cur = prev[item.id] ?? initPropsFor("recloser");
-        return {
-          ...prev,
-          [item.id]: {
-            ...cur,
-            values: {
-              ...cur.values,
-              recClosed: 0,
-              recTripped: `I> overcurrent (${measured.toFixed(0)} A)`,
-            },
-          },
-        };
+      const settings = parseRelaySettings(values.relay, Number(values.nominalVoltage ?? 20000));
+      const trip = fastestTrip(settings, {
+        ...defaultMeasurement(settings.nominalVoltageV),
+        phaseA: [measured, measured, measured],
       });
+      if (!trip) continue;
+      timers.push(window.setTimeout(() => {
+        setObjectProps((prev) => {
+          const current = prev[item.id] ?? initPropsFor("recloser");
+          if (String(current.values.recTripped ?? "") || Number(current.values.recClosed ?? 1) === 0) return prev;
+          return { ...prev, [item.id]: { ...current, values: {
+            ...current.values,
+            recClosed: 0,
+            recTripped: `${trip.iec} ${trip.name} (${measured.toFixed(0)} A), ${trip.totalTimeS.toFixed(3)} s`,
+          } } };
+        });
+      }, Math.max(20, trip.totalTimeS * 1000)));
     }
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recloserTripKey]);
+  }, [recloserTripKey, objectProps]);
   const recloserStateKey = recloserItems
     .map((i) => {
       const v = objectProps[i.id]?.values;
-      return `${i.id}:${v?.recTripped ?? ""}:${v?.recAuto ?? 1}:${v?.recAttempts ?? 0}`;
+      return `${i.id}:${v?.recTripped ?? ""}:${v?.recAuto ?? 1}:${v?.recAttempts ?? 0}:${v?.recClosed ?? 1}:${v?.relay ?? ""}`;
     })
     .join("|");
   useEffect(() => {
-    const timers = recloserItems
-      .filter((i) => {
-        const v = objectProps[i.id]?.values;
-        return (
-          !!String(v?.recTripped ?? "") &&
-          Number(v?.recAuto ?? 1) !== 0 &&
-          Number(v?.recAttempts ?? 0) < 1
-        );
-      })
-      .map((item) =>
-        window.setTimeout(() => {
-          setObjectProps((prev) => {
-            const cur = prev[item.id] ?? initPropsFor("recloser");
-            if (!String(cur.values.recTripped ?? "") || Number(cur.values.recAttempts ?? 0) >= 1)
-              return prev;
-            return {
-              ...prev,
-              [item.id]: {
-                ...cur,
-                values: {
-                  ...cur.values,
-                  recTripped: "",
-                  recClosed: 1,
-                  recAttempts: Number(cur.values.recAttempts ?? 0) + 1,
-                },
-              },
-            };
-          });
-        }, 1500),
-      );
+    const timers = recloserItems.flatMap((item) => {
+      const values = objectProps[item.id]?.values ?? initPropsFor("recloser").values;
+      const settings = parseRelaySettings(values.relay, Number(values.nominalVoltage ?? 20000));
+      const reclose = activeRelayGroup(settings).reclose79;
+      const attempts = Number(values.recAttempts ?? 0);
+      if (!String(values.recTripped ?? "") || Number(values.recAuto ?? 1) === 0 || !reclose.enabled || attempts >= reclose.shots) return [];
+      const deadTime = reclose.deadTimesS[attempts] ?? reclose.deadTimesS.at(-1) ?? 1;
+      return [window.setTimeout(() => {
+        setObjectProps((prev) => {
+          const current = prev[item.id] ?? initPropsFor("recloser");
+          if (!String(current.values.recTripped ?? "")) return prev;
+          return { ...prev, [item.id]: { ...current, values: {
+            ...current.values,
+            recTripped: "",
+            recClosed: 1,
+            recAttempts: Number(current.values.recAttempts ?? 0) + 1,
+          } } };
+        });
+      }, Math.max(20, deadTime * 1000))];
+    });
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recloserStateKey]);
+
+  // A successful closed period clears the shot counter only after the configured reclaim time.
+  useEffect(() => {
+    const timers = recloserItems.flatMap((item) => {
+      const values = objectProps[item.id]?.values ?? initPropsFor("recloser").values;
+      const settings = parseRelaySettings(values.relay, Number(values.nominalVoltage ?? 20000));
+      const reclose = activeRelayGroup(settings).reclose79;
+      if (String(values.recTripped ?? "") || Number(values.recClosed ?? 1) === 0 || Number(values.recAttempts ?? 0) <= 0 || !reclose.resetAttemptsOnReclaim) return [];
+      return [window.setTimeout(() => {
+        setObjectProps((prev) => {
+          const current = prev[item.id] ?? initPropsFor("recloser");
+          if (String(current.values.recTripped ?? "") || Number(current.values.recClosed ?? 1) === 0) return prev;
+          return { ...prev, [item.id]: { ...current, values: { ...current.values, recAttempts: 0 } } };
+        });
+      }, Math.max(20, reclose.reclaimTimeS * 1000))];
+    });
     return () => timers.forEach((timer) => window.clearTimeout(timer));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recloserStateKey]);
@@ -5091,25 +5209,11 @@ export default function Scene3DViewer() {
       )}
       {studiesOpen && (
         <StudiesPanel
-          links={[
-            ...cables.map((c) => ({
-              id: c.id,
-              from: c.a,
-              to: c.b,
-              sceneType: c.size,
-              lengthM: cableLengthOf(c),
-              loadKW: c.powerKw || 0,
-            })),
-            ...connections.map((c) => ({
-              id: c.id,
-              from: c.a,
-              to: c.b,
-              sceneType: c.type ?? DEFAULT_LINE_TYPE,
-              lengthM: lineLengthOf(c),
-              loadKW: 0,
-            })),
-          ]}
+          links={gridStudyLinks}
           objects={addedItems.map((i) => i.type)}
+          network={faultNetwork}
+          relays={relayTargets}
+          onRelayChange={updateRelayTarget}
           onClose={() => setStudiesOpen(false)}
         />
       )}
@@ -5492,28 +5596,22 @@ export default function Scene3DViewer() {
                             </div>
                           )}
                           {c.kind === "cb" && (
-                            <div className="grid grid-cols-[90px_minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1">
-                              <span className="text-[11px]">I&gt; overcurrent</span>
-                              <input
-                                type="number"
-                                min={1}
-                                step={1}
-                                value={c.pickupA}
-                                onChange={(e) => setC(k, { pickupA: Number(e.target.value) })}
-                                className={inp}
-                              />
-                              <span className="text-[10px] text-neutral-500">A</span>
-                              <span className="text-[11px]">I&gt;&gt; short circuit</span>
-                              <input
-                                type="number"
-                                min={1}
-                                step={10}
-                                value={c.scA}
-                                onChange={(e) => setC(k, { scA: Number(e.target.value) })}
-                                className={inp}
-                              />
-                              <span className="text-[10px] text-neutral-500">A</span>
-                            </div>
+                            <details className="rounded-md border border-border bg-card/40 p-2">
+                              <summary className="cursor-pointer font-semibold">Protection setting groups · {activeRelayGroup(cubicleRelay(c, Number(currentProps.values.nominalVoltage ?? 20000))).name}</summary>
+                              <div className="mt-2">
+                                <RelayEditor
+                                  value={cubicleRelay(c, Number(currentProps.values.nominalVoltage ?? 20000))}
+                                  measurement={{
+                                    ...defaultMeasurement(Number(currentProps.values.nominalVoltage ?? 20000)),
+                                    phaseA: [I, I, I],
+                                  }}
+                                  onChange={(settings) => {
+                                    const group = activeRelayGroup(settings);
+                                    setC(k, { relay: settings, pickupA: group.phase51.pickupA, scA: group.phase50.pickupA });
+                                  }}
+                                />
+                              </div>
+                            </details>
                           )}
                         </div>
                       );

@@ -6,7 +6,12 @@
 - [x] Phase 3 (part): IEC relay curves, gG fuse, MCB, TCC plot, selectivity, auto-reclose, FLISR ring logic
 - [x] Phase 5 (part): line sag with ice/wind, ground/road clearance check
 - [x] Phase 7 (part): cable schedule + BOM CSV export
-- [ ] Meshed short circuit at a clicked node and 3D fault placement (next)
+- [x] Meshed short circuit at scene nodes: 3-phase, line-line, single-phase and double-earth faults; peak, sequence and residual currents
+- [x] Distribution relay engine: four independent setting groups, IEC-only protection names and live timed trips
+- [x] Relay automation: configurable reclose shots/dead/reclaim times, permanent-fault lockout, breaker failure and event sequence tests
+- [x] Keep all relay editor and study labels IEC-only (user preference)
+- [x] Protection editor and fault/automation study UI connected to reclosers and switchgear; settings included in scene saves
+- [x] Verify calculation tests and end-to-end relay operation in the preview
 - [ ] Map/terrain base layer
 - [x] Phase 6 new 3D models: grid infeed, RMU, recloser, PV, storage, ground-mounted house-connection kiosk; properties, terminals, solver behavior and tests included
 - [ ] Single-line diagram view and PDF report

@@ -5,6 +5,8 @@ import { SOLAR_PARAMS, solarAvailableKw } from "@/ModelLibrary/sources/SolarInve
 import { STORAGE_PARAMS, storageEnergyKwh } from "@/ModelLibrary/sources/BatteryStorage";
 import { RECLOSER_PARAMS, recloserConducts } from "@/ModelLibrary/substations/Recloser";
 import { HOUSE_PARAMS } from "@/ModelLibrary/distribution/HouseConnection";
+import { RelayEditor } from "./RelayEditor";
+import { activeRelayGroup, defaultMeasurement, parseRelaySettings } from "@/ModelLibrary/grid/relay";
 
 type NumericParam = {
   readonly key: string;
@@ -207,6 +209,9 @@ export function GridEquipmentProps({
     const tripped = String(values.recTripped ?? "");
     const closed = recloserConducts(values);
     const automatic = Number(values.recAuto ?? 1) !== 0;
+    const relay = parseRelaySettings(values.relay, Number(values.nominalVoltage ?? 20000));
+    const group = activeRelayGroup(relay);
+    const measurement = { ...defaultMeasurement(relay.nominalVoltageV), phaseA: [current, current, current] as [number, number, number] };
     return (
       <div className="space-y-2 text-xs text-foreground">
         <Heading>Recloser control and protection</Heading>
@@ -245,8 +250,20 @@ export function GridEquipmentProps({
           <div>
             I = {current.toFixed(1)} A / pickup {Number(values.recTripA ?? 400).toFixed(0)} A
           </div>
-          <div>Reclose attempts used: {Number(values.recAttempts ?? 0)} / 1</div>
+          <div>Active group: {group.name} · reclose attempts {Number(values.recAttempts ?? 0)} / {group.reclose79.shots}</div>
         </div>
+        <RelayEditor
+          value={relay}
+          measurement={measurement}
+          onChange={(next) => {
+            const active = activeRelayGroup(next);
+            onChange({
+              relay: JSON.stringify(next),
+              recTripA: active.phase51.pickupA,
+              recAuto: active.reclose79.enabled ? 1 : 0,
+            });
+          }}
+        />
       </div>
     );
   }

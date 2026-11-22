@@ -7,6 +7,7 @@
  */
 import { Part } from "@/components/PartLabel";
 import type { SolverWire } from "../sources/solver";
+import { defaultRelaySettings, parseRelaySettings, type RelaySettings } from "../grid/relay";
 
 export type CubicleKind = "lbs" | "cb";
 export type Cubicle = {
@@ -16,8 +17,9 @@ export type Cubicle = {
   closed: boolean;
   earthed: boolean;
   tripped?: string; // trip reason
-  pickupA: number; // I> overcurrent pickup
-  scA: number; // I>> short-circuit pickup
+  pickupA: number; // legacy I> overcurrent pickup
+  scA: number; // legacy I>> short-circuit pickup
+  relay?: RelaySettings; // four-group numerical protection; absent in legacy saves
 };
 
 export const CUBICLE_KIND_LABEL: Record<CubicleKind, string> = {
@@ -34,6 +36,7 @@ export const makeCubicle = (kind: CubicleKind, n: number): Cubicle => ({
   earthed: false,
   pickupA: 40,
   scA: 400,
+  relay: defaultRelaySettings(20000),
 });
 export const defaultSwitchgear = (): Cubicle[] => [
   { ...makeCubicle("lbs", 1), id: "c1" },
@@ -54,6 +57,18 @@ export function parseSwitchgear(v: unknown): Cubicle[] {
 
 /** Bus is energised through closed, non-tripped main switches. */
 export const cubicleConducts = (c: Cubicle) => c.closed && !c.tripped;
+
+/** Active four-group relay, migrating the legacy I>/I>> fields into every group. */
+export function cubicleRelay(c: Cubicle, nominalVoltageV = 20000): RelaySettings {
+  const settings = parseRelaySettings(c.relay, nominalVoltageV);
+  if (!c.relay) {
+    for (const group of settings.groups) {
+      group.phase51.pickupA = c.pickupA;
+      group.phase50.pickupA = c.scA;
+    }
+  }
+  return settings;
+}
 
 /** Local position of cubicle k on the substation's front wall (+z face). */
 export function cubicleLocal(k: number, count: number): [number, number, number] {
