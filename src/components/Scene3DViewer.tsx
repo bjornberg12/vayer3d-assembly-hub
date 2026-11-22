@@ -34,6 +34,13 @@ import {
 import * as THREE from "three";
 import { configureTextBuilder } from "troika-three-text";
 import { parseScene, serializeScene } from "@/lib/sceneSave";
+import {
+  DEFAULT_GROUNDING,
+  type GroundingSettings,
+  type GroundingSource,
+  type GroundingTarget,
+} from "@/lib/grounding";
+import { GroundingPanel } from "./GroundingPanel";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { ElectricalPost, ASSEMBLY_STEPS, PUITMAST_PHASE_LOCAL } from "@/ModelLibrary";
 import { DistributionPanel, PANEL_STEPS } from "@/ModelLibrary";
@@ -1505,6 +1512,8 @@ export default function Scene3DViewer() {
   const [propsOwnerId, setPropsOwnerId] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [groundingOpen, setGroundingOpen] = useState(false);
+  const [grounding, setGrounding] = useState<GroundingSettings>({ ...DEFAULT_GROUNDING });
   const [viewsOpen, setViewsOpen] = useState(false);
   const [viewId, setViewId] = useState<ViewId>("iso");
   const [rulerActive, setRulerActive] = useState(false);
@@ -2302,7 +2311,16 @@ export default function Scene3DViewer() {
           ),
         ),
     );
-    return solveCircuits(
+    const studyWires = [
+      ...dEvWires.map((w) => ({
+        id: w.id,
+        a: w.a,
+        b: w.b,
+        r: wireResistance(anyWireLength(w), w.crossSection, w.material),
+      })),
+      ...wires,
+    ];
+    const solved = solveCircuits(
       dItems
         .filter((i) => i.type === "vsource")
         .map((i) => {
@@ -2314,15 +2332,7 @@ export default function Scene3DViewer() {
             internalR: Number(v.internalR ?? 0),
           };
         }),
-      [
-        ...dEvWires.map((w) => ({
-          id: w.id,
-          a: w.a,
-          b: w.b,
-          r: wireResistance(anyWireLength(w), w.crossSection, w.material),
-        })),
-        ...wires,
-      ],
+      studyWires,
       [
         ...dEvParts.flatMap((p) => evLoads(p, dProps[p.id]?.values)),
         ...panels.flatMap((i) => lvPanelLoads(i.id, devs(i.id))),
@@ -2334,7 +2344,65 @@ export default function Scene3DViewer() {
           ...transformerModel({ ...transformerDefaults(), ...dProps[i.id]?.values }),
         })),
     );
+    return { ...solved, studyWires };
   }, [dItems, dEvParts, dEvWires, dCables, dConns, dProps]);
+  const groundingSources = useMemo<GroundingSource[]>(
+    () =>
+      dItems.flatMap((item) => {
+        const v = dProps[item.id]?.values;
+        if (item.type === "vsource" && String(v?.sourceKind ?? "AC") === "AC")
+          return [
+            {
+              id: item.id,
+              label: `${String(v?.name ?? "AC supply")} (${item.id})`,
+              voltageLL: Number(v?.srcVoltage ?? 400),
+              phases: [1, 2, 3].map((k) => `${item.id}#l${k}`),
+              pe: `${item.id}#pe`,
+            },
+          ];
+        if (item.type === "transformer")
+          return [
+            {
+              id: item.id,
+              label: `Transformer LV (${item.id})`,
+              voltageLL: circuit.transformerStatus[item.id]?.secondaryV ?? 0,
+              phases: [1, 2, 3].map((k) => `${item.id}#x${k}`),
+              pe: `${item.id}#pe`,
+            },
+          ];
+        return [];
+      }),
+    [dItems, dProps, circuit],
+  );
+  const groundingTargets = useMemo<GroundingTarget[]>(() => {
+    const owners = [
+      ...dEvParts.map((p) => ({ id: p.id, name: EV_DEFS[p.type].name, pins: pinsOf(p.type) })),
+      ...dItems
+        .filter((i) => PIN_ITEM_TYPES.includes(i.type))
+        .map((i) => ({
+          id: i.id,
+          name: i.type,
+          pins:
+            i.type === "lvpanel"
+              ? lvPanelPins(parseLVPanel(dProps[i.id]?.values.lvdev))
+              : i.type === "transformer"
+                ? transformerPins()
+                : i.type === "vsource"
+                  ? sourcePins(String(dProps[i.id]?.values.sourceKind ?? "AC"))
+                  : chargerPins(String(dProps[i.id]?.values.chargerType ?? "ac-wall")),
+        })),
+    ];
+    return owners.flatMap((owner) => {
+      const pe = owner.pins.find((p) => p.role === "PE");
+      return owner.pins
+        .filter((p) => ["L1", "L2", "L3", "U", "V", "W"].includes(p.role))
+        .map((p) => ({
+          id: `${owner.id}#${p.id}`,
+          label: `${owner.name} · ${p.label} (${owner.id})`,
+          pe: pe ? `${owner.id}#${pe.id}` : "",
+        }));
+    });
+  }, [dItems, dEvParts, dProps]);
   // Protection: closed breakers trip instantly when current exceeds I> / I>>.
   const tripKey = addedItems
     .filter((i) => isSwg(i.type))
@@ -2531,6 +2599,7 @@ export default function Scene3DViewer() {
       groundMode,
       customGroundWidthM,
       showFlow,
+      grounding,
     });
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -2564,11 +2633,14 @@ export default function Scene3DViewer() {
     setGroundMode(d.groundMode === "default" ? "default" : "off");
     setCustomGroundWidthM(d.customGroundWidthM);
     setShowFlow(d.showFlow);
+    setGrounding(d.grounding ?? { ...DEFAULT_GROUNDING });
     setMenuOpen(true);
     setSaveMsg(`Opened ${file.name}.`);
   };
 
   const resetAll = () => {
+    setGrounding({ ...DEFAULT_GROUNDING });
+    setGroundingOpen(false);
     setSceneId("blank");
     setAddedItems([]);
     setConnections([]);
@@ -4696,6 +4768,16 @@ export default function Scene3DViewer() {
       )}
 
       {/* Scene menu dropdown */}
+      {groundingOpen && (
+        <GroundingPanel
+          settings={grounding}
+          onChange={setGrounding}
+          sources={groundingSources}
+          targets={groundingTargets}
+          wires={circuit.studyWires}
+          onClose={() => setGroundingOpen(false)}
+        />
+      )}
       {menuOpen && (
         <DraggablePanel
           initialX={16}
@@ -4724,6 +4806,19 @@ export default function Scene3DViewer() {
               );
             })}
           </ul>
+          <div className="border-t border-border px-4 py-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={() => {
+                setGroundingOpen(true);
+                setMenuOpen(false);
+              }}
+            >
+              Grounding & earth faults
+            </Button>
+          </div>
           <div className="flex flex-col gap-1.5 border-t border-white/40 px-4 py-3">
             <div className="text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
               Save file

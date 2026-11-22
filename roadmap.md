@@ -31,6 +31,8 @@
 - [x] LV panel with MCCB, MCB, small breaker and SPD devices, phase choice, busbar or manual feed, outgoing pins/cable ends, solver trips
 
 ## Grid designer realism
+- [x] Add offline TN/TT/IT settings, modeled fault paths, touch-voltage screening and save compatibility.
+- [x] Test grounding calculations (51 regression tests pass) and verify wired-grid results, save/reset/open, offline use and narrow-screen layout in the browser.
 - [x] Short-circuit (IEC 60909), voltage-drop and breaking-capacity calculations with tests
 - [ ] Show fault level and voltage drop in Properties; external grid source; R+jX cables
 - [ ] Constant-power loads, cable ampacity, protection curves, design-rule checker

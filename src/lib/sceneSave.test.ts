@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { parseScene, serializeScene, type SceneData } from "./sceneSave";
+import { DEFAULT_GROUNDING } from "./grounding";
 
 const data: SceneData = {
   sceneId: "electriccar",
@@ -30,5 +31,25 @@ describe("scene save", () => {
     const s = JSON.parse(serializeScene(data));
     s.version = 99;
     expect(() => parseScene(JSON.stringify(s))).toThrow("newer version");
+  });
+  test("preserves TT earth and protection settings offline", () => {
+    const grounding = {
+      ...DEFAULT_GROUNDING,
+      system: "TT" as const,
+      electrodeA: 35,
+      rcdEnabled: true,
+      rcdMA: 30,
+      sourceId: "vs1",
+      faultPin: "panel#l1",
+    };
+    expect(parseScene(serializeScene({ ...data, grounding })).grounding).toEqual(grounding);
+  });
+  test("older saves without grounding remain loadable", () => {
+    expect(parseScene(serializeScene(data)).grounding).toBeUndefined();
+  });
+  test("rejects invalid grounding values before restoring a scene", () => {
+    const raw = JSON.parse(serializeScene(data));
+    raw.data.grounding = { system: "TT", electrodeA: -1 };
+    expect(() => parseScene(JSON.stringify(raw))).toThrow("Invalid grounding value");
   });
 });

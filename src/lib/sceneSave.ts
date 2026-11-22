@@ -1,4 +1,5 @@
 /** Save/load the whole simulation scene as a portable text (JSON) file. */
+import { parseGrounding, type GroundingSettings } from "./grounding";
 export const SAVE_FORMAT = "vayer3d-scene";
 export const SAVE_VERSION = 1;
 
@@ -15,6 +16,7 @@ export interface SceneData {
   groundMode: string;
   customGroundWidthM: number;
   showFlow: boolean;
+  grounding?: GroundingSettings;
 }
 
 export interface SceneSave {
@@ -67,5 +69,6 @@ export function parseScene(text: string): SceneData {
     groundMode: typeof d.groundMode === "string" ? d.groundMode : "off",
     customGroundWidthM: typeof d.customGroundWidthM === "number" ? d.customGroundWidthM : 30,
     showFlow: d.showFlow !== false,
+    ...(d.grounding === undefined ? {} : { grounding: parseGrounding(d.grounding) }),
   };
 }
