@@ -11,6 +11,12 @@ import { EV_DEFS, type EVType } from "./car-components/EVComponents";
 import { chargerDefaults } from "./chargers/EVCharger";
 import { sourceDefaults } from "./sources/VoltageSource";
 import { transformerDefaults } from "./transformers/Transformer";
+import { gridInfeedDefaults } from "./sources/GridInfeed";
+import { solarDefaults } from "./sources/SolarInverter";
+import { storageDefaults } from "./sources/BatteryStorage";
+import { rmuDefaults } from "./substations/RingMainUnit";
+import { recloserDefaults } from "./substations/Recloser";
+import { houseDefaults } from "./distribution/HouseConnection";
 import { initObjectProps, type BaseDefaults, type ObjectProps } from "./properties";
 
 export * from "./properties";
@@ -51,7 +57,13 @@ export const MODEL_REGISTRY: Record<
   | "vsource"
   | "transformer"
   | "gis"
-  | "lvpanel",
+  | "lvpanel"
+  | "gridinfeed"
+  | "rmu"
+  | "recloser"
+  | "solar"
+  | "storage"
+  | "house",
   ModelCard
 > = {
   puitmast: {
@@ -219,6 +231,66 @@ export const MODEL_REGISTRY: Record<
       values: transformerDefaults() as BaseDefaults["values"],
     },
   },
+  gridinfeed: {
+    id: "gridinfeed",
+    name: "Utility grid infeed",
+    subtitle: "MV supply with short-circuit impedance",
+    group: "sources",
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedCurrent", "frequency"],
+      values: gridInfeedDefaults() as BaseDefaults["values"],
+    },
+  },
+  rmu: {
+    id: "rmu",
+    name: "Ring main unit 24 kV",
+    subtitle: "Two ring switches + protected feeder",
+    group: "substations",
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedCurrent"],
+      values: rmuDefaults() as BaseDefaults["values"],
+    },
+  },
+  recloser: {
+    id: "recloser",
+    name: "MV auto-recloser",
+    subtitle: "Pole-mounted protection and reclosing",
+    group: "substations",
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedCurrent"],
+      values: recloserDefaults() as BaseDefaults["values"],
+    },
+  },
+  solar: {
+    id: "solar",
+    name: "Solar array + inverter",
+    subtitle: "Three-phase PV source",
+    group: "sources",
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedPower", "frequency"],
+      values: solarDefaults() as BaseDefaults["values"],
+    },
+  },
+  storage: {
+    id: "storage",
+    name: "Battery storage + PCS",
+    subtitle: "Three-phase energy storage",
+    group: "sources",
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedPower", "frequency"],
+      values: storageDefaults() as BaseDefaults["values"],
+    },
+  },
+  house: {
+    id: "house",
+    name: "House connection",
+    subtitle: "Service cabinet, main breaker and load",
+    group: "distribution",
+    base: {
+      active: ["modelId", "nominalVoltage", "ratedCurrent", "ratedPower"],
+      values: houseDefaults() as BaseDefaults["values"],
+    },
+  },
 };
 
 /** Fresh basic-property set for any model id (scene model or car component). */
@@ -235,3 +307,9 @@ export * from "./sources/ElectronFlow";
 export * from "./transformers/Transformer";
 export * from "./substations/Switchgear";
 export * from "./distribution/LVPanel";
+export * from "./sources/GridInfeed";
+export * from "./sources/SolarInverter";
+export * from "./sources/BatteryStorage";
+export * from "./substations/RingMainUnit";
+export * from "./substations/Recloser";
+export * from "./distribution/HouseConnection";

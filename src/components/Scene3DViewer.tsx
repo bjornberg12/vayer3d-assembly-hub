@@ -109,6 +109,43 @@ import {
 } from "@/ModelLibrary/distribution/LVPanel";
 import { GISModel, parseGIS, gisTerminalLocals, relayAutoOn } from "@/ModelLibrary/substations/GIS";
 import {
+  GridInfeedModel,
+  gridInfeedPins,
+  gridInfeedTerminalLocals,
+  gridInfeedSource,
+} from "@/ModelLibrary/sources/GridInfeed";
+import {
+  SolarInverterModel,
+  solarAvailableKw,
+  solarPins,
+  solarTerminalLocals,
+  solarSource,
+} from "@/ModelLibrary/sources/SolarInverter";
+import {
+  BatteryStorageModel,
+  storageEnergyKwh,
+  storagePins,
+  storageTerminalLocals,
+  storageSource,
+} from "@/ModelLibrary/sources/BatteryStorage";
+import {
+  RingMainUnitModel,
+  parseRMU,
+  rmuTerminalLocals,
+} from "@/ModelLibrary/substations/RingMainUnit";
+import {
+  RecloserModel,
+  recloserWires,
+  recloserTerminalLocals,
+} from "@/ModelLibrary/substations/Recloser";
+import {
+  HouseConnectionModel,
+  houseLoads,
+  houseWires,
+  houseTerminalLocals,
+} from "@/ModelLibrary/distribution/HouseConnection";
+import { GridEquipmentProps } from "./GridEquipmentProps";
+import {
   SwitchgearModel,
   parseSwitchgear,
   switchgearWires,
@@ -1544,8 +1581,22 @@ export default function Scene3DViewer() {
     | "lvpanel"
     | "evcharger"
     | "vsource"
-    | "transformer";
-  const PIN_ITEM_TYPES: string[] = ["evcharger", "vsource", "transformer", "lvpanel"];
+    | "transformer"
+    | "gridinfeed"
+    | "rmu"
+    | "recloser"
+    | "solar"
+    | "storage"
+    | "house";
+  const PIN_ITEM_TYPES: string[] = [
+    "evcharger",
+    "vsource",
+    "transformer",
+    "lvpanel",
+    "gridinfeed",
+    "solar",
+    "storage",
+  ];
   const ADDABLES: { type: AddableType; name: string; subtitle: string }[] = [
     { type: "puitmast", name: "Puitmast - 1kV", subtitle: "Wooden pole" },
     { type: "puitmast20", name: "Puitmast - 20kV", subtitle: "20 kV mast" },
@@ -1560,15 +1611,34 @@ export default function Scene3DViewer() {
     { type: "evcharger", name: "EV charger", subtitle: "AC / DC car charger" },
     { type: "vsource", name: "Voltage source", subtitle: "AC 3-phase or DC supply" },
     { type: "transformer", name: "Transformer", subtitle: "3-phase, HV / LV pins" },
+    {
+      type: "gridinfeed",
+      name: "Utility grid infeed",
+      subtitle: "MV supply with source impedance",
+    },
+    { type: "rmu", name: "Ring main unit 24 kV", subtitle: "Two ring switches + protected feeder" },
+    {
+      type: "recloser",
+      name: "MV auto-recloser",
+      subtitle: "Pole-mounted protection and reclosing",
+    },
+    { type: "solar", name: "Solar array + inverter", subtitle: "Three-phase PV source" },
+    { type: "storage", name: "Battery storage + PCS", subtitle: "Three-phase energy storage" },
+    { type: "house", name: "House connection", subtitle: "Service cabinet, main breaker and load" },
   ];
   const ADD_GROUPS: { id: string; label: string; types: AddableType[] }[] = [
     { id: "lines", label: "Power line poles", types: ["puitmast", "puitmast20"] },
     {
       id: "dist",
       label: "Distribution & substations",
-      types: ["jaotuskilp", "lvpanel", "alajaam", "gis", "transformer"],
+      types: ["jaotuskilp", "lvpanel", "alajaam", "gis", "transformer", "rmu", "house"],
     },
-    { id: "sources", label: "Power sources", types: ["vsource"] },
+    { id: "automation", label: "Grid automation", types: ["recloser"] },
+    {
+      id: "sources",
+      label: "Power sources & renewables",
+      types: ["vsource", "gridinfeed", "solar", "storage"],
+    },
     { id: "charging", label: "EV charging", types: ["evcharger"] },
   ];
   const [addGroupOpen, setAddGroupOpen] = useState<Record<string, boolean>>({ lines: true });
@@ -1759,6 +1829,12 @@ export default function Scene3DViewer() {
       alajaam: [3.6, 2.4],
       gis: [2.6, 1.2],
       lvpanel: [0.85, 0.35],
+      gridinfeed: [2.5, 1.5],
+      rmu: [1.75, 0.95],
+      recloser: [1.1, 0.8],
+      solar: [4.3, 2.7],
+      storage: [1.6, 0.9],
+      house: [1.8, 0.7],
       puitmast: [0.4, 0.4],
       puitmast20: [0.5, 0.5],
     };
@@ -1856,6 +1932,9 @@ export default function Scene3DViewer() {
     if (it.type === "lvpanel") return lvPanelPins(parseLVPanel(objectProps[it.id]?.values.lvdev));
     if (it.type === "vsource")
       return sourcePins(String(objectProps[it.id]?.values.sourceKind ?? "AC"));
+    if (it.type === "gridinfeed") return gridInfeedPins();
+    if (it.type === "solar") return solarPins();
+    if (it.type === "storage") return storagePins();
     return it.type === "evcharger"
       ? chargerPins(String(objectProps[it.id]?.values.chargerType ?? "ac-wall"))
       : [];
@@ -1881,7 +1960,13 @@ export default function Scene3DViewer() {
                 ? "Transformer"
                 : it?.type === "vsource"
                   ? "Voltage source"
-                  : "EV charger",
+                  : it?.type === "gridinfeed"
+                    ? "Utility grid infeed"
+                    : it?.type === "solar"
+                      ? "Solar inverter"
+                      : it?.type === "storage"
+                        ? "Battery storage"
+                        : "EV charger",
         }
       : null;
   };
@@ -2050,6 +2135,60 @@ export default function Scene3DViewer() {
           out.push({
             id: `${i.id}#o${dev.id}`,
             name: `LV panel #${idx + 1} · ${dev.label} out`,
+            point: ph[1],
+            phases: ph,
+          });
+        });
+      } else if (i.type === "gridinfeed") {
+        const ph = world(gridInfeedTerminalLocals());
+        out.push({
+          id: `${i.id}#ac`,
+          name: `Utility infeed #${idx + 1}`,
+          point: ph[1],
+          phases: ph,
+        });
+      } else if (i.type === "solar") {
+        const ph = world(solarTerminalLocals());
+        out.push({
+          id: `${i.id}#ac`,
+          name: `Solar inverter #${idx + 1} AC`,
+          point: ph[1],
+          phases: ph,
+        });
+      } else if (i.type === "storage") {
+        const ph = world(storageTerminalLocals());
+        out.push({
+          id: `${i.id}#ac`,
+          name: `Battery PCS #${idx + 1} AC`,
+          point: ph[1],
+          phases: ph,
+        });
+      } else if (i.type === "rmu") {
+        parseRMU(objectProps[i.id]?.values.swg).forEach((c, k) => {
+          const ph = world(rmuTerminalLocals(k));
+          out.push({
+            id: `${i.id}#mv${k + 1}`,
+            name: `RMU #${idx + 1} · ${c.label}`,
+            point: ph[1],
+            phases: ph,
+          });
+        });
+      } else if (i.type === "recloser") {
+        (["in", "out"] as const).forEach((side) => {
+          const ph = world(recloserTerminalLocals(side));
+          out.push({
+            id: `${i.id}#${side}`,
+            name: `Recloser #${idx + 1} ${side === "in" ? "Source" : "Load"}`,
+            point: ph[1],
+            phases: ph,
+          });
+        });
+      } else if (i.type === "house") {
+        (["in", "out"] as const).forEach((side) => {
+          const ph = world(houseTerminalLocals(side));
+          out.push({
+            id: `${i.id}#${side}`,
+            name: `House kiosk #${idx + 1} ${side === "in" ? "Supply" : "Service"}`,
             point: ph[1],
             phases: ph,
           });
@@ -2234,11 +2373,13 @@ export default function Scene3DViewer() {
     return `${end}@${k}`; // posts, panels, joints: conductors pass straight through
   };
   const AL_RHO = 0.0282;
-  const isSwg = (t: string) => t === "alajaam" || t === "gis";
-  const switchgearOf = (id: string) =>
-    (addedItems.find((i) => i.id === id)?.type === "gis" ? parseGIS : parseSwitchgear)(
+  const isSwg = (t: string) => t === "alajaam" || t === "gis" || t === "rmu";
+  const switchgearOf = (id: string) => {
+    const type = addedItems.find((i) => i.id === id)?.type;
+    return (type === "gis" ? parseGIS : type === "rmu" ? parseRMU : parseSwitchgear)(
       objectProps[id]?.values.swg,
     );
+  };
   const setSwitchgear = (id: string, next: Cubicle[]) =>
     setObjectProps((prev) => {
       const cur = prev[id] ?? initPropsFor(addedItems.find((i) => i.id === id)?.type ?? "alajaam");
@@ -2261,6 +2402,8 @@ export default function Scene3DViewer() {
     );
   const cubicleCurrent = (subId: string, k: number) =>
     Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${subId}~sw${k}~${p}`] ?? 0));
+  const recloserCurrent = (id: string) =>
+    Math.max(0, ...[0, 1, 2].map((p) => circuit.wireCurrent[`${id}~recloser~${p}`] ?? 0));
   const bundleCurrent = (id: string) =>
     Math.max(0, ...[0, 1, 2].map((k) => circuit.wireCurrent[`${id}~${k}`] ?? 0));
   // The circuit is solved only when something electrical changes (objects,
@@ -2305,11 +2448,23 @@ export default function Scene3DViewer() {
     wires.push(...panels.flatMap((i) => lvPanelWires(i.id, devs(i.id))));
     wires.push(
       ...dItems
+        .filter((i) => i.type === "recloser")
+        .flatMap((i) => recloserWires(i.id, dProps[i.id]?.values ?? {})),
+    );
+    wires.push(
+      ...dItems
+        .filter((i) => i.type === "house")
+        .flatMap((i) => houseWires(i.id, dProps[i.id]?.values ?? {})),
+    );
+    wires.push(
+      ...dItems
         .filter((i) => isSwg(i.type))
         .flatMap((i) =>
           switchgearWires(
             i.id,
-            (i.type === "gis" ? parseGIS : parseSwitchgear)(dProps[i.id]?.values.swg),
+            (i.type === "gis" ? parseGIS : i.type === "rmu" ? parseRMU : parseSwitchgear)(
+              dProps[i.id]?.values.swg,
+            ),
           ),
         ),
     );
@@ -2323,21 +2478,41 @@ export default function Scene3DViewer() {
       ...wires,
     ];
     const solved = solveCircuits(
-      dItems
-        .filter((i) => i.type === "vsource")
-        .map((i) => {
-          const v = dProps[i.id]?.values ?? sourceDefaults("AC");
-          return {
-            id: i.id,
-            kind: String(v.sourceKind ?? "AC"),
-            voltage: Number(v.srcVoltage ?? 0),
-            internalR: Number(v.internalR ?? 0),
-          };
-        }),
+      [
+        ...dItems
+          .filter((i) => i.type === "vsource")
+          .map((i) => {
+            const v = dProps[i.id]?.values ?? sourceDefaults("AC");
+            return {
+              id: i.id,
+              kind: String(v.sourceKind ?? "AC"),
+              voltage: Number(v.srcVoltage ?? 0),
+              internalR: Number(v.internalR ?? 0),
+            };
+          }),
+        ...dItems
+          .filter((i) => i.type === "gridinfeed")
+          .map((i) => gridInfeedSource(i.id, dProps[i.id]?.values ?? {})),
+        ...dItems
+          .filter((i) => i.type === "solar")
+          .flatMap((i) => {
+            const source = solarSource(i.id, dProps[i.id]?.values ?? {});
+            return source ? [source] : [];
+          }),
+        ...dItems
+          .filter((i) => i.type === "storage")
+          .flatMap((i) => {
+            const source = storageSource(i.id, dProps[i.id]?.values ?? {});
+            return source ? [source] : [];
+          }),
+      ],
       studyWires,
       [
         ...dEvParts.flatMap((p) => evLoads(p, dProps[p.id]?.values)),
         ...panels.flatMap((i) => lvPanelLoads(i.id, devs(i.id))),
+        ...dItems
+          .filter((i) => i.type === "house")
+          .flatMap((i) => houseLoads(i.id, dProps[i.id]?.values ?? {})),
       ],
       dItems
         .filter((i) => i.type === "transformer")
@@ -2358,6 +2533,22 @@ export default function Scene3DViewer() {
               id: item.id,
               label: `${String(v?.name ?? "AC supply")} (${item.id})`,
               voltageLL: Number(v?.srcVoltage ?? 400),
+              phases: [1, 2, 3].map((k) => `${item.id}#l${k}`),
+              pe: `${item.id}#pe`,
+            },
+          ];
+        if (["gridinfeed", "solar", "storage"].includes(item.type))
+          return [
+            {
+              id: item.id,
+              label: `${String(v?.name ?? item.type)} (${item.id})`,
+              voltageLL: Number(
+                item.type === "gridinfeed"
+                  ? (v?.srcVoltage ?? 20000)
+                  : item.type === "solar"
+                    ? (v?.pvVoltage ?? 400)
+                    : (v?.storageVoltage ?? 400),
+              ),
               phases: [1, 2, 3].map((k) => `${item.id}#l${k}`),
               pe: `${item.id}#pe`,
             },
@@ -2391,7 +2582,13 @@ export default function Scene3DViewer() {
                 ? transformerPins()
                 : i.type === "vsource"
                   ? sourcePins(String(dProps[i.id]?.values.sourceKind ?? "AC"))
-                  : chargerPins(String(dProps[i.id]?.values.chargerType ?? "ac-wall")),
+                  : i.type === "gridinfeed"
+                    ? gridInfeedPins()
+                    : i.type === "solar"
+                      ? solarPins()
+                      : i.type === "storage"
+                        ? storagePins()
+                        : chargerPins(String(dProps[i.id]?.values.chargerType ?? "ac-wall")),
         })),
     ];
     return owners.flatMap((owner) => {
@@ -2436,6 +2633,76 @@ export default function Scene3DViewer() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tripKey, addedItems.map((i) => String(objectProps[i.id]?.values.relayAuto ?? "")).join()]);
+
+  // Recloser: instantaneous I> trip, one automatic reclose, then lockout on a permanent fault.
+  const recloserItems = addedItems.filter((i) => i.type === "recloser");
+  const recloserTripKey = recloserItems
+    .map((i) => `${i.id}:${recloserCurrent(i.id).toFixed(1)}`)
+    .join("|");
+  useEffect(() => {
+    for (const item of recloserItems) {
+      const current = objectProps[item.id]?.values ?? initPropsFor("recloser").values;
+      if (String(current.recTripped ?? "") || Number(current.recClosed ?? 1) === 0) continue;
+      const measured = recloserCurrent(item.id);
+      const pickup = Math.max(Number(current.recTripA ?? 400), 1);
+      if (measured <= pickup) continue;
+      setObjectProps((prev) => {
+        const cur = prev[item.id] ?? initPropsFor("recloser");
+        return {
+          ...prev,
+          [item.id]: {
+            ...cur,
+            values: {
+              ...cur.values,
+              recClosed: 0,
+              recTripped: `I> overcurrent (${measured.toFixed(0)} A)`,
+            },
+          },
+        };
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recloserTripKey]);
+  const recloserStateKey = recloserItems
+    .map((i) => {
+      const v = objectProps[i.id]?.values;
+      return `${i.id}:${v?.recTripped ?? ""}:${v?.recAuto ?? 1}:${v?.recAttempts ?? 0}`;
+    })
+    .join("|");
+  useEffect(() => {
+    const timers = recloserItems
+      .filter((i) => {
+        const v = objectProps[i.id]?.values;
+        return (
+          !!String(v?.recTripped ?? "") &&
+          Number(v?.recAuto ?? 1) !== 0 &&
+          Number(v?.recAttempts ?? 0) < 1
+        );
+      })
+      .map((item) =>
+        window.setTimeout(() => {
+          setObjectProps((prev) => {
+            const cur = prev[item.id] ?? initPropsFor("recloser");
+            if (!String(cur.values.recTripped ?? "") || Number(cur.values.recAttempts ?? 0) >= 1)
+              return prev;
+            return {
+              ...prev,
+              [item.id]: {
+                ...cur,
+                values: {
+                  ...cur.values,
+                  recTripped: "",
+                  recClosed: 1,
+                  recAttempts: Number(cur.values.recAttempts ?? 0) + 1,
+                },
+              },
+            };
+          });
+        }, 1500),
+      );
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recloserStateKey]);
 
   // LV panel protection: MCCB / MCB trip from solver pole currents.
   const lvTripKey = lvPanels
@@ -3015,6 +3282,38 @@ export default function Scene3DViewer() {
                       />
                     )}
                     {item.type === "transformer" && <TransformerModel />}
+                    {item.type === "gridinfeed" && (
+                      <GridInfeedModel energised={(circuit.loops[item.id]?.length ?? 0) > 0} />
+                    )}
+                    {item.type === "rmu" && (
+                      <RingMainUnitModel cubicles={parseRMU(objectProps[item.id]?.values.swg)} />
+                    )}
+                    {item.type === "recloser" && (
+                      <RecloserModel
+                        values={objectProps[item.id]?.values ?? initPropsFor("recloser").values}
+                      />
+                    )}
+                    {item.type === "solar" && (
+                      <SolarInverterModel
+                        availableKw={solarAvailableKw(objectProps[item.id]?.values ?? {})}
+                        energised={(circuit.loops[item.id]?.length ?? 0) > 0}
+                      />
+                    )}
+                    {item.type === "storage" && (
+                      <BatteryStorageModel
+                        energyKwh={storageEnergyKwh(objectProps[item.id]?.values ?? {})}
+                        discharging={
+                          String(objectProps[item.id]?.values.storageMode ?? "discharge") !==
+                            "idle" && storageEnergyKwh(objectProps[item.id]?.values ?? {}) > 0
+                        }
+                      />
+                    )}
+                    {item.type === "house" && (
+                      <HouseConnectionModel
+                        values={objectProps[item.id]?.values ?? initPropsFor("house").values}
+                        powered={circuit.partStatus[item.id]?.state === "on"}
+                      />
+                    )}
                     {item.type === "vsource" && (
                       <VoltageSource
                         kind={String(objectProps[item.id]?.values.sourceKind ?? "AC")}
@@ -3027,7 +3326,17 @@ export default function Scene3DViewer() {
                     )}
                     {/* Invisible proxy for connect / move mode */}
                     {(moveMode ||
-                      (connectMode && item.type !== "transformer" && item.type !== "vsource")) && (
+                      (connectMode &&
+                        ![
+                          "transformer",
+                          "vsource",
+                          "gridinfeed",
+                          "rmu",
+                          "recloser",
+                          "solar",
+                          "storage",
+                          "house",
+                        ].includes(item.type))) && (
                       <mesh
                         position={[0, 5, 0]}
                         onClick={(e) => {
@@ -4783,9 +5092,22 @@ export default function Scene3DViewer() {
       {studiesOpen && (
         <StudiesPanel
           links={[
-            ...cables.map((c) => ({ id: c.id, from: c.a, to: c.b, sceneType: c.size, lengthM: cableLengthOf(c), loadKW: c.powerKw || 0 })),
-            ...connections
-              .map((c) => ({ id: c.id, from: c.a, to: c.b, sceneType: c.type ?? DEFAULT_LINE_TYPE, lengthM: lineLengthOf(c), loadKW: 0 })),
+            ...cables.map((c) => ({
+              id: c.id,
+              from: c.a,
+              to: c.b,
+              sceneType: c.size,
+              lengthM: cableLengthOf(c),
+              loadKW: c.powerKw || 0,
+            })),
+            ...connections.map((c) => ({
+              id: c.id,
+              from: c.a,
+              to: c.b,
+              sceneType: c.type ?? DEFAULT_LINE_TYPE,
+              lengthM: lineLengthOf(c),
+              loadKW: 0,
+            })),
           ]}
           objects={addedItems.map((i) => i.type)}
           onClose={() => setStudiesOpen(false)}
@@ -5004,7 +5326,26 @@ export default function Scene3DViewer() {
                 onChange={(next) => setObjectProps((prev) => ({ ...prev, [propsKey]: next }))}
               />
             )}
-            {(propsModelId === "alajaam" || propsModelId === "gis") &&
+            {["gridinfeed", "recloser", "solar", "storage", "house"].includes(propsModelId) &&
+              propsOwnerId && (
+                <GridEquipmentProps
+                  modelId={propsModelId}
+                  values={currentProps.values}
+                  onChange={(patch) =>
+                    setObjectProps((prev) => ({
+                      ...prev,
+                      [propsKey]: {
+                        ...currentProps,
+                        values: { ...currentProps.values, ...patch },
+                      },
+                    }))
+                  }
+                  loops={circuit.loops[propsOwnerId]}
+                  partStatus={circuit.partStatus[propsOwnerId]}
+                  current={propsModelId === "recloser" ? recloserCurrent(propsOwnerId) : 0}
+                />
+              )}
+            {(propsModelId === "alajaam" || propsModelId === "gis" || propsModelId === "rmu") &&
               propsOwnerId &&
               (() => {
                 const sid = propsOwnerId;
@@ -5023,7 +5364,9 @@ export default function Scene3DViewer() {
                     <div className="border-b border-white/40 pb-1 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
                       {propsModelId === "gis"
                         ? "GIS feeders & relay automation"
-                        : "MV switchgear (10 kV)"}
+                        : propsModelId === "rmu"
+                          ? "Ring main unit (24 kV class)"
+                          : "MV switchgear (10 kV)"}
                     </div>
                     {propsModelId === "gis" &&
                       (() => {
@@ -5058,8 +5401,8 @@ export default function Scene3DViewer() {
                         );
                       })()}
                     <div className="text-[10px] text-neutral-600">
-                      Each cubicle has a 10 kV connector on the front wall for cables and lines. All
-                      cubicles share one busbar.
+                      Each cubicle has a {propsModelId === "rmu" ? "24 kV class" : "10 kV"}{" "}
+                      connector for cables and lines. All cubicles share one busbar.
                     </div>
                     {cubs.map((c, k) => {
                       const I = cubicleCurrent(sid, k);
@@ -5076,6 +5419,8 @@ export default function Scene3DViewer() {
                             />
                             <button
                               aria-label="Remove cubicle"
+                              disabled={propsModelId === "rmu"}
+                              title={propsModelId === "rmu" ? "The RMU has three fixed panels" : ""}
                               onClick={() =>
                                 setSwitchgear(
                                   sid,
@@ -5089,6 +5434,7 @@ export default function Scene3DViewer() {
                           </div>
                           <select
                             value={c.kind}
+                            disabled={propsModelId === "rmu"}
                             onChange={(e) =>
                               setC(k, { kind: e.target.value as CubicleKind, tripped: undefined })
                             }
@@ -5172,30 +5518,32 @@ export default function Scene3DViewer() {
                         </div>
                       );
                     })}
-                    <div className="flex gap-1">
-                      <button
-                        className={btn(false)}
-                        onClick={() =>
-                          setSwitchgear(sid, [
-                            ...cubs,
-                            makeCubicle("lbs", cubs.filter((c) => c.kind === "lbs").length + 1),
-                          ])
-                        }
-                      >
-                        + Cable cubicle
-                      </button>
-                      <button
-                        className={btn(false)}
-                        onClick={() =>
-                          setSwitchgear(sid, [
-                            ...cubs,
-                            makeCubicle("cb", cubs.filter((c) => c.kind === "cb").length + 1),
-                          ])
-                        }
-                      >
-                        + Breaker cubicle
-                      </button>
-                    </div>
+                    {propsModelId !== "rmu" && (
+                      <div className="flex gap-1">
+                        <button
+                          className={btn(false)}
+                          onClick={() =>
+                            setSwitchgear(sid, [
+                              ...cubs,
+                              makeCubicle("lbs", cubs.filter((c) => c.kind === "lbs").length + 1),
+                            ])
+                          }
+                        >
+                          + Cable cubicle
+                        </button>
+                        <button
+                          className={btn(false)}
+                          onClick={() =>
+                            setSwitchgear(sid, [
+                              ...cubs,
+                              makeCubicle("cb", cubs.filter((c) => c.kind === "cb").length + 1),
+                            ])
+                          }
+                        >
+                          + Breaker cubicle
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })()}

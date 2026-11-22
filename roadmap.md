@@ -8,6 +8,6 @@
 - [x] Phase 7 (part): cable schedule + BOM CSV export
 - [ ] Meshed short circuit at a clicked node and 3D fault placement (next)
 - [ ] Map/terrain base layer
-- [ ] Phase 6 new 3D models (grid infeed, RMU, recloser, PV, storage, house connections)
+- [x] Phase 6 new 3D models: grid infeed, RMU, recloser, PV, storage, ground-mounted house-connection kiosk; properties, terminals, solver behavior and tests included
 - [ ] Single-line diagram view and PDF report
 - [ ] Phase 8 Cloud collaboration — needs user decision to enable Cloud

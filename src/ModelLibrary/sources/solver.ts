@@ -111,9 +111,17 @@ function mna(
         ["l1", 0],
         ["l2", -120],
         ["l3", 120],
-      ] as const)
+      ] as const) {
+        const pin = node(`${s.id}#${ph}`);
+        let p = pin;
+        // Utility infeeds and electronic sources use a per-phase equivalent
+        // resistance. Zero keeps ordinary AC sources ideal, as before.
+        if (s.internalR > 0) {
+          p = node(`${s.id}#__ac_${ph}`);
+          branches.push({ a: p, b: pin, g: 1 / Math.max(s.internalR, 1e-6) });
+        }
         vs.push({
-          p: node(`${s.id}#${ph}`),
+          p,
           n: node(`${s.id}#n`),
           v: polar(vph, ang),
           src: s.id,
@@ -121,6 +129,7 @@ function mna(
           to: "n",
           mag: vph,
         });
+      }
     }
   }
   // Ideal transformer windings (one coupled pair per phase) + LV series impedance.
