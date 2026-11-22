@@ -5,6 +5,8 @@ import { SOLAR_PARAMS, solarAvailableKw } from "@/ModelLibrary/sources/SolarInve
 import { STORAGE_PARAMS, storageEnergyKwh } from "@/ModelLibrary/sources/BatteryStorage";
 import { RECLOSER_PARAMS, recloserConducts } from "@/ModelLibrary/substations/Recloser";
 import { HOUSE_PARAMS } from "@/ModelLibrary/distribution/HouseConnection";
+import { CABINET_PARAMS } from "@/ModelLibrary/distribution/StreetCabinet";
+import { ELECTRODE_PARAMS, electrodeResistance } from "@/ModelLibrary/distribution/EarthElectrode";
 import { RelayEditor } from "./RelayEditor";
 import { activeRelayGroup, defaultMeasurement, parseRelaySettings } from "@/ModelLibrary/grid/relay";
 
@@ -304,6 +306,34 @@ export function GridEquipmentProps({
           Incoming and outgoing four-conductor connectors support cables and lines. Load is balanced
           across three phases.
         </p>
+      </div>
+    );
+  }
+
+  if (modelId === "cabinet") {
+    const closed = Number(values.cabClosed ?? 1) !== 0;
+    return (
+      <div className="space-y-2 text-xs text-foreground">
+        <Heading>Street cabinet</Heading>
+        <button className={BUTTON(closed)} onClick={() => onChange({ cabClosed: closed ? 0 : 1 })}>
+          {closed ? "Fuses inserted — remove" : "Fuses removed — insert"}
+        </button>
+        <NumberFields params={CABINET_PARAMS} values={values} onChange={onChange} />
+        <p className="text-[10px] text-muted-foreground">Incoming and outgoing four-conductor terminals accept cables and lines.</p>
+      </div>
+    );
+  }
+
+  if (modelId === "earthrod") {
+    const r = electrodeResistance(values);
+    return (
+      <div className="space-y-2 text-xs text-foreground">
+        <Heading>Earth electrode</Heading>
+        <NumberFields params={ELECTRODE_PARAMS} values={values} onChange={onChange} />
+        <div className="rounded-md border border-border bg-card/45 px-2 py-1 font-mono text-[10px]">
+          RE ≈ {Number.isFinite(r) ? r.toFixed(2) : "∞"} Ω (rods ∥ mesh)
+        </div>
+        <p className="text-[10px] text-muted-foreground">Used in Grid design studies → Earthing.</p>
       </div>
     );
   }

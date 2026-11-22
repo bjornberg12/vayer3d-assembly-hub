@@ -12,6 +12,7 @@
 - [x] Keep all relay editor and study labels IEC-only (user preference)
 - [x] Protection editor and fault/automation study UI connected to reclosers and switchgear; settings included in scene saves
 - [x] Verify calculation tests and end-to-end relay operation in the preview
+- [x] Remove the yellow logo
 - [ ] Map/terrain base layer
 - [x] Phase 6 new 3D models: grid infeed, RMU, recloser, PV, storage, ground-mounted house-connection kiosk; properties, terminals, solver behavior and tests included
 - [ ] Single-line diagram view and PDF report
@@ -19,8 +20,10 @@
 ## Gap analysis follow-up (approved plan)
 - [x] Meshed power flow with PV/storage generation, reverse-flow detection (`grid/powerflow.ts`)
 - [x] Earthing screening: rods, mesh, neutral earthing fault currents, permissible touch voltage (`grid/earthing.ts`)
-- [ ] Connect meshed power flow and earthing to the Grid design studies panel
-- [ ] Directional, distance and differential protection; auto-coordination; fault records
+- [x] Connect meshed power flow and earthing to the Grid design studies panel
+- [x] Directional, distance and differential protection; auto-coordination (study tab)
+- [ ] Live directional/distance/differential trips and fault records
 - [ ] Time-series profiles, hosting capacity, power quality, cable laying conditions
-- [ ] New models: pole transformer, LV cabinet, capacitor bank, regulator, arresters, CT/VT, earth rods, joints
+- [x] New models: LV street cabinet, earth electrode
+- [ ] More models: pole transformer, capacitor bank, regulator, arresters, CT/VT, joints
 - [ ] Usability: undo/redo, copy/paste, templates, warnings list

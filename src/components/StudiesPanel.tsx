@@ -9,9 +9,10 @@ import { FaultStudyPanel } from "./FaultStudyPanel";
 import { ProtectionStudy, type RelayTarget } from "./ProtectionStudy";
 import type { FaultNetwork } from "@/ModelLibrary/grid/faultNetwork";
 import type { FaultResult } from "@/ModelLibrary/grid/shortCircuit";
+import { AdvancedProtection, EarthingStudy, PowerFlowStudy, type ElectrodeInfo } from "./StudiesExtra";
 import type { RelaySettings } from "@/ModelLibrary/grid/relay";
 
-type Tab = "feeders" | "faults" | "relays" | "lines" | "export";
+type Tab = "feeders" | "power flow" | "faults" | "relays" | "protection+" | "earthing" | "lines" | "export";
 const download = (name: string, text: string) => {
   const url = URL.createObjectURL(new Blob([text], { type: "text/csv" }));
   const a = document.createElement("a");
@@ -25,7 +26,8 @@ const Num = ({ label, value, onChange, step = "any" }: { label: string; value: n
   </label>
 );
 
-export function StudiesPanel({ links, objects, network, relays, onRelayChange, onClose }: {
+export function StudiesPanel({ links, objects, network, relays, onRelayChange, onClose, electrodes = [] }: {
+  electrodes?: ElectrodeInfo[];
   links: StudyLink[];
   objects: string[];
   network: FaultNetwork;
@@ -49,7 +51,7 @@ export function StudiesPanel({ links, objects, network, relays, onRelayChange, o
     <DraggablePanel title="Grid design studies" initialX={16} initialY={70} width={620} onClose={onClose}>
       <div className="space-y-3 bg-card p-4 text-foreground">
         <div className="flex flex-wrap gap-1" role="tablist">
-          {(["feeders", "faults", "relays", "lines", "export"] as Tab[]).map((t) => (
+          {(["feeders", "power flow", "faults", "relays", "protection+", "earthing", "lines", "export"] as Tab[]).map((t) => (
             <Button key={t} size="sm" variant={tab === t ? "default" : "outline"} onClick={() => setTab(t)} className="capitalize">{t}</Button>
           ))}
         </div>
@@ -83,6 +85,9 @@ export function StudiesPanel({ links, objects, network, relays, onRelayChange, o
             </div>
           </>
         )}
+        {tab === "power flow" && <PowerFlowStudy links={withLoads} />}
+        {tab === "protection+" && <AdvancedProtection />}
+        {tab === "earthing" && <EarthingStudy electrodes={electrodes} />}
         {tab === "faults" && <FaultStudyPanel network={network} onResult={setFault} />}
         {tab === "relays" && <ProtectionStudy relays={relays} onChange={onRelayChange} fault={fault} />}
         {tab === "lines" && (

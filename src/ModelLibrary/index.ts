@@ -17,6 +17,8 @@ import { storageDefaults } from "./sources/BatteryStorage";
 import { rmuDefaults } from "./substations/RingMainUnit";
 import { recloserDefaults } from "./substations/Recloser";
 import { houseDefaults } from "./distribution/HouseConnection";
+import { cabinetDefaults } from "./distribution/StreetCabinet";
+import { electrodeDefaults } from "./distribution/EarthElectrode";
 import { initObjectProps, type BaseDefaults, type ObjectProps } from "./properties";
 
 export * from "./properties";
@@ -63,7 +65,9 @@ export const MODEL_REGISTRY: Record<
   | "recloser"
   | "solar"
   | "storage"
-  | "house",
+  | "house"
+  | "cabinet"
+  | "earthrod",
   ModelCard
 > = {
   puitmast: {
@@ -290,6 +294,20 @@ export const MODEL_REGISTRY: Record<
       active: ["modelId", "nominalVoltage", "ratedCurrent", "ratedPower"],
       values: houseDefaults() as BaseDefaults["values"],
     },
+  },
+  cabinet: {
+    id: "cabinet",
+    name: "LV street cabinet",
+    subtitle: "Fused 0.4 kV distribution cabinet",
+    group: "distribution",
+    base: { active: ["modelId", "nominalVoltage", "ratedCurrent"], values: cabinetDefaults() as BaseDefaults["values"] },
+  },
+  earthrod: {
+    id: "earthrod",
+    name: "Earth electrode",
+    subtitle: "Rods + ring for earthing studies",
+    group: "distribution",
+    base: { active: ["modelId", "material"], values: electrodeDefaults() as BaseDefaults["values"] },
   },
 };
 

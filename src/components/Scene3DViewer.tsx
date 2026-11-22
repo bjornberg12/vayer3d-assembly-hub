@@ -145,6 +145,8 @@ import {
   houseWires,
   houseTerminalLocals,
 } from "@/ModelLibrary/distribution/HouseConnection";
+import { StreetCabinetModel, cabinetWires, cabinetTerminalLocals } from "@/ModelLibrary/distribution/StreetCabinet";
+import { EarthElectrodeModel } from "@/ModelLibrary/distribution/EarthElectrode";
 import { GridEquipmentProps } from "./GridEquipmentProps";
 import { RelayEditor } from "./RelayEditor";
 import { buildSceneFaultNetwork } from "@/ModelLibrary/grid/faultNetwork";
@@ -217,7 +219,6 @@ import {
 import { DraggablePanel } from "./DraggablePanel";
 import { Button } from "./ui/button";
 import { WeatherEffects, DEFAULT_WEATHER, feelsLike, type WeatherState } from "./Weather";
-import vayerLogo from "@/assets/vayer-logo.png.asset.json";
 
 // Troika's default worker serializes functions into a generated blob. The
 // production minifier can rename closed-over identifiers in those functions,
@@ -1599,7 +1600,9 @@ export default function Scene3DViewer() {
     | "recloser"
     | "solar"
     | "storage"
-    | "house";
+    | "house"
+    | "cabinet"
+    | "earthrod";
   const PIN_ITEM_TYPES: string[] = [
     "evcharger",
     "vsource",
@@ -1637,13 +1640,15 @@ export default function Scene3DViewer() {
     { type: "solar", name: "Solar array + inverter", subtitle: "Three-phase PV source" },
     { type: "storage", name: "Battery storage + PCS", subtitle: "Three-phase energy storage" },
     { type: "house", name: "House connection", subtitle: "Service cabinet, main breaker and load" },
+    { type: "cabinet", name: "LV street cabinet", subtitle: "Fused 0.4 kV distribution cabinet" },
+    { type: "earthrod", name: "Earth electrode", subtitle: "Rods + ring for earthing studies" },
   ];
   const ADD_GROUPS: { id: string; label: string; types: AddableType[] }[] = [
     { id: "lines", label: "Power line poles", types: ["puitmast", "puitmast20"] },
     {
       id: "dist",
       label: "Distribution & substations",
-      types: ["jaotuskilp", "lvpanel", "alajaam", "gis", "transformer", "rmu", "house"],
+      types: ["jaotuskilp", "lvpanel", "alajaam", "gis", "transformer", "rmu", "house", "cabinet", "earthrod"],
     },
     { id: "automation", label: "Grid automation", types: ["recloser"] },
     {
@@ -1847,6 +1852,7 @@ export default function Scene3DViewer() {
       solar: [4.3, 2.7],
       storage: [1.6, 0.9],
       house: [1.8, 0.7],
+      cabinet: [1.15, 0.4],
       puitmast: [0.4, 0.4],
       puitmast20: [0.5, 0.5],
     };
@@ -2195,6 +2201,16 @@ export default function Scene3DViewer() {
             phases: ph,
           });
         });
+      } else if (i.type === "cabinet") {
+        (["in", "out"] as const).forEach((side) => {
+          const ph = world(cabinetTerminalLocals(side));
+          out.push({
+            id: `${i.id}#${side}`,
+            name: `Street cabinet #${idx + 1} ${side === "in" ? "Incoming" : "Outgoing"}`,
+            point: ph[1],
+            phases: ph,
+          });
+        });
       } else if (i.type === "house") {
         (["in", "out"] as const).forEach((side) => {
           const ph = world(houseTerminalLocals(side));
@@ -2534,6 +2550,11 @@ export default function Scene3DViewer() {
       ...dItems
         .filter((i) => i.type === "house")
         .flatMap((i) => houseWires(i.id, dProps[i.id]?.values ?? {})),
+    );
+    wires.push(
+      ...dItems
+        .filter((i) => i.type === "cabinet")
+        .flatMap((i) => cabinetWires(i.id, dProps[i.id]?.values ?? {})),
     );
     wires.push(
       ...dItems
@@ -3096,11 +3117,6 @@ export default function Scene3DViewer() {
 
   return (
     <div className="relative h-full w-full" onContextMenu={(e) => e.preventDefault()}>
-      <img
-        src={vayerLogo.url}
-        alt="Vayer 3d"
-        className="pointer-events-none absolute left-1/2 top-3 z-10 h-8 -translate-x-1/2 rounded-md shadow-md"
-      />
       <Canvas
         shadows="percentage"
         gl={{ logarithmicDepthBuffer: true }}
@@ -3432,6 +3448,17 @@ export default function Scene3DViewer() {
                         powered={circuit.partStatus[item.id]?.state === "on"}
                       />
                     )}
+                    {item.type === "cabinet" && (
+                      <StreetCabinetModel
+                        values={objectProps[item.id]?.values ?? initPropsFor("cabinet").values}
+                        powered={(circuit.wireCurrent[`${item.id}~fuse~0`] ?? 0) > 1e-6}
+                      />
+                    )}
+                    {item.type === "earthrod" && (
+                      <EarthElectrodeModel
+                        values={objectProps[item.id]?.values ?? initPropsFor("earthrod").values}
+                      />
+                    )}
                     {item.type === "vsource" && (
                       <VoltageSource
                         kind={String(objectProps[item.id]?.values.sourceKind ?? "AC")}
@@ -3454,6 +3481,7 @@ export default function Scene3DViewer() {
                           "solar",
                           "storage",
                           "house",
+                          "cabinet",
                         ].includes(item.type))) && (
                       <mesh
                         position={[0, 5, 0]}
@@ -5212,6 +5240,9 @@ export default function Scene3DViewer() {
           links={gridStudyLinks}
           objects={addedItems.map((i) => i.type)}
           network={faultNetwork}
+          electrodes={addedItems
+            .filter((i) => i.type === "earthrod")
+            .map((i, k) => ({ id: i.id, name: `Earth electrode #${k + 1}`, values: objectProps[i.id]?.values ?? initPropsFor("earthrod").values }))}
           relays={relayTargets}
           onRelayChange={updateRelayTarget}
           onClose={() => setStudiesOpen(false)}
@@ -5430,7 +5461,7 @@ export default function Scene3DViewer() {
                 onChange={(next) => setObjectProps((prev) => ({ ...prev, [propsKey]: next }))}
               />
             )}
-            {["gridinfeed", "recloser", "solar", "storage", "house"].includes(propsModelId) &&
+            {["gridinfeed", "recloser", "solar", "storage", "house", "cabinet", "earthrod"].includes(propsModelId) &&
               propsOwnerId && (
                 <GridEquipmentProps
                   modelId={propsModelId}
